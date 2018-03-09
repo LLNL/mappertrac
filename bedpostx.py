@@ -33,9 +33,9 @@ if not exists(join(root,"bedpostx_b1000")):
 bedpostx = join(root,"bedpostx_b1000")
 
 smart_copy(join(root,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
-smart_copy(join(root,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force))
-smart_copy(join(root,"bvals"),join(bedpostx,"bvals"),force))
-smart_copy(join(root,"bvecs"),join(bedpostx,"bvecs"),force))
+smart_copy(join(root,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
+smart_copy(join(root,"bvals"),join(bedpostx,"bvals"),force)
+smart_copy(join(root,"bvecs"),join(bedpostx,"bvecs"),force)
 
               
 
