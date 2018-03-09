@@ -41,10 +41,14 @@ smart_copy(join(root,"bvals"),join(bedpostx,"bvals"),force)
 smart_copy(join(root,"bvecs"),join(bedpostx,"bvecs"),force)
 
               
-
-if exists(join(FSL_DIR,"bedpostx_gpu")):
-    system("time " + join(FSL_DIR,"bedpostx_gpu") +  " " + bedpostx)
-else:
-    system("time " + join(FSL_DIR,"bedpostx") +  " " + bedpostx)
+if force or not exists(join(root,"bedpostx_b1000.bedpostX","dyads3.nii.gz")):
+    
+    rmtree(join(root,"bedpostx_b1000.bedpostX"))
+            
+    
+    if exists(join(FSL_DIR,"bedpostx_gpu")):
+        system("time " + join(FSL_DIR,"bedpostx_gpu") +  " " + bedpostx)
+    else:
+        system("time " + join(FSL_DIR,"bedpostx") +  " " + bedpostx)
   
 

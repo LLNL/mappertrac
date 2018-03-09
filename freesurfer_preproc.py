@@ -4,10 +4,15 @@ from os import system,mkdir,remove,environ
 from shutil import *
 
 if len(argv) < 4:
-    print "Usage: %s <FreeSurfer-dir> <T1.nii.gz> <output-dir>" % argv[0]
+    print "Usage: %s <FreeSurfer-dir> <T1.nii.gz> <output-dir> [force]" % argv[0]
     exit(0)
 
 output_dir = abspath(argv[3])
+subject = split(abspath(argv[3]))[1]
+
+# Shall we force a re-computation
+force = ((len(argv) > 4) and argv[4] == 'force')
+
 
 # Make the output directories if necessary    
 if not exists(join(output_dir,"mri")):
@@ -20,11 +25,13 @@ fs_dir = abspath(argv[1])
 environ['FREESURFER_HOME'] = fs_dir
 environ['SUBJECTS_DIR'] = split(argv[3])[0]
 
-if not exists(join(output_dir,"mri/orig/001.mgz")):
+if force or not exists(join(output_dir,"mri/orig/001.mgz")):
     system(join(fs_dir,'bin/mri_convert') + " %s %s" % (abspath(argv[2]),join(output_dir,"mri/orig/001.mgz")))
 
 
 system(join(fs_dir,'bin/recon-all') + " -s %s -all -no-isrunning" % split(argv[3])[1])
+
+
     
     
             
