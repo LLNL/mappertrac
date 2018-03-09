@@ -46,13 +46,14 @@ bvecs_rotated = join(pdir,"bvecs_rotated")
 bvals = join(pdir,"bvals")
 dti_params = join(pdir,"DTIparams")
 fa = join(pdir,"FA.nii.gz")
-
+T1 = join(pdir,"T1.nii.gz")
 
 # If necessary copy the data into the targte directory 
 smart_copy(join(sdir,"hardi.nii.gz"),data,force)
 smart_copy(join(sdir,"bvecs"),bvecs)
 smart_copy(join(sdir,"bvals"),bvals)
-              
+smart_copy(join(sdir,"anat.nii.gz"),T1)
+
 
 
 # Start the eddy correction
