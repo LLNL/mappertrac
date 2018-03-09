@@ -19,9 +19,7 @@ if not exists(FSL_DIR):
 
 
 # Shall we force a re-computation
-force = ((len(argv) > 5) and argv[4] == 'force')
-
-
+force = ((len(argv) > 4) and argv[4] == 'force')
 
 # source directory
 sdir = join(abspath(argv[1]),argv[3])
