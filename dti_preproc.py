@@ -78,10 +78,10 @@ if force or not exists(bvecs_rotated):
     print "Rotating"
     system("time " + join(FSL_DIR,"fdt_rotate_bvecs") + " %s %s %s" % (bvecs,bvecs_rotated,eddy_log))
 
-if True or not exists(dti_params+"_MD.nii.gz"):
+if force or not exists(dti_params+"_MD.nii.gz"):
 
     system("time " + join(FSL_DIR,"dtifit") + " --verbose -k %s -o %s -m %s -r %s -b %s" % (eddy,dti_params,bet_mask,bvecs,bvals))
-    system("time " + join(FSL_DIR,"fslmaths") + " %s -add %s -add %s -div 3 %s " % (dti_params+"_L1.nii.gz",dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_MD.nii.gz")) 
+    system("time " + join(FSL_DIR,"fslmaths") + " %s -add %s -add %s -div 3 %s " % (dti_params+"_L1.nii.gz",dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_MD.nii.gz"))    
     system("time " + join(FSL_DIR,"fslmaths") + " %s -add %s  -div 2 %s " % (dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_RD.nii.gz"))
 
     copy(dti_params+"_L1.nii.gz",dti_params+"_AD.nii.gz")
