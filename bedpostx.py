@@ -8,7 +8,7 @@ def smart_copy(src,dest,force=False):
     if force or not exists(dest):
         copyfile(src,dest)
  
-if len(argv) < 4:
+if len(argv) < 3:
     print "Usage: %s <target-dir> <subject-id> [force]" % argv[0]
     exit(0)
 
