@@ -1,7 +1,7 @@
 from sys import argv
 from sys import argv
 from os.path import exists,join,split,splitext,abspath
-from os import system,mkdir,remove,environ
+from os import system,mkdir,remove,environ,rmdir
 from shutil import *
 
 def smart_copy(src,dest,force=False):
@@ -33,7 +33,7 @@ if not exists(join(root,"bedpostx_b1000")):
 bedpostx = join(root,"bedpostx_b1000")
 
 if force:
-    remove(root,"bedpostx_b1000.bedpostX")
+    rmtree(join(root,"bedpostx_b1000.bedpostX"))
 
 smart_copy(join(root,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
 smart_copy(join(root,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
