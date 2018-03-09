@@ -32,18 +32,17 @@ if not exists(join(root,"bedpostx_b1000")):
 
 bedpostx = join(root,"bedpostx_b1000")
 
-if force:
-    rmtree(join(root,"bedpostx_b1000.bedpostX"))
 
 smart_copy(join(root,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
 smart_copy(join(root,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
 smart_copy(join(root,"bvals"),join(bedpostx,"bvals"),force)
 smart_copy(join(root,"bvecs"),join(bedpostx,"bvecs"),force)
 
-              
+print force            
 if force or not exists(join(root,"bedpostx_b1000.bedpostX","dyads3.nii.gz")):
     
-    rmtree(join(root,"bedpostx_b1000.bedpostX"))
+    if exists(join(root,"bedpostx_b1000.bedpostX")):
+        rmtree(join(root,"bedpostx_b1000.bedpostX"))
             
     
     if exists(join(FSL_DIR,"bedpostx_gpu")):
