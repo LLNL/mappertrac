@@ -39,6 +39,9 @@ smart_copy(join(root,"bvecs"),join(bedpostx,"bvecs"),force))
 
               
 
-
-#system("time " + join(FSL_DIR,"bedpostx") +  " " + bedpostx)
+if exists(join(FSL_DIR,"bedpostx_gpu")):
+    system("time " + join(FSL_DIR,"bedpostx_gpu") +  " " + bedpostx)
+else:
+    system("time " + join(FSL_DIR,"bedpostx") +  " " + bedpostx)
+  
 
