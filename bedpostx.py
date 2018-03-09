@@ -1,5 +1,5 @@
 from sys import argv
-ffrom sys import argv
+from sys import argv
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ
 from shutil import *
