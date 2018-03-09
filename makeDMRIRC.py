@@ -18,20 +18,20 @@ output += """
 # T1 images and FreeSurfer segmentations are expected to be found here
 # 
 setenv SUBJECTS_DIR %s
-""" % abspath(split(argv[1])[0])
+""" % split(abspath(argv[1]))[0]
 
 output += """
 # Output directory where trac-all results will be saved
 # Default: Same as SUBJECTS_DIR
 #
 set dtroot = %s
-""" % abspath(split(argv[2])[0])
+""" % abspath(argv[2])
 
 output += """
 # Subject IDs
 #
 set subjlist = (%s)
-""" % split(argv[1])[1]
+""" % split(abspath(argv[1]))[1]
 
 output += """
 # Input diffusion DICOMs (file names relative to dcmroot)
