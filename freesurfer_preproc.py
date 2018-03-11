@@ -40,13 +40,13 @@ if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
 
 
 if force or not exists(join(output_dir,"T12FA.mat")):
-    system(join(fs_dir,'bin/mri_convert') + " %s %s " % (join(output_dir,"mri","brain.mgz"),abspath(argv[2]))
+    system(join(fs_dir,'bin/mri_convert') + " %s %s " % (join(output_dir,"mri","brain.mgz"),abspath(argv[2])))
     
 if force or not exists(join(output_dir,"FA2T1.mat")):
-    system(join(fs_dir,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),joint(output_dir,"FA2T1.mat"))
+    system(join(fs_dir,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),joint(output_dir,"FA2T1.mat")))
     
 if force or not exists(join(output_dir,"T12FA.mat")):
-    system(join(fs_dir,'bin/convert_xfm') + " -omat %s -inverse %s" % (joint(output_dir,"T12FA.mat"),joint(output_dir,"FA2T1.mat"))
+    system(join(fs_dir,'bin/convert_xfm') + " -omat %s -inverse %s" % (joint(output_dir,"T12FA.mat"),joint(output_dir,"FA2T1.mat")))
     
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
@@ -69,7 +69,7 @@ if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
     for label in glob(join(output_dir,"label_cortical","*.label")):
         vol_name = splitext(split(label)[1])[0] + ".nii.gz"
         
-        if force or not exists(join(ouput_dir,"volumes_cortical",vol_name))
+        if force or not exists(join(output_dir,"volumes_cortical",vol_name)):
             system(join(fs_dir,'mri_label2vol') + " --label %s --temp %s --identity --o %s" % (label,T1,join(output_dir,"volumes_cortical",vol_name)))
     
     
