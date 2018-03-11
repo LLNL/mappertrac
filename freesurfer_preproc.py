@@ -43,10 +43,10 @@ if force or not exists(join(output_dir,"T12FA.mat")):
     system(join(fs_dir,'bin/mri_convert') + " %s %s " % (join(output_dir,"mri","brain.mgz"),abspath(argv[2])))
     
 if force or not exists(join(output_dir,"FA2T1.mat")):
-    system(join(fs_dir,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),joint(output_dir,"FA2T1.mat")))
+    system(join(fs_dir,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),join(output_dir,"FA2T1.mat")))
     
 if force or not exists(join(output_dir,"T12FA.mat")):
-    system(join(fs_dir,'bin/convert_xfm') + " -omat %s -inverse %s" % (joint(output_dir,"T12FA.mat"),joint(output_dir,"FA2T1.mat")))
+    system(join(fs_dir,'bin/convert_xfm') + " -omat %s -inverse %s" % (join(output_dir,"T12FA.mat"),join(output_dir,"FA2T1.mat")))
     
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
