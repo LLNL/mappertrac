@@ -28,6 +28,7 @@ if not exists(join(output_dir,"mri/orig")):
     mkdir(join(output_dir,"mri/orig"))
 
 fs_dir = abspath(argv[1])
+fsl = join(split(fs_dir)[0],"fsl")
 environ['FREESURFER_HOME'] = fs_dir
 environ['SUBJECTS_DIR'] = split(output_dir)[0]
 
@@ -43,10 +44,10 @@ if force or not exists(join(output_dir,"T12FA.mat")):
     system(join(fs_dir,'bin/mri_convert') + " %s %s " % (join(output_dir,"mri","brain.mgz"),abspath(argv[2])))
     
 if force or not exists(join(output_dir,"FA2T1.mat")):
-    system(join(fs_dir,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),join(output_dir,"FA2T1.mat")))
+    system(join(fsl,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),join(output_dir,"FA2T1.mat")))
     
 if force or not exists(join(output_dir,"T12FA.mat")):
-    system(join(fs_dir,'bin/convert_xfm') + " -omat %s -inverse %s" % (join(output_dir,"T12FA.mat"),join(output_dir,"FA2T1.mat")))
+    system(join(fsl,'bin/convert_xfm') + " -omat %s -inverse %s" % (join(output_dir,"T12FA.mat"),join(output_dir,"FA2T1.mat")))
     
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
@@ -59,10 +60,10 @@ if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
     
     # extract cortical labels (extralabels) 
     if force or not exists(join(output_dir,"volumes_subcortical/rh_thalamus.nii.gz")):
-        system(join(fs_dir,'mri_annotation2label') + " --subject %s --hemi rh --annotation aparc --outdir label_cortical" % subject)
+        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi rh --annotation aparc --outdir label_cortical" % subject)
         
     if force or not exists(join(output_dir,"volumes_subcortical/lh_thalamus.nii.gz")):
-        system(join(fs_dir,'mri_annotation2label') + " --subject %s --hemi lh --annotation aparc --outdir label_cortical" % subject)
+        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi lh --annotation aparc --outdir label_cortical" % subject)
         
     
     # extract volume labels (label2vol)
