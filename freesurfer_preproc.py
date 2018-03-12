@@ -52,63 +52,61 @@ if force or not exists(join(output_dir,"T12FA.mat")):
     system(join(fsl,'bin/convert_xfm') + " -omat %s -inverse %s" % (join(output_dir,"T12FA.mat"),join(output_dir,"FA2T1.mat")))
 
     
-if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
-        
-    if not exists(join(output_dir,"label_cortical")):
-        mkdir(join(output_dir,"label_cortical"))    
+if not exists(join(output_dir,"label_cortical")):
+    mkdir(join(output_dir,"label_cortical"))    
     
-    # extract cortical labels (extralabels) 
-    if force or not exists(join(output_dir,cortical_dir,"rh.temporalpole.label")):
-        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi rh --annotation aparc --outdir %s" % (subject,join(output_dir,cortical_dir)))
+# extract cortical labels (extralabels) 
+if force or not exists(join(output_dir,cortical_dir,"rh.temporalpole.label")):
+    system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi rh --annotation aparc --outdir %s" % (subject,join(output_dir,cortical_dir)))
 
-    if force or not exists(join(output_dir,cortical_dir,"lh.temporalpole.label")):
-        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi lh --annotation aparc --outdir %s" % (subject,join(output_dir,cortical_dir)))
+if force or not exists(join(output_dir,cortical_dir,"lh.temporalpole.label")):
+    system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi lh --annotation aparc --outdir %s" % (subject,join(output_dir,cortical_dir)))
         
-    if not exists(join(output_dir,vol_dir)):
-        mkdir(join(output_dir,vol_dir))
+if not exists(join(output_dir,vol_dir)):
+    mkdir(join(output_dir,vol_dir))
 
-    # extract volume labels (label2vol)
-    for label in glob(join(output_dir,cortical_dir,"*.label")):
-        vol_name = splitext(split(label)[1])[0] + ".nii.gz"
+# extract volume labels (label2vol)
+for label in glob(join(output_dir,cortical_dir,"*.label")):
+    vol_name = splitext(split(label)[1])[0] + ".nii.gz"
         
         
-        if force or not exists(join(output_dir,vol_dir,vol_name)):
-            system(join(fs_dir,"bin",'mri_label2vol') + " --label %s --temp %s --identity --o %s" % (label,T1,join(output_dir,vol_dir,vol_name)))
+    if force or not exists(join(output_dir,vol_dir,vol_name)):
+        system(join(fs_dir,"bin",'mri_label2vol') + " --label %s --temp %s --identity --o %s" % (label,T1,join(output_dir,vol_dir,vol_name)))
     
     
-    # make_subcortical_vols
-    if force or not exists(join(output_dir,"aseg.nii.gz")):
-        system(join(fs_dir,'bin/mri_convert') + " %s %s" % (join(output_dir,"mri","aseg.mgz"),join(output_dir,"aseg.nii.gz")))
+# make_subcortical_vols
+if force or not exists(join(output_dir,"aseg.nii.gz")):
+    system(join(fs_dir,'bin/mri_convert') + " %s %s" % (join(output_dir,"mri","aseg.mgz"),join(output_dir,"aseg.nii.gz")))
     
-    if not exists(join(output_dir,sub_vol_dir)):
-        mkdir(join(output_dir,sub_vol_dir))
+if not exists(join(output_dir,sub_vol_dir)):
+    mkdir(join(output_dir,sub_vol_dir))
     
         
-    indices = join(split(abspath(argv[0]))[0],"subcortical_index")
+indices = join(split(abspath(argv[0]))[0],"subcortical_index")
     
-    for line in open(indices,"r").readlines():
-        num = line.split(":")[0].lstrip().rstrip()
-        area = line.split(":")[1].lstrip().rstrip()
+for line in open(indices,"r").readlines():
+    num = line.split(":")[0].lstrip().rstrip()
+    area = line.split(":")[1].lstrip().rstrip()
         
-        system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.gz"),num,num,
-                                                                            join(output_dir,sub_vol_dir,area+".nii.gz")))
-
+    system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.gz"),num,num,
+                                                                        join(output_dir,sub_vol_dir,area+".nii.gz")))
         
-    vol_dir_out = vol_dir + "_s2fa"
-    for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
-        out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz")
-        system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
+    
+vol_dir_out = vol_dir + "_s2fa"
+for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
+    out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
+    system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                         out_vol,join(output_dir,"T12FA.nii.gz")))
-        system(join(fsl,'bin/fslmath') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
-        exit(0)
+    system(join(fsl,'bin/fslmath') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
+    exit(0)
 
         
-    vol_dir_out = sub_vol_dir + "_s2fa"
-    for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
-        out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz")
-        system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
+vol_dir_out = sub_vol_dir + "_s2fa"
+for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
+    out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
+    system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                         out_vol,join(output_dir,"T12FA.nii.gz")))
-        system(join(fsl,'bin/fslmath') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
+    system(join(fsl,'bin/fslmath') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
         
     
 if not exists(join(output_dir,"EDI")):
