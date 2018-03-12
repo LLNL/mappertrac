@@ -88,7 +88,7 @@ if force or not exists(join(output_dir,sub_vol_dir,"lh_acumbens.nii.gz")):
     for line in open(indices,"r").readlines():
         num = line.split(":")[0].lstrip().rstrip()
         area = line.split(":")[1].lstrip().rstrip()
-        
+        print "Processing ", area+".nii.gz" 
         system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.gz"),num,num,
                                                                             join(output_dir,sub_vol_dir,area+".nii.gz")))
         
@@ -98,9 +98,11 @@ if not exists(join(output_dir,vol_dir_out)):
     mkdir(join(output_dir,vol_dir_out))
 #if force or not exists(join(output_dir,vol_dir_out)    
 for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
-    out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
+    name = splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz"
+    out_vol = join(output_dir,vol_dir_out,name)
+    print "Processing ", volume, " -> ", out_vol
     system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
-                                                                                        out_vol,join(output_dir,"T12FA.mat")))
+                                                                                    out_vol,join(output_dir,"T12FA.mat")))
     system(join(fsl,'bin/fslmaths') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
 
         
@@ -108,7 +110,8 @@ vol_dir_out = sub_vol_dir + "_s2fa"
 if not exists(join(output_dir,vol_dir_out)):
     mkdir(join(output_dir,vol_dir_out))
 for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
-    out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
+    out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz")
+    print "Processing ", volume, " -> ", out_vol
     system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                         out_vol,join(output_dir,"T12FA.mat")))
     system(join(fsl,'bin/fslmaths') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
