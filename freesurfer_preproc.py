@@ -81,18 +81,20 @@ if force or not exists(join(output_dir,"aseg.nii.gz")):
 if not exists(join(output_dir,sub_vol_dir)):
     mkdir(join(output_dir,sub_vol_dir))
     
-        
-indices = join(split(abspath(argv[0]))[0],"subcortical_index")
     
-for line in open(indices,"r").readlines():
-    num = line.split(":")[0].lstrip().rstrip()
-    area = line.split(":")[1].lstrip().rstrip()
-        
-    system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.gz"),num,num,
-                                                                        join(output_dir,sub_vol_dir,area+".nii.gz")))
-        
+if force or not exists(join(output_dir,sub_vol_dir,"lh_acumbens.nii.gz")):    
+    indices = join(split(abspath(argv[0]))[0],"subcortical_index")
     
+    for line in open(indices,"r").readlines():
+        num = line.split(":")[0].lstrip().rstrip()
+        area = line.split(":")[1].lstrip().rstrip()
+        
+        system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.gz"),num,num,
+                                                                            join(output_dir,sub_vol_dir,area+".nii.gz")))
+        
+
 vol_dir_out = vol_dir + "_s2fa"
+#if force or not exists(join(output_dir,vol_dir_out)    
 for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
     out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
     system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
