@@ -82,4 +82,15 @@ if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
     if force or not exists(join(output_dir,"aseg.nii.mgz")):
         system(join(fs_dir,'bin/mri_convert') + " %s %s" % (join(output_dir,"mri","aseg.mgz"),join(output_dir,"aseg.nii.gz")))
     
-
+    if not exists(join(output_dir,sub_vol_dir)):
+        mkdir(join(output_dir,sub_vol_dir))
+        
+    indices = join(split(abspath(argv[0]))[0],"subcortical_index")
+    for line in open(indices,"r").readlines():
+        num = line.split(":")[0]
+        area = line.split(":")[1]
+        system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.mgz"),num,num,
+                                                                            join(output_dir,sub_vol_dir,area+"nii.gz")))
+        
+        
+    
