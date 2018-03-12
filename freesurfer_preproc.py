@@ -94,6 +94,8 @@ if force or not exists(join(output_dir,sub_vol_dir,"lh_acumbens.nii.gz")):
         
 
 vol_dir_out = vol_dir + "_s2fa"
+if not exists(join(output_dir,vol_dir_out)):
+    mkdir(join(output_dir,vol_dir_out))
 #if force or not exists(join(output_dir,vol_dir_out)    
 for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
     out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
@@ -103,6 +105,8 @@ for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
 
         
 vol_dir_out = sub_vol_dir + "_s2fa"
+if not exists(join(output_dir,vol_dir_out)):
+    mkdir(join(output_dir,vol_dir_out))
 for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
     out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
     system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
