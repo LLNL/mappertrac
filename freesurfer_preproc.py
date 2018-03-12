@@ -51,7 +51,6 @@ if force or not exists(join(output_dir,"FA2T1.mat")):
 if force or not exists(join(output_dir,"T12FA.mat")):
     system(join(fsl,'bin/convert_xfm') + " -omat %s -inverse %s" % (join(output_dir,"T12FA.mat"),join(output_dir,"FA2T1.mat")))
 
-    
 if not exists(join(output_dir,"label_cortical")):
     mkdir(join(output_dir,"label_cortical"))    
     
@@ -73,7 +72,6 @@ for label in glob(join(output_dir,cortical_dir,"*.label")):
     if force or not exists(join(output_dir,vol_dir,vol_name)):
         system(join(fs_dir,"bin",'mri_label2vol') + " --label %s --temp %s --identity --o %s" % (label,T1,join(output_dir,vol_dir,vol_name)))
     
-    
 # make_subcortical_vols
 if force or not exists(join(output_dir,"aseg.nii.gz")):
     system(join(fs_dir,'bin/mri_convert') + " %s %s" % (join(output_dir,"mri","aseg.mgz"),join(output_dir,"aseg.nii.gz")))
@@ -91,8 +89,6 @@ if force or not exists(join(output_dir,sub_vol_dir,"lh_acumbens.nii.gz")):
         print "Processing ", area+".nii.gz" 
         system(join(fsl,'bin/fslmaths') + " %s -uthr %s -thr %s -bin %s" % (join(output_dir,"aseg.nii.gz"),num,num,
                                                                             join(output_dir,sub_vol_dir,area+".nii.gz")))
-        
-
 
 vol_dir_out = vol_dir + "_s2fa"
 if not exists(join(output_dir,vol_dir_out)):
@@ -101,24 +97,24 @@ if force or not exists(join(output_dir,vol_dir_out,"rh.bankssts_sf2.nii.gz")):
     for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
         name = splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz"
         out_vol = join(output_dir,vol_dir_out,name)
-        print "Processing ", volume, " -> ", out_vol
+        print "Processing ", split(volume)[1], " -> ", split(out_vol)[1]
         system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                     out_vol,join(output_dir,"T12FA.mat")))
         system(join(fsl,'bin/fslmaths') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
 
-        
+
 vol_dir_out = sub_vol_dir + "_s2fa"
 if not exists(join(output_dir,vol_dir_out)):
     mkdir(join(output_dir,vol_dir_out))
 if force or not exists(join(output_dir,vol_dir_out,"lh_acumbens_s2f.nii.gz")):     
     for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
         out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz")
-        print "Processing ", volume, " -> ", out_vol
+        print "Processing ", split(volume)[1], " -> ", split(out_vol)[1]
         system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                         out_vol,join(output_dir,"T12FA.mat")))
         system(join(fsl,'bin/fslmaths') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
         
-    
+
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
 
