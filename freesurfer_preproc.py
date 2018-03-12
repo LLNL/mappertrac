@@ -79,6 +79,7 @@ if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
     
     
     # make_subcortical_vols
-    #if force or not exists(join(output_dir,"mri","aseg.nii.mgz"))
+    if force or not exists(join(output_dir,"aseg.nii.mgz")):
+        system(join(fs_dir,'bin/mri_convert') + " %s %s" % (join(output_dir,"mri","aseg.mgz"),join(output_dir,"aseg.nii.gz")))
     
 
