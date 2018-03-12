@@ -40,18 +40,19 @@ if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
     system(join(fs_dir,'bin/recon-all') + " -s %s -all -no-isrunning" % subject)
 
 
-if force or not exists(join(output_dir,"T12FA.mat")):
+if force or not exists(join(output_dir,abspath(argv[2]))):
     system(join(fs_dir,'bin/mri_convert') + " %s %s " % (join(output_dir,"mri","brain.mgz"),abspath(argv[2])))
+
     
 if force or not exists(join(output_dir,"FA2T1.mat")):
-    system(join(fsl,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.mgz"),abspath(argv[2]),join(output_dir,"FA2T1.mat")))
+    system(join(fsl,'bin/flirt') + " -in %s -ref %s -omat %s" % (join(output_dir,"FA.nii.gz"),abspath(argv[2]),join(output_dir,"FA2T1.mat")))
     
 if force or not exists(join(output_dir,"T12FA.mat")):
     system(join(fsl,'bin/convert_xfm') + " -omat %s -inverse %s" % (join(output_dir,"T12FA.mat"),join(output_dir,"FA2T1.mat")))
+
     
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
-
 
 if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
         
@@ -59,19 +60,22 @@ if force or not exists(join(output_dir,"%s_s2fa/lh_thalamus_s2fa.nii.gz")):
         mkdir(join(output_dir,"label_cortical"))    
     
     # extract cortical labels (extralabels) 
-    if force or not exists(join(output_dir,"volumes_subcortical/rh_thalamus.nii.gz")):
-        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi rh --annotation aparc --outdir label_cortical" % subject)
+    if force or not exists(join(output_dir,cortical_dir,"rh.temporalpole.label")):
+        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi rh --annotation aparc --outdir %s" % (subject,join(output_dir,cortical_dir)))
+
+    if force or not exists(join(output_dir,cortical_dir,"lh.temporalpole.label")):
+        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi lh --annotation aparc --outdir %s" % (subject,join(output_dir,cortical_dir)))
         
-    if force or not exists(join(output_dir,"volumes_subcortical/lh_thalamus.nii.gz")):
-        system(join(fs_dir,"bin",'mri_annotation2label') + " --subject %s --hemi lh --annotation aparc --outdir label_cortical" % subject)
-        
-    
+    if not exists(join(output_dir,vol_dir)):
+        mkdir(join(output_dir,vol_dir))
+
     # extract volume labels (label2vol)
-    for label in glob(join(output_dir,"label_cortical","*.label")):
+    for label in glob(join(output_dir,cortical_dir,"*.label")):
         vol_name = splitext(split(label)[1])[0] + ".nii.gz"
         
-        if force or not exists(join(output_dir,"volumes_cortical",vol_name)):
-            system(join(fs_dir,'mri_label2vol') + " --label %s --temp %s --identity --o %s" % (label,T1,join(output_dir,"volumes_cortical",vol_name)))
+        
+        if force or not exists(join(output_dir,vol_dir,vol_name)):
+            system(join(fs_dir,"bin",'mri_label2vol') + " --label %s --temp %s --identity --o %s" % (label,T1,join(output_dir,vol_dir,vol_name)))
     
     
     # make_subcortical_vols
