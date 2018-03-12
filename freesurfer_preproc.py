@@ -96,7 +96,7 @@ vol_dir_out = vol_dir + "_s2fa"
 for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
     out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
     system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
-                                                                                        out_vol,join(output_dir,"T12FA.nii.gz")))
+                                                                                        out_vol,join(output_dir,"T12FA.mat")))
     system(join(fsl,'bin/fslmath') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
     exit(0)
 
@@ -105,7 +105,7 @@ vol_dir_out = sub_vol_dir + "_s2fa"
 for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
     out_vol = join(output_dir,vol_dir_out,splitext(splitext(volume)[0])[0] + "_sf2.nii.gz")
     system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
-                                                                                        out_vol,join(output_dir,"T12FA.nii.gz")))
+                                                                                        out_vol,join(output_dir,"T12FA.mat")))
     system(join(fsl,'bin/fslmath') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
         
     
