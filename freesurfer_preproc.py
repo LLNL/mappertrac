@@ -144,7 +144,7 @@ if exists(join(output_dir,"bs.nii.gz")):
      
 
 
-exit(0)
+#exit(0)
 
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
@@ -154,17 +154,17 @@ if not exists(join(output_dir,"EDI","allvols")):
 
 if force or not exists(join(output_dir,"EDI","allvols","rh_thalamus_s2fa.nii.gz")):
     for files in glob(join(output_dir,"volumes_cortical_s2fa","*")):
-        copyfile(files, join(output_dir,"EDI","allvols"))
+        copy(files, join(output_dir,"EDI","allvols"))
     
     for files in glob(join(output_dir,"volumes_subcortical_s2fa","*")):
-        copyfile(files, join(output_dir,"EDI","allvols"))
+        copy(files, join(output_dir,"EDI","allvols"))
 
 if exists(join(output_dir,"bs.nii.gz")):
-    copyfile(join(output_dir,"bs.nii.gz"),join(output_dir,"EDI"))
-    copyfile(join(output_dir,"terminationmask.nii.gz"),join(output_dir,"EDI"))
-    copyfile(join(output_dir,"exlusion_bsplusthalami.nii.gz"),join(output_dir,"EDI"))
-    copyfile(join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"EDI"))
+    copy(join(output_dir,"bs.nii.gz"),join(output_dir,"EDI"))
+    copy(join(output_dir,"terminationmask.nii.gz"),join(output_dir,"EDI"))
+    copy(join(output_dir,"exlusion_bsplusthalami.nii.gz"),join(output_dir,"EDI"))
+    copy(join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"EDI"))
 else:
-    copyfile(join(output_dir,"terminationmask.nii.gz"),join(output_dir,"EDI"))
+    copy(join(output_dir,"terminationmask.nii.gz"),join(output_dir,"EDI"))
        
     
