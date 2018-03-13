@@ -3,7 +3,8 @@ from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ
 from shutil import *
 from glob import glob
-
+from maskseeds import *
+from posix import remove
 
 cortical_dir = "label_cortical"
 vol_dir = "volumes_cortical"
@@ -93,9 +94,9 @@ if force or not exists(join(output_dir,sub_vol_dir,"lh_acumbens.nii.gz")):
 vol_dir_out = vol_dir + "_s2fa"
 if not exists(join(output_dir,vol_dir_out)):
     mkdir(join(output_dir,vol_dir_out))
-if force or not exists(join(output_dir,vol_dir_out,"rh.bankssts_sf2.nii.gz")):     
+if force or not exists(join(output_dir,vol_dir_out,"rh.bankssts_s2fa.nii.gz")):     
     for volume in glob(join(output_dir,vol_dir,"*.nii.gz")):
-        name = splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz"
+        name = splitext(splitext(split(volume)[1])[0])[0] + "_s2fa.nii.gz"
         out_vol = join(output_dir,vol_dir_out,name)
         print "Processing ", split(volume)[1], " -> ", split(out_vol)[1]
         system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
@@ -106,25 +107,50 @@ if force or not exists(join(output_dir,vol_dir_out,"rh.bankssts_sf2.nii.gz")):
 vol_dir_out = sub_vol_dir + "_s2fa"
 if not exists(join(output_dir,vol_dir_out)):
     mkdir(join(output_dir,vol_dir_out))
-if force or not exists(join(output_dir,vol_dir_out,"lh_acumbens_s2f.nii.gz")):     
+if force or not exists(join(output_dir,vol_dir_out,"lh_acumbens_s2fa.nii.gz")):     
     for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
-        out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2.nii.gz")
+        out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2a.nii.gz")
         print "Processing ", split(volume)[1], " -> ", split(out_vol)[1]
         system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                         out_vol,join(output_dir,"T12FA.mat")))
         system(join(fsl,'bin/fslmaths') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
         
 
+
+############
+# maskseeds
+maskseeds(output_dir,join(output_dir,vol_dir+"_s2fa"),join(output_dir,vol_dir + "_s2fa_m"),0.05,1,1)
+maskseeds(output_dir,join(output_dir,sub_vol_dir+"_s2fa"),join(output_dir,sub_vol_dir + "_s2fa_m"),0.05,0.4,0.4)
+
+saveallvoxels(output_dir, join(output_dir,vol_dir + "_s2fa_m"), join(output_dir,sub_vol_dir + "_s2fa_m"), join(output_dir,"allvoxelscortsubcort.nii.gz"), force)
+
+if exists(join(output_dir,"terminationmask.nii.gz")):
+    remove(join(output_dir,"terminationmask.nii.gz"))
+    
+system(join(fsl,'bin/fslmaths' + " %s -uthr .15 %s" % (join(output_dir,"FA.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+
+system(join(fsl,'bin/fslmaths' + " %s -add %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"bs.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+system(join(fsl,'bin/fslmaths' + " %s -bin %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+system(join(fsl,'bin/fslmaths' + " %s -mul %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"intersection.nii.gz"))))
+system(join(fsl,'bin/fslmaths' + " %s -sub %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"intersection.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+      
+system(join(fsl,'bin/fslmaths' + " %s -add %s -add %s %s" % (join(output_dir,"bs.nii.gz"),
+                                                             join(output_dir,sub_vol_dir + "_s2fa_m", "lh_thalamus_s2fa.nii.gz"),
+                                                             join(output_dir,sub_vol_dir + "_s2fa_m", "rh_thalamus_s2fa.nii.gz"),
+                                                             join(output_dir,"exlusion_bsplusthalami.nii.gz"))))
+############
+############
+############
+     
+
+
+exit(0)
+
 if not exists(join(output_dir,"EDI")):
     mkdir(join(output_dir,"EDI"))
 
 if not exists(join(output_dir,"EDI","allvols")):
     mkdir(join(output_dir,"EDI","allvols"))
-
-############
-### Need to implement makeseed script
-
-exit(0)
 
 if force or not exists(join(output_dir,"EDI","allvols","rh_thalamus_s2fa.nii.gz")):
     for files in glob(join(output_dir,"volumes_cortical_s2fa","*")):
