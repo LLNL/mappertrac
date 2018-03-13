@@ -109,7 +109,7 @@ if not exists(join(output_dir,vol_dir_out)):
     mkdir(join(output_dir,vol_dir_out))
 if force or not exists(join(output_dir,vol_dir_out,"lh_acumbens_s2fa.nii.gz")):     
     for volume in glob(join(output_dir,sub_vol_dir,"*.nii.gz")):
-        out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_sf2a.nii.gz")
+        out_vol = join(output_dir,vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_s2fa.nii.gz")
         print "Processing ", split(volume)[1], " -> ", split(out_vol)[1]
         system(join(fsl,'bin/flirt') + " -in %s -ref %s -out %s  -applyxfm -init %s" % (volume,join(output_dir,"FA.nii.gz"),
                                                                                         out_vol,join(output_dir,"T12FA.mat")))
