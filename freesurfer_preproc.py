@@ -76,7 +76,6 @@ for label in glob(join(output_dir,cortical_dir,"*.label")):
 # make_subcortical_vols
 if force or not exists(join(output_dir,"aseg.nii.gz")):
     system(join(fs_dir,'bin/mri_convert') + " %s %s" % (join(output_dir,"mri","aseg.mgz"),join(output_dir,"aseg.nii.gz")))
-    
 if not exists(join(output_dir,sub_vol_dir)):
     mkdir(join(output_dir,sub_vol_dir))
     
@@ -119,25 +118,26 @@ if force or not exists(join(output_dir,vol_dir_out,"lh_acumbens_s2fa.nii.gz")):
 
 ############
 # maskseeds
-maskseeds(output_dir,join(output_dir,vol_dir+"_s2fa"),join(output_dir,vol_dir + "_s2fa_m"),0.05,1,1)
-maskseeds(output_dir,join(output_dir,sub_vol_dir+"_s2fa"),join(output_dir,sub_vol_dir + "_s2fa_m"),0.05,0.4,0.4)
+if exists(join(output_dir,"bs.nii.gz")):
+    maskseeds(output_dir,join(output_dir,vol_dir+"_s2fa"),join(output_dir,vol_dir + "_s2fa_m"),0.05,1,1)
+    maskseeds(output_dir,join(output_dir,sub_vol_dir+"_s2fa"),join(output_dir,sub_vol_dir + "_s2fa_m"),0.05,0.4,0.4)
 
-saveallvoxels(output_dir, join(output_dir,vol_dir + "_s2fa_m"), join(output_dir,sub_vol_dir + "_s2fa_m"), join(output_dir,"allvoxelscortsubcort.nii.gz"), force)
+    saveallvoxels(output_dir, join(output_dir,vol_dir + "_s2fa_m"), join(output_dir,sub_vol_dir + "_s2fa_m"), join(output_dir,"allvoxelscortsubcort.nii.gz"), force)
 
-if exists(join(output_dir,"terminationmask.nii.gz")):
-    remove(join(output_dir,"terminationmask.nii.gz"))
+    if exists(join(output_dir,"terminationmask.nii.gz")):
+        remove(join(output_dir,"terminationmask.nii.gz"))
     
-system(join(fsl,'bin/fslmaths' + " %s -uthr .15 %s" % (join(output_dir,"FA.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+    system(join(fsl,'bin/fslmaths' + " %s -uthr .15 %s" % (join(output_dir,"FA.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
 
-system(join(fsl,'bin/fslmaths' + " %s -add %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"bs.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
-system(join(fsl,'bin/fslmaths' + " %s -bin %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
-system(join(fsl,'bin/fslmaths' + " %s -mul %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"intersection.nii.gz"))))
-system(join(fsl,'bin/fslmaths' + " %s -sub %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"intersection.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+    system(join(fsl,'bin/fslmaths' + " %s -add %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"bs.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+    system(join(fsl,'bin/fslmaths' + " %s -bin %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+    system(join(fsl,'bin/fslmaths' + " %s -mul %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"intersection.nii.gz"))))
+    system(join(fsl,'bin/fslmaths' + " %s -sub %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"intersection.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
       
-system(join(fsl,'bin/fslmaths' + " %s -add %s -add %s %s" % (join(output_dir,"bs.nii.gz"),
-                                                             join(output_dir,sub_vol_dir + "_s2fa_m", "lh_thalamus_s2fa.nii.gz"),
-                                                             join(output_dir,sub_vol_dir + "_s2fa_m", "rh_thalamus_s2fa.nii.gz"),
-                                                             join(output_dir,"exlusion_bsplusthalami.nii.gz"))))
+    system(join(fsl,'bin/fslmaths' + " %s -add %s -add %s %s" % (join(output_dir,"bs.nii.gz"),
+                                                                 join(output_dir,sub_vol_dir + "_s2fa_m", "lh_thalamus_s2fa.nii.gz"),
+                                                                 join(output_dir,sub_vol_dir + "_s2fa_m", "rh_thalamus_s2fa.nii.gz"),
+                                                                 join(output_dir,"exlusion_bsplusthalami.nii.gz"))))
 ############
 ############
 ############
