@@ -114,7 +114,10 @@ if force or not exists(join(output_dir,vol_dir_out,"lh_acumbens_s2fa.nii.gz")):
                                                                                         out_vol,join(output_dir,"T12FA.mat")))
         system(join(fsl,'bin/fslmaths') + " %s -thr %s -bin %s " % (out_vol,threshold,out_vol))
         
-
+############
+# FOr now we fake a bs.nii.gz file 
+if not exists(join(output_dir,"bs.nii.gz")):
+    system(join(fsl,'bin/fslmaths') + " %s -mul 0 %s" % (join(output_dir,"FA.nii.gz"),join(output_dir,"bs.nii.gz"))) 
 
 ############
 # maskseeds
