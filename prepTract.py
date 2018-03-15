@@ -42,7 +42,7 @@ if force or not exists(join(output_dir, "bedpostx_b1000.bedpostX", "dyads2_dispe
 
 
 if not exists(join(EDI, "bedpostx_b1000.bedpostX")):
-    copytree(join(output_dir), EDI)
+    copytree(join(output_dir,"bedpostx_b1000.bedpostX"), join(EDI, "bedpostx_b1000.bedpostX"))
 
 
 
