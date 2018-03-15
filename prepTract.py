@@ -28,12 +28,12 @@ if not exists(join(EDI, "PBTKresultsbedpostx_b1000_thalexcldistcorr0")):
 
 if force or not exists(join(output_dir, "bedpostx_b1000.bedpostX", "dyads2_dispersion.nii.gz")):
     bed_dir = join(output_dir, "bedpostx_b1000.bedpostX")
-    system(join(fsl, "make_dyadic_vectors") + " %s %s %s %s" % (join(bed_dir, "merged_th1samples"),
+    system("time " + join(fsl, "make_dyadic_vectors") + " %s %s %s %s" % (join(bed_dir, "merged_th1samples"),
                                                                 join(bed_dir, "merged_ph1samples"),
                                                                 join(bed_dir, "nodif_brain_mask"),
                                                                 join(bed_dir, "dyads1")))
 
-    system(join(fsl, "make_dyadic_vectors") + " %s %s %s %s" % (join(bed_dir, "merged_th2samples"),
+    system("time " + join(fsl, "make_dyadic_vectors") + " %s %s %s %s" % (join(bed_dir, "merged_th2samples"),
                                                                 join(bed_dir, "merged_ph2samples"),
                                                                 join(bed_dir, "nodif_brain_mask"),
                                                                 join(bed_dir, "dyads2")))

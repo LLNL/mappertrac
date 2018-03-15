@@ -61,10 +61,10 @@ cmd = (join(fsl,"probtrackx2 ")
     + " -s %s" % join(tmp_dir,"bedpostx","merged")
     + " -m %s" % join(tmp_dir,"nodif_brain_mask")
     + " --dir=%s" % tmp_dir
+    + " --o=%s" % join(output_dir,"%sto%s.nii.gz" % (seed_name,target_name))
     )
 
 system(cmd)
-copyfile(join(tmp_dir,"fdt_paths.nii.gz"), join(output_dir,"%sto%s.nii.gz" % (seed_name,target_name)))
 
 rmtree(tmp_dir)
 

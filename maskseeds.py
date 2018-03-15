@@ -19,8 +19,8 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
         
     # Now create two transformed volumes with threshold 1 and 2
     print "fslmath %s -thr %f -uthr %f -bin tmp.nii.gz" % (join(root_dir,"FA.nii.gz"),low_threshold,high_threshold)
-    system(join(fsl,"bin","fslmaths") + " %s -thr %f -uthr %f -bin tmp.nii.gz" % (join(root_dir,"FA.nii.gz"),low_threshold,high_threshold))
-    system(join(fsl,"bin","fslmaths") + " %s -thr %f -uthr %f -bin tmp_thalamus.nii.gz" % (join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus))
+    system("time " + join(fsl,"bin","fslmaths") + " %s -thr %f -uthr %f -bin tmp.nii.gz" % (join(root_dir,"FA.nii.gz"),low_threshold,high_threshold))
+    system("time " + join(fsl,"bin","fslmaths") + " %s -thr %f -uthr %f -bin tmp_thalamus.nii.gz" % (join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus))
     
     for seed in glob(join(input_dir,"*s2fa.nii.gz")):
 
@@ -29,10 +29,10 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
         if force or not exists(join(output_dir,split(seed)[1])):           
             if region == "thalamus":
                 print "fslmaths  %s -mas tmp_thalamus.nii.gz %s" % (seed, join(output_dir,split(seed)[1]))
-                system(join(fsl,"bin","fslmaths") + " %s -mas tmp_thalamus.nii.gz %s" % (seed, join(output_dir,split(seed)[1])))
+                system("time " + join(fsl,"bin","fslmaths") + " %s -mas tmp_thalamus.nii.gz %s" % (seed, join(output_dir,split(seed)[1])))
             else:
                 print "fslmaths  %s -mas tmp.nii.gz %s" % (seed, join(output_dir,split(seed)[1]))
-                system(join(fsl,"bin","fslmaths") + " %s -mas tmp.nii.gz %s" % (seed, join(output_dir,split(seed)[1])))
+                system("time " + join(fsl,"bin","fslmaths") + " %s -mas tmp.nii.gz %s" % (seed, join(output_dir,split(seed)[1])))
            
         
         
@@ -57,16 +57,16 @@ def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force):
     #exit(0)
 
     if force or not exists(join(root_dir,"cort.nii.gz")):
-        system(join(fsl,"bin","find_the_biggest") + " %s %s" % (all_vols,join(root_dir,"cort.nii.gz")))
+        system("time " + join(fsl,"bin","find_the_biggest") + " %s %s" % (all_vols,join(root_dir,"cort.nii.gz")))
         
     all_vols = ""
     for vol in glob(join(subcortical_dir,"*_s2fa.nii.gz")):
         all_vols += " " + vol
     
     if force or not exists(join(root_dir,"subcort.nii.gz")):
-        system(join(fsl,"bin","find_the_biggest") + " %s %s" % (all_vols,join(root_dir,"subcort.nii.gz")))
+        system("time " + join(fsl,"bin","find_the_biggest") + " %s %s" % (all_vols,join(root_dir,"subcort.nii.gz")))
     
     if force or not exists(output_name):
-        system(join(fsl,"bin","fslmaths") + " %s -add %s %s " % (join(root_dir,"cort.nii.gz"),join(root_dir,"subcort.nii.gz"),output_name))
-        system(join(fsl,"bin","fslmaths") + " %s -bin %s" % (output_name,output_name))
+        system("time " + join(fsl,"bin","fslmaths") + " %s -add %s %s " % (join(root_dir,"cort.nii.gz"),join(root_dir,"subcort.nii.gz"),output_name))
+        system("time " + join(fsl,"bin","fslmaths") + " %s -bin %s" % (output_name,output_name))
     
