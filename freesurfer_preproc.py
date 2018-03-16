@@ -39,7 +39,7 @@ if force or not exists(join(output_dir,"mri/orig/001.mgz")):
 
 
 if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
-    system("time " + oin(fs_dir,'bin/recon-all') + " -s %s -all -no-isrunning" % subject)
+    system("time " + join(fs_dir,'bin/recon-all') + " -s %s -all -no-isrunning" % subject)
 
 
 if force or not exists(join(output_dir,abspath(argv[2]))):
