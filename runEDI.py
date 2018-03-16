@@ -4,6 +4,7 @@ from os import system,mkdir,remove,environ
 from shutil import *
 from glob import glob
 from tempfile import *
+from utilities import *
 
 if len(argv) < 4:
     print "Usage: %s <source.nii.gz>:<target.nii.gz> <root-dir> <bedpost-dir> <output-dir>"
@@ -27,22 +28,22 @@ copy(target,tmp_dir)
 copy(join(root_dir,"EDI","terminationmask.nii.gz"),tmp_dir)
 copy(join(root_dir,"EDI","allvoxelscortsubcort.nii.gz"),tmp_dir)
 copy(join(root_dir,"EDI","bs.nii.gz"),join(tmp_dir,"brainstemplane.nii.gz"))
-copytree(bedpost_dir, join(tmp_dir,"bedpostx"))
+copytree(bedpost_dir,join(tmp_dir,"bedpostx"))
 
 # Creating the masks
-system(join(fsl,"fslmaths ") + " %s -sub %s %s" % (join(tmp_dir,"allvoxelscortsubcort.nii.gz"),
-                                                join(tmp_dir,split(seed)[1]),
-                                                join(tmp_dir,"exclusion.nii.gz")))
+run("fslmaths"," %s -sub %s %s" % (join(tmp_dir,"allvoxelscortsubcort.nii.gz"),
+                                   join(tmp_dir,split(seed)[1]),
+                                   join(tmp_dir,"exclusion.nii.gz")))
 
-system(join(fsl,"fslmaths ") + " %s -sub %s %s" % (join(tmp_dir,"exclusion.nii.gz"),
+run("fslmaths", " %s -sub %s %s" % (join(tmp_dir,"exclusion.nii.gz"),
                                                 join(tmp_dir,split(target)[1]),
                                                 join(tmp_dir,"exclusion.nii.gz")))
 
-system(join(fsl,"fslmaths ") + " %s -add %s %s" % (join(tmp_dir,"exclusion.nii.gz"),
+run("fslmaths", " %s -add %s %s" % (join(tmp_dir,"exclusion.nii.gz"),
                                                 join(tmp_dir,split(seed)[1]),
                                                 join(tmp_dir,"brainstemplane.nii.gz")))
 
-system(join(fsl,"fslmaths ") + " %s -add %s %s" % (join(tmp_dir,"terminationmask.nii.gz"),
+run("fslmaths", " %s -add %s %s" % (join(tmp_dir,"terminationmask.nii.gz"),
                                                 join(tmp_dir,split(target)[1]),
                                                 join(tmp_dir,"terminationmask.nii.gz")))
 
@@ -50,8 +51,7 @@ waypoint = open(join(tmp_dir,"waypoint.txt"),"w")
 waypoint.write(target + "\n")
 waypoint.close()
 
-cmd = (join(fsl,"probtrackx2 ")
-    + " -x %s " % join(tmp_dir,split(seed)[1])
+arguments = (" -x %s " % join(tmp_dir,split(seed)[1])
     + " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000"
     + " --waypoints=%s" % join(tmp_dir,"waypoint.txt")
     + " --avoid=%s" % join(tmp_dir,"exclusion.nii.gz")
@@ -63,7 +63,7 @@ cmd = (join(fsl,"probtrackx2 ")
     + " --out=%sto%s.nii.gz" % (seed_name,target_name)
     )
 
-system(cmd)
+run("probtrackx2",arguments)
 copy(join(tmp_dir,"%sto%s.nii.gz" % (seed_name,target_name)),output_dir)
 
 rmtree(tmp_dir)
