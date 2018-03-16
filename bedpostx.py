@@ -3,6 +3,7 @@ from sys import argv
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ,rmdir
 from shutil import *
+from utilities import *
 
 def smart_copy(src,dest,force=False):
     if force or not exists(dest):
@@ -13,8 +14,8 @@ if len(argv) < 3:
     exit(0)
 
 # Check whether the right environment variables are set
-FSL_DIR = join(environ["FSL_DIR"],"bin")
-if not exists(FSL_DIR):
+FSLDIR = join(environ["FSLDIR"],"bin")
+if not exists(FSLDIR):
     print "Cannot find FSL_DIR environment variable"
     exist(0)
 
@@ -45,9 +46,9 @@ if force or not exists(join(root,"bedpostx_b1000.bedpostX","dyads3.nii.gz")):
         rmtree(join(root,"bedpostx_b1000.bedpostX"))
             
     
-    if exists(join(FSL_DIR,"bedpostx_gpu")):
-        system("time " + join(FSL_DIR,"bedpostx_gpu") +  " " + bedpostx)
+    if exists(join(FSLDIR,"bedpostx_gpu")):
+        run("bedpostx_gpu",  " " + bedpostx)
     else:
-        system("time " + join(FSL_DIR,"bedpostx") +  " " + bedpostx)
+        run("bedpostx",  " " + bedpostx)
   
 

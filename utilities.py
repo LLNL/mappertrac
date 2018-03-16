@@ -6,6 +6,8 @@ from os.path import join,environ
 command_map = {
     'fslmaths' : join(environ['FSL_DIR'],"bin","fslmaths"),
     'probtrackx2' : join(environ['FREESURFER_HOME'],"bin","probtrackx2"),
+    'bedpostx_gpu' : join(environ['FSL_DIR'],"bin",'bedpostx_gpu'),
+    'bedpostx' : join(environ['FSL_DIR'],"bin",'bedpostx')
     }
 
 
