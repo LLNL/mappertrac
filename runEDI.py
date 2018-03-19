@@ -21,7 +21,7 @@ output_dir = argv[4]
 
 tmp_dir = mkdtemp()
 
-fsl = join(environ['FSL_DIR'],"bin")
+fsl = join(environ['FSLDIR'],"bin")
 
 copy(seed,tmp_dir)
 copy(target,tmp_dir)
