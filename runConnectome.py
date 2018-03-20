@@ -21,9 +21,9 @@ source = abspath(argv[1])
 target = abspath(argv[2])
 
 if len(argv) > 3:
-    output_dir = join(target,argv[3])
+    target = join(target,argv[3])
 else:
-    output_dir = join(target,split(source)[1]) 
+    target = join(target,split(source)[1]) 
 
 
 system("python " + join(path,"dti_preproc.py") + " " + source + " " + target)
