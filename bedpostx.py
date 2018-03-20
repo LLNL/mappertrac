@@ -10,18 +10,18 @@ def smart_copy(src,dest,force=False):
         copyfile(src,dest)
  
 if len(argv) < 3:
-    print "Usage: %s <target-dir> <subject-id> [force]" % argv[0]
+    print "Usage: %s <target-dir> [force]" % argv[0]
     exit(0)
 
 # Check whether the right environment variables are set
 FSLDIR = join(environ["FSLDIR"],"bin")
 if not exists(FSLDIR):
     print "Cannot find FSL_DIR environment variable"
-    exist(0)
+    exit(0)
 
 
 # Shall we force a re-computation
-force = ((len(argv) > 3) and argv[3] == 'force')
+force = ((len(argv) > 2) and argv[2] == 'force')
 
 
 

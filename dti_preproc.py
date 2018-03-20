@@ -2,37 +2,36 @@ from sys import argv
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ
 from shutil import *
+from utilities import *
 
 def smart_copy(src,dest,force=False):
     if force or not exists(dest):
         copyfile(src,dest)
  
 if len(argv) < 4:
-    print "Usage: %s <source-dir> <target-dir> <subject-id> [force]" % argv[0]
+    print "Usage: %s <source-dir> <target-dir> [force]" % argv[0]
     exit(0)
 
 # Check whether the right environment variables are set
-FSL_DIR = join(environ["FSL_DIR"],"bin")
-if not exists(FSL_DIR):
-    print "Cannot find FSL_DIR environment variable"
-    exist(0)
+FSLDIR = join(environ["FSLDIR"],"bin")
+if not exists(FSLDIR):
+    print "Cannot find FSLDIR environment variable"
+    exit(0)
 
 
 # Shall we force a re-computation
-force = ((len(argv) > 4) and argv[4] == 'force')
+force = ((len(argv) > 3) and argv[3] == 'force')
 
 # source directory
-sdir = join(abspath(argv[1]),argv[3])
+sdir = abspath(argv[1])
 
 # make sure the target dir exists
 if not exists(abspath(argv[2])):
     mkdir(abspath(argv[2]))
 
-if not exists(join(abspath(argv[2]),argv[3])):
-    mkdir(join(abspath(argv[2]),argv[3]))
 
 # patient directory
-pdir = join(abspath(argv[2]),argv[3])
+pdir = abspath(argv[2])
 
 # Create a list of files that this script is supposed to produce
 # The target data file
@@ -62,26 +61,25 @@ if force or not exists(eddy):
     if exists(eddy_log):
         remove(eddy_log)
 
-    print FSL_DIR    
+    print FSLDIR    
     print "Doing eddy correcttion" 
-    system("time " + join(FSL_DIR,"eddy_correct") + " %s %s 0" % (data,eddy)) 
+    run("eddy_correct"," %s %s 0" % (data,eddy)) 
 
 if force or not exists(bet):
    
     print "Doing brain extraction"
-    #print "time " + join(FSL_DIR,"bet") + " %s %s -m -f 0.3" % (eddy,bet)
-    system("time " + join(FSL_DIR,"bet") + " %s %s -m -f 0.3" % (eddy,bet))
+    run("bet", " %s %s -m -f 0.3" % (eddy,bet))
 
 
 if force or not exists(bvecs_rotated):
     print "Rotating"
-    system("time " + join(FSL_DIR,"fdt_rotate_bvecs") + " %s %s %s" % (bvecs,bvecs_rotated,eddy_log))
+    run("fdt_rotate_bvecs", " %s %s %s" % (bvecs,bvecs_rotated,eddy_log))
 
 if force or not exists(dti_params+"_MD.nii.gz"):
 
-    system("time " + join(FSL_DIR,"dtifit") + " --verbose -k %s -o %s -m %s -r %s -b %s" % (eddy,dti_params,bet_mask,bvecs,bvals))
-    system("time " + join(FSL_DIR,"fslmaths") + " %s -add %s -add %s -div 3 %s " % (dti_params+"_L1.nii.gz",dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_MD.nii.gz"))    
-    system("time " + join(FSL_DIR,"fslmaths") + " %s -add %s  -div 2 %s " % (dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_RD.nii.gz"))
+    run("dtifit"," --verbose -k %s -o %s -m %s -r %s -b %s" % (eddy,dti_params,bet_mask,bvecs,bvals))
+    run("fslmaths"," %s -add %s -add %s -div 3 %s " % (dti_params+"_L1.nii.gz",dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_MD.nii.gz"))    
+    run("fslmaths", " %s -add %s  -div 2 %s " % (dti_params+"_L2.nii.gz",dti_params+"_L3.nii.gz",dti_params+"_RD.nii.gz"))
 
     copy(dti_params+"_L1.nii.gz",dti_params+"_AD.nii.gz")
     copy(dti_params+"_FA.nii.gz",fa)
