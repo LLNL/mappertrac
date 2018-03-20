@@ -34,7 +34,7 @@ if not exists(join(output_dir,"mri/orig")):
 
 
 if force or not exists(join(output_dir,"mri/orig/001.mgz")):
-    run('mri_convert'," %s %s" % (abspath(argv[2]),join(output_dir,"mri/orig/001.mgz")))
+    run('mri_convert'," %s %s" % (output_dir,join(output_dir,"mri/orig/001.mgz")))
 
 
 if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
@@ -130,17 +130,17 @@ if exists(join(output_dir,"bs.nii.gz")):
     if exists(join(output_dir,"terminationmask.nii.gz")):
         remove(join(output_dir,"terminationmask.nii.gz"))
 
-    run('fslmaths', " %s -uthr .15 %s" % (join(output_dir,"FA.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+    run('fslmaths', " %s -uthr .15 %s" % (join(output_dir,"FA.nii.gz"),join(output_dir,"terminationmask.nii.gz")))
 
-    run('fslmaths', " %s -add %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"bs.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
-    run('fslmaths', " %s -bin %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
-    run('fslmaths', " %s -mul %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"intersection.nii.gz"))))
-    run('fslmaths', " %s -sub %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"intersection.nii.gz"),join(output_dir,"terminationmask.nii.gz"))))
+    run('fslmaths', " %s -add %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"bs.nii.gz"),join(output_dir,"terminationmask.nii.gz")))
+    run('fslmaths', " %s -bin %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"terminationmask.nii.gz")))
+    run('fslmaths', " %s -mul %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"allvoxelscortsubcort.nii.gz"),join(output_dir,"intersection.nii.gz")))
+    run('fslmaths', " %s -sub %s %s" % (join(output_dir,"terminationmask.nii.gz"),join(output_dir,"intersection.nii.gz"),join(output_dir,"terminationmask.nii.gz")))
 
     run('fslmaths', " %s -add %s -add %s %s" % (join(output_dir,"bs.nii.gz"),
                                                                  join(output_dir,sub_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
                                                                  join(output_dir,sub_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
-                                                                 join(output_dir,"exlusion_bsplusthalami.nii.gz"))))
+                                                                 join(output_dir,"exlusion_bsplusthalami.nii.gz")))
 ############
 ############
 ############
