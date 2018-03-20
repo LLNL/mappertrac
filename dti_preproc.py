@@ -60,14 +60,13 @@ if force or not exists(eddy):
     
     if exists(eddy_log):
         remove(eddy_log)
-
-    print FSLDIR    
-    print "Doing eddy correcttion" 
+        
+    print "Eddy correction"    
     run("eddy_correct"," %s %s 0" % (data,eddy)) 
 
 if force or not exists(bet):
    
-    print "Doing brain extraction"
+    print "Brain extraction"
     run("bet", " %s %s -m -f 0.3" % (eddy,bet))
 
 
