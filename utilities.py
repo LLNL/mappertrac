@@ -14,6 +14,7 @@ command_map = {
     'convert_xfm' : join(environ['FSLDIR'],"bin",'convert_xfm'),
     'find_the_biggest' : join(environ['FSLDIR'],"bin",'find_the_biggest'),
     'make_dyadic_vectors' : join(environ['FSLDIR'],"bin",'make_dyadic_vectors'),
+    'eddy_correct' : join(environ['FSLDIR'],"bin",'eddy_correct'),
 
 
     'mri_convert' : join(environ['FREESURFER_HOME'],"bin",'mri_convert'),
