@@ -8,7 +8,7 @@ command_map = {
     'probtrackx2' : join(environ['FSLDIR'],"bin","probtrackx2"),
     'bedpostx_gpu' : join(environ['FSLDIR'],"bin",'bedpostx_gpu'),
     'bedpostx' : join(environ['FSLDIR'],"bin",'bedpostx'),
-    'bed' : join(environ['FSLDIR'],"bin",'bed'),
+    'bet' : join(environ['FSLDIR'],"bin",'bet'),
     'fdt_rotate_bvecs' : join(environ['FSLDIR'],"bin",'fdt_rotate_bvecs'),
     'flirt' : join(environ['FSLDIR'],"bin",'flirt'),
     'convert_xfm' : join(environ['FSLDIR'],"bin",'convert_xfm'),
