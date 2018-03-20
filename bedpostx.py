@@ -26,7 +26,7 @@ force = ((len(argv) > 2) and argv[2] == 'force')
 
 
 # root directory
-root = join(abspath(argv[1]),argv[2])
+root = abspath(argv[1])
 
 if not exists(join(root,"bedpostx_b1000")):
     mkdir(join(root,"bedpostx_b1000"))
