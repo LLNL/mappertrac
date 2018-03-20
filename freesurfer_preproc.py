@@ -34,7 +34,7 @@ if not exists(join(output_dir,"mri/orig")):
 
 
 if force or not exists(join(output_dir,"mri/orig/001.mgz")):
-    run('mri_convert'," %s %s" % (output_dir,join(output_dir,"mri/orig/001.mgz")))
+    run('mri_convert'," %s %s" % (T1,join(output_dir,"mri/orig/001.mgz")))
 
 
 if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
@@ -42,7 +42,7 @@ if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
 
 
 if force or not exists(join(output_dir,abspath(argv[2]))):
-    run('mri_convert'," %s %s " % (join(output_dir,"mri","brain.mgz"),abspath(argv[2])))
+    run('mri_convert'," %s %s " % (join(output_dir,"mri","brain.mgz"),T1))
 
 
 if force or not exists(join(output_dir,"FA2T1.mat")):
