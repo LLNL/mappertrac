@@ -28,8 +28,8 @@ else:
 
 system("python " + join(path,"dti_preproc.py") + " " + source + " " + target)
 system("python " + join(path,"bedpostx.py") + " " + target)
-#system("python " + join(path,"freesurfer_preproc.py") + " " + target)
-#system("python " + join(path,"prepTract.py") + " " + target)
+system("python " + join(path,"freesurfer_preproc.py") + " " + target)
+system("python " + join(path,"prepTract.py") + " " + target)
 
 
 
