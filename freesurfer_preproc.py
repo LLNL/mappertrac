@@ -12,7 +12,7 @@ vol_dir = "volumes_cortical"
 sub_vol_dir = "volumes_subcortical"
 threshold = "0.2"
 
-if len(argv) < 3:
+if len(argv) < 2:
     print "Usage: %s <target-dir> [force]" % argv[0]
     exit(0)
 
@@ -23,7 +23,7 @@ subject = split(output_dir)[1]
 environ['SUBJECTS_DIR'] = split(output_dir)[0]
 
 # Shall we force a re-computation
-force = ((len(argv) > 3) and argv[3] == 'force')
+force = ((len(argv) > 2) and argv[2] == 'force')
 
 # Make the output directories if necessary
 if not exists(join(output_dir,"mri")):
