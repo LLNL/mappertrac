@@ -1,0 +1,1000 @@
+cd Code/TracktopgraphyScripts/
+grep PBS ~/.bash_history 
+python qsubEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 1024 ../../processed/GO-TBI2/EDI/allvols/ ../../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../../processed/tmp/
+ls ../../processed/tmp/
+rm -rf ../../processed/tmp/*
+python qsubEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 1024 ../../processed/GO-TBI2/EDI/allvols/ ../../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../../processed/tmp/
+rm -rf qsub/
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../UnitTest/03_1019/ ../../processed/ 
+more qsub/python_01.qsub 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../UnitTest/03_1037/ ../../processed/ 
+emacs runConnectome.py 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../imaging/TRACKPilotNiiData/GO-TBI150/  ../../processed/ 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../imaging/TRACKPilotNiiData/GO-TBI151/  ../../processed/ 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../imaging/TRACKPilotNiiData/GO-TBI152/  ../../processed/ 
+msub qsub/python_01.qsub 
+mdel 2693029
+msub qsub/python_02.qsub 
+msub qsub/python_03.qsub 
+msub qsub/python_04.qsub 
+msub qsub/python_05.qsub 
+mjobctl -c 2693029
+showq 
+showq | grep bremer
+more qsub/Log_python_01.cmd 
+emacs qsub/python_01.qsub 
+emacs qsub/python_04.qsub 
+msub qsub/python_01.qsub
+msub qsub/python_02.qsub
+msub qsub/python_03.qsub
+msub qsub/python_04.qsub
+msub qsub/python_05.qsub
+showq | grep bremer
+more qsub/Log_python_01.cmd 
+more qsub/Log_python_02.cmd 
+more qsub/Log_python_03.cmd 
+more qsub/Log_python_04.cmd 
+more qsub/Log_python_05.cmd 
+showq | grep bremer
+cd /usr/workspace/wsb/tbidata/
+cd Code/TracktopgraphyScripts/
+ls
+git pull
+python runConnectome.py 
+cd ../../
+python Code/TracktopgraphyScripts/runConnectome.py imaging/TRACKPilotNiiData/GO-TBI99/ processed/
+python Code/TracktopgraphyScripts/runConnectome.py surface-config.sh imaging/TRACKPilotNiiData/GO-TBI99/ processed/
+cp surface-config.sh Code/TracktopgraphyScripts/surface-config.py
+more surface/fsl/etc/fslconf/fsl.
+more surface/fsl/etc/fslconf/fsl.sh 
+pwd
+source surface-config.sh
+more surface/freesurfer/fsfast/
+ls surface/freesurfer/fsfast/
+ls surface/freesurfer/fsfast/bin/
+python Code/TracktopgraphyScripts/runConnectome.py surface-config.sh imaging/TRACKPilotNiiData/GO-TBI99/ processed/
+python Code/TracktopgraphyScripts/runConnectome.py imaging/TRACKPilotNiiData/GO-TBI99/ processed/
+rm processed/data*
+ls processed/
+rm -rf processed/T1.nii.gz processed/bedpostx_b1000
+cd processed/
+ls
+rm -rf bvals bvecs fsaverage/ mri/ 
+cd ../
+ls
+python Code/TracktopgraphyScripts/runConnectome.py imaging/TRACKPilotNiiData/GO-TBI42/ processed/
+ls
+ls processed/
+python Code/TracktopgraphyScripts/runConnectome.py imaging/TRACKPilotNiiData/GO-TBI42/ processed/
+ls processed/GO-TBI72/
+python Code/TracktopgraphyScripts/runConnectome.py imaging/TRACKPilotNiiData/GO-TBI72/ processed/
+more /usr/workspace/wsb/tbidata/processed/GO-TBI72/bedpostx_b1000.bedpostX/logs/bedpostx_postproc_gpu.e19151
+python
+cd /usr/workspace/wsb/tbidata/
+ls
+rm *.core
+more Code/TracktopgraphyScripts/qsub/Log_python_01.cmd 
+more Code/TracktopgraphyScripts/qsub/Log_python_02.cmd 
+./surface/fsl/bin/bet
+emacs Code/TracktopgraphyScripts/utilities.py
+cd Code/TracktopgraphyScripts/
+git commit -m "Fixed bugs" utilities.py
+git push
+more qsub/Log_python_00.cmd 
+locate libmpich.so.1.0
+pwd
+cd ..
+module avail
+pwd
+cd TracktopgraphyScripts/
+ls qsub
+ls qsub/mpi*
+cd ../../
+cd ray
+ls
+ls fsl/bin/probtrackx
+ls fsl/bin/probtrackx*
+cd /usr/workspace/wsb/tbidata/
+cd quartz/
+ls
+gre PBS ~/.bash_history 
+grep PBS ~/.bash_history 
+python ../Code/TracktopgraphyScripts/runEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/GO-TBI2/EDI/allvols/ ../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../processed/tmp/
+source ../quartz-config.sh
+python ../Code/TracktopgraphyScripts/runEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/GO-TBI2/EDI/allvols/ ../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../processed/tmp/
+ls
+emacs ../quartz-config.sh
+python ../Code/TracktopgraphyScripts/runEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/GO-TBI2/EDI/allvols/ ../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../processed/tmp/
+source ../quartz-config.sh
+python ../Code/TracktopgraphyScripts/runEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/GO-TBI2/EDI/allvols/ ../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../processed/tmp/
+ls
+ls ../processed/GO-TBI2/EDI/allvols/
+python ../Code/TracktopgraphyScripts/runEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/GO-TBI2/EDI/allvols/ ../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../processed/tmp/
+python ../Code/TracktopgraphyScripts/qsubEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/GO-TBI2/EDI/allvols/ ../processed/GO-TBI2/bedpostx_b1000.bedpostX/ ../processed/tmp/
+source /usr/workspace/wsb/tbidata/quartz-config.sh
+emacs qsub/python_00.qsub 
+msub qsub/python_00.qsub
+cd ..
+cd Code/TracktopgraphyScripts/
+emacs utilities.py
+cd ../../quartz/
+emacs qsub/python_00.qsub
+msub qsub/python_00.qsub
+cd ../../
+cd tbidata/Code/TracktopgraphyScripts/
+emacs freesurfer_preproc.py 
+git status
+rm *.core
+git commit -m "Fixed Bugs" freesurfer_preproc.py utilities.py 
+git push
+git pull
+cd /usr/workspace/wsb/tbidata/
+ls
+cd Code/TracktopgraphyScripts/
+rm qsub/Log_python_0*
+msub qsub/python_01.qsub
+msub qsub/python_02.qsub
+msub qsub/python_03.qsub
+msub qsub/python_04.qsub
+msub qsub/python_05.qsub
+emacs runEDI.py 
+pwd
+more qsub/Log_python_01.cmd 
+ls ../../surface/fsl/bin/dti
+more qsub/Log_python_01.cmd 
+more qsub/Log_python_02.cmd 
+more qsub/Log_python_03.cmd 
+rm qsub/python_03.qsub
+more qsub/Log_python_04.cmd 
+more qsub/Log_python_05.cmd 
+rm qsub/python_05.qsub
+showq 
+showq | grep bremer
+rm qsub/Log_python_0*
+msub qsub/python_01.qsub
+msub qsub/python_02.qsub
+msub qsub/python_04.qsub
+more qsub/Log_python_01.cmd 
+tail qsub/Log_python_04.cmd 
+tail qsub/Log_python_01.cmd 
+tail qsub/Log_python_02.cmd 
+tail qsub/Log_python_03.cmd 
+tail qsub/Log_python_04.cmd 
+ls ../../processed/03_1019/
+ls ../../processed/03_1019/bedpostx_b1000.bedpostX/
+tail qsub/Log_python_01.cmd 
+tail qsub/Log_python_04.cmd 
+rm -rf ../../processed/GO-TBI15*
+grep PBS ~/.bash_history 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../imaging/TRACKPilotNiiData/GO-TBI3  ../../processed/ 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../imaging/TRACKPilotNiiData/GO-TBI4  ../../processed/ 
+/usr/gapps/topology/BatchScripts/PBSBatchMaster.py dummy 1 1 1440 python runConnectome.py ../../imaging/TRACKPilotNiiData/GO-TBI5  ../../processed/ 
+more qsub/python_01.qsub
+more qsub/python_03.qsub
+emacs qsub/python_03.qsub
+tail -20 qsub/Log_python_01.cmd 
+tail -20 qsub/Log_python_02.cmd 
+tail -20 qsub/Log_python_04.cmd 
+tail -20 qsub/Log_python_05.cmd 
+msub qsub/python_03.qsub
+msub qsub/python_04.qsub
+msub qsub/python_05.qsub
+msub qsub/python_06.qsub
+tail -20 qsub/Log_python_01.cmd 
+tail -20 qsub/Log_python_02.cmd 
+tail -20 qsub/Log_python_01.cmd 
+tail -20 qsub/Log_python_02.cmd 
+tail -20 qsub/Log_python_03.cmd 
+tail -20 qsub/Log_python_04.cmd 
+tail -20 qsub/Log_python_05.cmd 
+tail -20 qsub/Log_python_06.cmd 
+tail -20 qsub/Log_python_01.cmd 
+python 
+msub qsub/python_01.qsub
+msub qsub/python_02.qsub
+more qsub/Log_python_03
+more qsub/Log_python_04
+more qsub/Log_python_05
+owd
+pwd
+ls qsub/Log*
+more qsub/Log_python_04.cmd 
+more qsub/Log_python_05.cmd 
+more qsub/Log_python_06.cmd 
+ ls qsub/Log_python_0
+ ls qsub/Log_python_0*
+more qsub/Log_python_07.cmd 
+more qsub/Log_python_08.cmd 
+more qsub/Log_python_01.cmd 
+more qsub/Log_python_02.cmd 
+grep Running qsub/Log_python_01.cmd 
+grep Running qsub/Log_python_02.cmd 
+ls ../../processed/03_1019/
+ls ../../processed/03_1019/mri/orig
+python
+ls ../../processed/03_1019/mri/orig
+more qsub/Log_python_01.cmd 
+more qsub/Log_python_03.cmd 
+more qsub/Log_python_04.cmd 
+more qsub/Log_python_06.cmd 
+more qsub/Log_python_07.cmd 
+tail qsub/Log_python_08.cmd 
+cd /usr/workspace/wsb/tbidata/Code/TracktopgraphyScripts/
+grep Running qsub/Log_python_0*
+more qsub/python_08
+ls qsub/python_0*
+ls qsub/Log_python_0
+ls qsub/Log_python_0*
+tail qsub/Log_python_08.cmd 
+ls -al qsub/Log_python_0*
+grep GO-TBI qsub/python_0*
+python dti_preproc.py 
+source ../../surface-config.sh
+python dti_preproc.py 
+python dti_preproc.py ../../imaging/TRACKPilotNiiData/GO-TBI6/ ../../processed/
+pwd
+rm ../../processed/data_eddy*
+cd ../../processed/
+ls
+rm T1.nii.gz bvals bvecs data.nii.gz fsaverage/
+rm -rf T1.nii.gz bvals bvecs data.nii.gz fsaverage/
+exit
+cd /usr/workspace/wsb/tbidata/
+ls
+python Code/TracktopgraphyScripts/bedpostx.py 
+source surface-config.sh
+python Code/TracktopgraphyScripts/bedpostx.py 
+grep GO-TBI Code/TracktopgraphyScripts/qsub/python_0*
+python Code/TracktopgraphyScripts/bedpostx.py 
+python Code/TracktopgraphyScripts/bedpostx.py processed/GO-TBI42/ force
+python Code/TracktopgraphyScripts/bedpostx.py processed/GO-TBI2/ force
+mxterm 1 1 60
+export DISPLAY:=0
+export DISPLAY=:0
+mxterm 1 1 60
+salloc -n 1
+top
+ls
+pwd
+./surface/fsl/bin/bedpostx_gpu 
+more Code/TracktopgraphyScripts/qsub/python_01.qsub
+salloc -n 1 -q gpgpu
+man salloc
+salloc -N 1 
+grep Running Code/TracktopgraphyScripts/qsub/Log_python_0*
+more Code/TracktopgraphyScripts/qsub/Log_python_04.cmd
+grep Running Code/TracktopgraphyScripts/qsub/Log_python_0* | grep bedpost
+exit
+cd /usr/workspace/wsb/tbidata/
+cd Code/TracktopgraphyScripts/
+more qsub/Log_python_01.cmd 
+grep Running qsub/Log_python_01.cmd 
+grep Running qsub/Log_python_02.cmd 
+grep Running qsub/Log_python_03.cmd 
+grep Running qsub/Log_python_04.cmd 
+grep Running qsub/Log_python_05.cmd 
+grep Running qsub/Log_python_06.cmd 
+grep Running qsub/Log_python_07.cmd 
+grep Running qsub/Log_python_08.cmd 
+top
+grep Running qsub/Log_python_08.cmd 
+grep Running qsub/Log_python_06.cmd 
+grep Running qsub/Log_python_05.cmd 
+grep Running qsub/Log_python_04.cmd 
+more qsub/Log_python_04.cmd 
+cd ..
+cd quartz
+ls
+ls qsub/
+cd ..
+ls
+more ray-config.sh
+more surface-config.sh
+emacs ray-config.sh
+cd /usr/workspace/wsb/tbidata/
+ls
+cd ray
+source ../ray-config.sh
+module avail
+module load cuda/8.0
+cd fsl/
+ls
+ls src/
+ls src/fdt/
+./build fdt
+ls bin/
+more build.log 
+ls /opt/
+locate libcuda
+ls
+ls /opt/
+ls /opt/modules/
+ls /opt/modules/modulefiles/
+ls /opt/modules/modulefiles/no_lc/
+ls /opt/modules/modulefiles/no_lc/1.0 
+module avail
+env
+env | grep cuda
+ls /usr/tce/packages/cuda/cuda-8.0
+ls /usr/tce/packages/cuda/cuda-8.0/lib
+ls /usr/tce/packages/cuda/cuda-8.0/lib64/
+ls
+pwd
+grep cuda src/fdt/*
+ls config/
+env
+env | arch
+more  config/powerpc64le-unknown-linux-gcc4.9/
+more  config/powerpc64le-unknown-linux-gcc4.9/externallibs.mk 
+more  config/powerpc64le-unknown-linux-gcc4.9/systemvars.mk 
+env | grep cuda
+emacs config/powerpc64le-unknown-linux-gcc4.9/systemvars.mk 
+./build fdt
+ls bin/
+cd ..
+python Code/TracktopgraphyScripts/bedpostx.py processed/GO-TBI2/ force
+ls -al ./processed/
+python Code/TracktopgraphyScripts/bedpostx.py processed/GO-TBI72/ force
+python Code/TracktopgraphyScripts/bedpostx.py processed/GO-TBI2/ force
+top
+salloc -n 1
+export DISPLAY=:0.0
+bsub -Ip bah
+bsub -Ip bash
+bsub -G asccasc -Ip bash 
+bsub -G cascgrp -Ip bash 
+exit
+cd /usr/workspace/wsb/tbidata/
+source surface-config.sh
+mxterm 1 1 120 -A asccasc -q gpgpu
+exit
+mxterm 1 1 120 -A asccasc -q gpgpu
+cd /usr/workspace/wsb/tbidata/
+grep Running Code/TracktopgraphyScripts/qsub/python_0*
+grep Running Code/TracktopgraphyScripts/qsub/Log_python_0*
+more Code/TracktopgraphyScripts/qsub/python_04.qsub
+more /usr/workspace/wsb/tbidata/Code/TracktopgraphyScripts/qsub/Log_python_04.cmd
+more /usr/workspace/wsb/tbidata/processed/GO-TBI151/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.e162553.1
+more /usr/workspace/wsb/tbidata/Code/TracktopgraphyScripts/qsub/Log_python_04.cmd
+more /usr/workspace/wsb/tbidata/processed/GO-TBI151/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.e2938.1
+more /usr/workspace/wsb/tbidata/processed/GO-TBI72/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.e140167.1 
+more /usr/workspace/wsb/tbidata/processed/GO-TBI72/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.e140167.2 
+more /usr/workspace/wsb/tbidata/processed/GO-TBI72/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.e140167.4
+more /usr/workspace/wsb/tbidata/processed/GO-TBI72/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.e140167.3 
+more /usr/workspace/wsb/tbidata/processed/GO-TBI72/bedpostx_b1000.bedpostX/logs/bedpostx_postproc_gpu.e140199
+mxterm 1 1 120 -A asccasc -q gpgpu
+exit
+cd /usr/workspace/wsb/tbidata/Code/TracktopgraphyScripts/
+emacs bedpostx.py 
+pwd
+cd ../../
+ls
+cd quartz
+ls
+mroe qsub/Log_python_00.cmd 
+more qsub/Log_python_00.cmd 
+grep Running qsub/Log_python_00.cmd 
+grep Running qsub/Log_python_00.cmd | grep prob
+ tail qsub/Log_python_00.cmd 
+more qsub/python_00.qsub
+more qsub/cmd-00-01_00.py 
+exit
+cd /usr/workspace/wsb/tbidata/
+ls
+source surface-config.sh
+./surface/fsl/bin/bedpostx_gpu 
+python Code/TracktopgraphyScripts/bedpostx.py processed/03_1037/ force
+exit
+mxterm 1 1 120 -A asccasc -q gpgpu
+pwd
+cd /usr/workspace/wsb/tbidata/
+ls
+cd Code/TracktopgraphyScripts/
+ls
+grep qsub/Log_python_02.cmd 
+grep Running qsub/Log_python_02.cmd 
+grep Running qsub/Log_python_01.cmd 
+grep Running qsub/Log_python_0*.cmd 
+grep Running qsub/Log_python_0*.cmd  | grep bedpost
+more qsub/python_02.qsub
+more qsub/Log_python_02.cmd 
+grep Running qsub/Log_python_02.cmd 
+cd /usr/workspace/wsb/tbidata/
+./surface/fsl/bin/probtrackx2_gpu 
+module avail
+module load cudatoolkit/8.0
+./surface/fsl/bin/probtrackx2_gpu 
+cd /usr/workspace/wsb/tbidata/
+source ray-config.sh
+module avail
+module load cuda/8.0
+./surface/fsl/bin/probtrackx2_gpu 
+exit
+cd /usr/workspace/wsb/tbidata/Code/TracktopgraphyScripts/
+emacs runEDI.py 
+fg
+cd ..
+cd quartz/
+ls
+rm *.core
+msub qsub/python_00.qsub
+/usr/workspace/wsb/tbidata/
+cd /usr/workspace/wsb/tbidata/
+./surface/fsl/bin/probtrackx2_gpu 
+module avail
+cd quartz/
+more qsub/cmd-00-01_00.py 
+rm -rf qsub/*
+grep PBS ~/.bash_history 
+python ../Code/TracktopgraphyScripts/qsubEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../processed/03_1037/EDI/allvols/ ../processed/03_1037/bedpostx_b1000.bedpostX/ ../processed/tmp/
+python ../Code/TracktopgraphyScripts/qsubEDI.py /usr/gapps/topology/BatchScripts/PBSBatchMaster.py 6643 ../imaging/ExampleOutputsEDI/03_1037/EDI/allvols/ ../processed/03_1037/bedpostx_b1000.bedpostX/ ../processed/tmp/
+pwd
+source ../quartz-config.sh
+emacs qsub/python_00.qsub 
+rm ../processed/tmp/*
+more qsub/cmd-00-01_00.py 
+python qsub/cmd-00-01_00.py 
+ls ../imaging/ExampleOutputsEDI/03_1037/
+ls ../imaging/ExampleOutputsEDI/03_1037/EDI/
+python qsub/cmd-00-01_00.py 
+ls /var/tmp/tbremer/tmpMvrAGr/
+python qsub/cmd-00-01_00.py 
+ls /var/tmp/tbremer/tmpwVeeDp
+python qsub/cmd-00-01_00.py 
+ls /var/tmp/tbremer/tmpQuIj5b/brainstemplate.nii.gz
+cd /usr/workspace/wsb/tbidata/
+python quartz/qsub/cmd-01-02_00.py 
+source surface-config.sh
+python quartz/qsub/cmd-01-02_00.py 
+./surface/fsl/bin/fslmaths  /var/tmp/tbremer/tmpvLP5OB/exclusion.nii.gz -add /var/tmp/tbremer/tmpvLP5OB/lh.bankssts_s2fa.nii.gz /var/tmp/tbremer/tmpvLP5OB/brainstemplate.nii.gz
+./surface/fsl/bin/fslmaths  /var/tmp/tbremer/tmpvLP5OB/exclusion.nii.gz -add /var/tmp/tbremer/tmpvLP5OB/lh.bankssts_s2fa.nii.gz /var/tmp/tbremer/tmpvLP5OB/brainstemplate.nii.gz 
+ls -al /var/tmp/tbremer/tmpvLP5OB/brainstemplate
+ls -al /var/tmp/tbremer/tmpvLP5OB/brainstemplate.nii.gz 
+chmod +w /var/tmp/tbremer/tmpvLP5OB/brainstemplate.nii.gz 
+./surface/fsl/bin/fslmaths  /var/tmp/tbremer/tmpvLP5OB/exclusion.nii.gz -add /var/tmp/tbremer/tmpvLP5OB/lh.bankssts_s2fa.nii.gz /var/tmp/tbremer/tmpvLP5OB/brainstemplate.nii.gz 
+python quartz/qsub/cmd-01-02_00.py 
+ls -al /var/tmp/tbremer/tmp15nIba/
+python quartz/qsub/cmd-01-02_00.py 
+ls processed/tmp/
+pwd
+./surface/fsl/bin/probtrackx2_gpu 
+module avail
+cudatoolkit/8.0 
+module load cudatoolkit/8.0 
+./surface/fsl/bin/probtrackx2_gpu 
+strings /usr/lib64/libstdc++.so.6 | grep GLIBCXX
+gcc -v
+module load gnu/4.7.2
+strings /usr/lib64/libstdc++.so.6 | grep GLIBCXX
+./surface/fsl/bin/probtrackx2_gpu 
+module load gnu/4.9.2
+gcc -v
+./surface/fsl/bin/probtrackx2_gpu 
+ls
+cd /usr/workspace/wsb/tbidata/
+ls
+rm *.core
+grep mxterm ~/.bash_history 
+mxterm 1 1 120 -A asccasc -q gpgpu
+export DISPLAY=:0
+exit
+mxterm 1 1 120 -A asccasc -q gpgpu
+export DISPLAY=:0
+mxterm 1 1 120 -A asccasc -q gpgpu
+exit
+cd /usr/workspace/wsb/tbidata/
+source surface-config.sh
+python Code/TracktopgraphyScripts/dti_preproc.py 
+python Code/TracktopgraphyScripts/dti_preproc.py ls processed/
+python Code/TracktopgraphyScripts/dti_preproc.py UnitTest/03_1037/ processed/03_1037 force
+time python Code/TracktopgraphyScripts/dti_preproc.py UnitTest/03_1037/ processed/03_1037 force
+time python Code/TracktopgraphyScripts/bedpostx.py processed/03_1037 force
+cd /usr/workspace/wsb/tbidata/
+grep Running Code/TracktopgraphyScripts/qsub/Log_python_02.cmd 
+mxterm 1 1 120 -A asccasc -q gpgpu
+cd /usr/workspace/wsb/tbidata/
+grep Running Code/TracktopgraphyScripts/qsub/Log_python_02.cmd 
+grep Running quartz/qsub/Log_python_00.cmd 
+grep Running quartz/qsub/Log_python_00.cmd | grep prob
+grep Running quartz/qsub/Log_python_00.cmd 
+more Code/TracktopgraphyScripts/bedpostx.py 
+grep mxterm ~/.bash_history 
+mxterm 1 1 120 -A asccasc -q gpgpu
+exit
+mxterm 1 1 120 -A asccasc -q gpgpu
+export DISPLAY=:0
+mxterm 1 1 120 -A asccasc -q gpgpu
+exit
+pwd
+ls -al /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/logs/
+more /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/logs/bedpostx_gpu.o109182.1 
+module load
+module avail
+module load cuda/8.0 
+cd ray/fsl/
+emacs ../../ray-config.sh
+source ../../ray-config.sh
+./build fdt
+pwd
+cd ../../
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 
+rm -rf /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 
+lsfjobs
+man bsub
+exit
+cd /usr/workspace/wsb/tbidata/
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8 -Q gpgpu 
+source surface-config.sh
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8 -Q gpgpu 
+more processed/03_1019/bedpostx_b1000.bedpostX/temp 
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8 -Q gpgpu 
+source processed/03_1019/bedpostx_b1000.bedpostX/temp 
+cd /usr/workspace/wsb/tbidata/
+soruce surface-config.sh
+source surface-config.sh
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8 
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4 
+exit
+mxterm 1 1 120 -A asccasc -q gpgpu
+cd /usr/workspace/wsb/tbi
+cd /usr/workspace/wsb/tbidata/
+emacs surface/fsl/src/fdt/Makefile
+ls -al processed/03_1019/bedpostx_b1000
+ls -al processed/03_1019/bedpostx_b1000.bedpostX/
+more surface/fsl/src/fdt/Makefile
+ more surface/fsl/bin/bedpostx_gpu 
+mxterm 1 1 120 -A asccasc -q gpgpu
+pwd
+./surface/fsl/bin/bedpostx_gpu 
+more surface/fsl/bin/bedpostx_gpu 
+emacs surface/fsl/bin/bedpostx_gpu 
+bg
+more Code/TracktopgraphyScripts/qsub/python_01.qsub
+find surface/fsl/ -name "bedpostx*.sh"
+cd /usr/workspace/wsb/tbidata/
+mxterm 1 1 120 -A asccasc -q gpgpu
+more processed/03_1019/bedpostx_b1000.bedpostX/tmp
+ls processed/03_1019/bedpostx_b1000.bedpostX/
+pwd
+more processed/03_1019/bedpostx_b1000.bedpostX/temp 
+/usr/workspace/wsb/tbidata/surface/fsl/bin/split_parts_gpu /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000/data /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000/nodif_
+brain_mask /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/bvals /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/bvecs NULL 0 8 /usr/workspace/wsb/t
+source processed/03_1019/bedpostx_b1000.bedpostX/temp 
+source surface-config.sh
+source processed/03_1019/bedpostx_b1000.bedpostX/temp 
+more processed/03_1019/bedpostx_b1000.bedpostX/temp 
+more /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+source /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+source surface-config.sh
+more /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/
+source /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+cd /usr/workspace/wsb/tbidata/
+mxterm 1 1 120 -A asccasc -q gpgpu
+more Code/TracktopgraphyScripts/qsub/python_00.qsub
+more quartz/qsub/python_00.qsub
+more Code/TracktopgraphyScripts/qsub/python_01.q
+more Code/TracktopgraphyScripts/qsub/python_01.qsub
+ls processed/03_1019/bedpostx_b1000.bedpostX/
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX/
+ls processed/03_1019/bedpostx_b1000.bedpostX/
+mxterm 1 1 180 -A asccasc -q gpgpu
+exit
+cd /usr/workspace/wsb/tbidata/
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4 
+source surface-config.sh
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4 
+exit
+cd /usr/workspace/wsb//tbidata/
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4 
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX/
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4 
+source surface-config.sh
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4 
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+cd /usr/workspace/wsb/tbidata/
+emacs surface/fsl/bin/bedpostx_gpu
+mxterm 1 1 180 -A asccasc -q gpgpu
+mxterm 4 1 180 -A asccasc -q gpgpu
+exit
+salloc
+bsub -I -q interactive -n 1 bash
+groups
+bsub -I -q interactive -G cascgrp -n 1 bash
+bugroup 
+bugroup | grep tbremer
+bugroup | grep bhatia
+top
+pwd
+cd /usr/workspace/wsb/tbidata/
+source ray-config.sh
+ls ./ray/fsl/bin/bedpostx*
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1037/bedpostx_b1000 -NJOBS 4
+rm -rf processed/03_1037/bedpostx_b1000.bedpostX/
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1037/bedpostx_b1000 -NJOBS 4
+bsub -I -q interactive -n 1 bash
+rm -rf processed/03_1037/bedpostx_b1000.bedpostX/
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1037/bedpostx_b1000 -NJOBS 8
+bsub -I -q interactive -G guest -n 1 bash
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX/
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+ls /usr/workspace/wsb/tbidata/processed/03_1019/bedpostx_b1000.bedpostX/
+bsub -Is -G guests -q pbatch -n1 bash
+emacs surface/fsl/bin/bedpostx_gpu
+ls
+cd /usr/workspace/wsb/tbidata/
+ls
+source ray-config.sh
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+fg
+top
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+lsrun 
+lsrun -h
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+exit
+lsinfo
+lim
+lsinfo gpu
+env
+cd /usr/workspace/wsb/tbidata/
+source ray-config.sh
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+bhosts 
+bhosts -h
+bhosts 
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt 
+emacs processed/03_1019/bedpostx_b1000.bedpostX/commands.txt 
+source processed/03_1019/bedpostx_b1000.bedpostX/commands.txt 
+emacs processed/03_1019/bedpostx_b1000.bedpostX/commands.txt 
+source processed/03_1019/bedpostx_b1000.bedpostX/commands.txt 
+top
+bhosts
+lsgrun
+lsgrun -m "ray22 ray23 ray24 ray25" ls
+exit
+bsub -Is -G guests -q pbatch -n1 bash
+bsub -Is -G guests -q pbatch -n 4 bash
+exit
+cd /usr/workspace/wsb/tbidata/
+more processed/03_1019/bedpostx_b1000.bedpostX/temp 
+exit
+cd /usr/workspace/wsb/tbidata/ray/fsl/bin/
+cp bedpostx_gpu bedpostx_gpu.org
+cp ../../../surface/fsl/bin/bedpostx_gpu .
+emacs bedpostx_gpu
+exit
+cd /usr/workspace/wsb/tbidata/
+source surface-config.sh
+time ./ray/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt 
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt 
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+which source
+source 
+exec
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+which exec
+which bash
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+chmod +x processed/03_1019/bedpostx_b1000.bedpostX/commands*.txt 
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+ls -al
+chmod surface-config.shpwd
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 4
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+more surface-config.sh
+more surface/fsl/etc/fslconf/fsl.sh 
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+ls surface/fsl/lib/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/workspace/wsb/tbidata/surface/fsl/lib
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+srun -n4 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+srun -n2 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+srun -n 2 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+ls
+rm *.core
+more slurm-2698965.out 
+more slurm-2698962.out 
+more slurm-2698954.out 
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+more processed/03_1019/bedpostx_b1000.bedpostX/commands0.txt
+srun -n 2 -l --multi-prog processed/03_1019/bedpostx_b1000.bedpostX/commands.txt
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+more processed/03_1019/bedpostx_b1000.bedpostX/commands1.txt 
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX/
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 8
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 16
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 16
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 16
+exit
+man mxterm
+mxterm -h
+mxterm 4 4 120 -q gpgpu 
+pwd
+cd /usr/workspace/wsb/tbidata/
+chmod +x surface-config.sh
+mroe surface-config.sh
+more surface-config.sh
+emacs surface-config.sh
+pwd
+export node=8
+$node/4
+expr $node/4
+export factor=2
+expr $node/$factor
+expr ($node/$factor(
+expr ($node/$factor)
+expr $((node/factor))
+$((node/factor))
+pwd
+./surface/fsl/bin/split_parts_gpu 
+find surface/fsl/ -name split_parts_gpu.cc
+more surface/fsl/src/fdt/CUDA/m
+find surface/fsl/ -name merge_parts_gpu.cc
+more surface/fsl/src/fdt/merge_parts_gpu.cc
+exit
+cd /usr/workspace/wsb/tbidata/surface/fsl/bin/
+emacs bedpostx_gpu
+fg
+exit
+cd /usr/workspace/wsb/tbidata/surface/bin/
+cd ../fsl/bin/
+emacs bedpostx_gpu
+cd /usr/workspace/wsb/tbidata/surface/fsl/
+source ../../surface-config.sh
+pwd
+cd ../../
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 16
+rm -rf processed/03_1019/bedpostx_b1000.bedpostX/
+time ./surface/fsl/bin/bedpostx_gpu processed/03_1019/bedpostx_b1000 -NJOBS 16
+ 
+exit
+cd /usr/workspace/wsb/tbidata/
+cd surface/fsl/
+emacs cd ..
+exit
+mxterm 4 4 -q gpgpu
+man mxterm
+grep mxterm ~/.bash_history 
+mxterm 4 4 180 -q gpgpu 
+date
+date --help
+date %s
+(date %s)
+(date %X)
+(date +%X
+date +%X
+date +%s
+cd /usr/workspace/wsb/tbidata/
+grep srun surface/fsl/bin/bedpostx_gpu
+cd
+cd /usr/workspace/wsb/tbidata/surface/fsl/
+./build fdt
+source ../../surface-config.sh
+./build fdt
+bg
+more build.log 
+top
+fg
+mxterm 1 1
+mxterm 1 1 120
+pwd
+more src/fdt/Makefile
+'
+
+mxterm 1 1 120
+mxterm 4 4 120 -q gpgpu
+cd /usr/workspace/wsb/tbidata/
+grep srun surface/bedpostx_gpu 
+cd surface
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+date %x
+date +%x
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+mxterm 8 32 120 -q gpgpu
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+more fsl/build
+more ./config/common/buildproj
+more fsl/build.log 
+cd fsl/src/fdt/
+source ../../../../surface-config.sh
+c++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbid
+ata/surface/fsl/extras/include/newmat -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newran -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libcprob -I/usr/work
+space/wsb/tbidata/surface/fsl/extras/include/libprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/include -I. -I/usr/workspace/wsb/tbidata/surface/fsl/in
+clude -I/usr/workspace/wsb/tbidata/surface/fsl/include   -c -o merge_parts_gpu.o merge_parts_gpu.ccc++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbid
+clude -I/usr/workspace/wsb/tbidata/surface/fsl/include   -c -o merge_parts_gpu.o merge_parts_gpu.ccc++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbidc++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbid
+c++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbid
+c++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newmat -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newran -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libcprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/include -I. -I/usr/workspace/wsb/tbidata/surface/fsl/include -I/usr/workspace/wsb/tbidata/surface/fsl/include   -c -o merge_parts_gpu.o merge_parts_gpu.cc
+c++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newmat -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newran -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libcprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/include -I. -I/usr/workspace/wsb/tbidata/surface/fsl/include -I/usr/workspace/wsb/tbidata/surface/fsl/include -fopenmp  -c -o merge_parts_gpu.o merge_parts_gpu.cc
+emacs Makefile
+cd ..
+pwd
+cd ..
+ls processed/03_1019/bedpostx_b1000.bedpostX/
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+cd surface
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+cd fsl/src/fdt/
+c++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newmat -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newran -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libcprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/include -I. -I/usr/workspace/wsb/tbidata/surface/fsl/include -I/usr/workspace/wsb/tbidata/surface/fsl/include -fopenmp  -c -o merge_parts_gpu.o merge_parts_gpu.cc
+cd ../../
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+pwd
+cd ..
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+cd fsl/src/fdt/
+c++ -Wall -ansi -pedantic -Wno-long-long     -m64  -g -O3 -fexpensive-optimizations -m64  -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newmat -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/newran -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libcprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/libprob -I/usr/workspace/wsb/tbidata/surface/fsl/extras/include/boost -I/usr/include -I. -I/usr/workspace/wsb/tbidata/surface/fsl/include -I/usr/workspace/wsb/tbidata/surface/fsl/include -fopenmp  -c -o merge_parts_gpu.o merge_parts_gpu.cc
+cd ../../
+pwd
+cd ..
+cp bedpostx_gpu bedpostx_postproc_gpu.sh fsl/bin/
+mxterm 8 32 300 -q gpgpu
+exit
+pwd
+mxterm 8 32 300 -q gpgpu
+cd /usr/workspace/wsb/tbidata/
+grep Running quartz/qsub/Log_python_00.cmd | grep prob
+python
+cd /usr/gapps/topology/
+ls
+cd TrinityData/
+ls
+get
+take
+man take
+take lucpeter
+ls
+pwd
+cd /p/lscratche/tbremer/
+ls
+mkdir NIF
+cd NIF
+take lucpeter
+cp /usr/gapps/topology/TrinityData/*.txt .
+ls -al
+more more robustness_logeprod_10MJ25p_100k.txt
+tar cfvz robustness_9D.tgz robustness_logeprod_10MJ25p_*
+ls -al
+ls -alh
+pwd
+take
+cd /p/lscratche/tbremer/
+ls
+cd NIF/
+ls
+take humbird1
+pwd
+exit
+cd /p/lscratche/tbremer/
+ls
+cd NIF/
+ls
+take
+take humbird1
+ls
+ls -al
+ls -alh
+gzip robustness_logeprod_10MJ10p_1m.txt 
+take
+exit
+cd /p/lscratche/tbremer/NIF/
+ls
+take
+take humbird1
+gzip  robustness_10MJ25p_avgyield_1m.txt
+pwd
+take
+mkdir .mlsi
+cd .mlsi/
+take probinso
+ls
+cd /p/lscratchh/tbremer/
+ls
+mkdir ICF
+cd ICF/
+ls
+git clone ssh://git@cz-bitbucket.llnl.gov:7999/mlsi/mlsi.git
+cd mlsi/
+git submodule update --init
+git checkout feature/lucpeter/jag_io
+cd tasks/
+git checkout feature/lucpeter/jag_io
+which python
+/usr/bin/python -m virtualenv toss3venv
+source toss3venv/bin/activate.csh 
+source toss3venv/bin/activate
+rm toss3venv/lib/python2.7/no-global-site-packages.txt 
+pip install --cert /etc/pki/tls/cert.pem -U pip
+pip install --cert /etc/pki/tls/cert.pem -r requirements/release.txt
+pip install -e
+pip install -e .
+cd ..
+pip install -e /usr/workspace/wsb/icfsi/conduit/python-modules
+env
+pip install -e /usr/workspace/wsb/icfsi/conduit/python-modules_toss_3_x86_64
+pip install /usr/workspace/wsb/icfsi/conduit/python-modules_toss_3_x86_64
+pip uninstall jag
+cd implosion/
+git fetch origin
+git checkout develop
+git pull
+pip install -e
+pip install -e .
+cd ../tasks/
+git fetch origin
+git checkout featuer/lucpeter/jag_io
+get checkout feature/lucpeter/jag_io
+git checkout feature/lucpeter/jag_io
+python examples/testSamples.py 1
+ls
+pwd
+rm -rf ARCHIVE_DIR/ JAG_OUTPUT/
+cd ..
+ls
+mkdir runs
+cd runs/
+python ../mlsi/tasks/examples/testSamples.py 1
+python examples/testDistributedSamples.py 3 &
+c
+fg
+python ../mlsi/tasks/examples/testDistributedSamples.py 3 &
+python -m celery worker -A mlsiwf -l DEBUG
+python
+ls
+emacs ../mlsi/tasks/examples/testDistributedSamples.py 
+python
+ls
+ls JAG_OUTPUT/
+pwd
+python ../mlsi/tasks/examples/testDistributedSamples.py 3 &
+python -m celery worker -A mlsiwf -l DEBUG
+ls
+fg
