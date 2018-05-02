@@ -7,8 +7,9 @@ if len(argv) < 3:
     exit(0)
     
 
-data = nib.load(argv[1]).get_data().transpose()
-data.tofile(argv[2] + "%d_%d_%d.raw" % (data.shape[0],data.shape[1],data.shape[2]))
+data = nib.load(argv[1]).get_data()
+print "Data type ", data.dtype
+data.tofile(argv[2] + "_%d_%d_%d.raw" % (data.shape[0],data.shape[1],data.shape[2]))
 
 
 
