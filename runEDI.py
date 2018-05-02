@@ -1,6 +1,7 @@
 from sys import argv
 from os.path import exists,join,split,splitext,abspath
-from os import system,mkdir,remove,environ
+from os import system,mkdir,remove,environ,chmod
+import stat
 from shutil import *
 from glob import glob
 from tempfile import *
@@ -26,9 +27,16 @@ fsl = join(environ['FSLDIR'],"bin")
 copy(seed,tmp_dir)
 copy(target,tmp_dir)
 copy(join(root_dir,"EDI","terminationmask.nii.gz"),tmp_dir)
+chmod(join(tmp_dir,"terminationmask.nii.gz"),stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR)
+
 copy(join(root_dir,"EDI","allvoxelscortsubcort.nii.gz"),tmp_dir)
-copy(join(root_dir,"EDI","bs.nii.gz"),join(tmp_dir,"brainstemplane.nii.gz"))
+
+copy(join(root_dir,"EDI","bs.nii.gz"),join(tmp_dir,"brainstemplate.nii.gz"))
+chmod(join(tmp_dir,"brainstemplate.nii.gz"),stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR)
+
 copytree(bedpost_dir,join(tmp_dir,"bedpostx"))
+
+
 
 # Creating the masks
 run("fslmaths"," %s -sub %s %s" % (join(tmp_dir,"allvoxelscortsubcort.nii.gz"),
@@ -41,7 +49,7 @@ run("fslmaths", " %s -sub %s %s" % (join(tmp_dir,"exclusion.nii.gz"),
 
 run("fslmaths", " %s -add %s %s" % (join(tmp_dir,"exclusion.nii.gz"),
                                                 join(tmp_dir,split(seed)[1]),
-                                                join(tmp_dir,"brainstemplane.nii.gz")))
+                                                join(tmp_dir,"brainstemplate.nii.gz")))
 
 run("fslmaths", " %s -add %s %s" % (join(tmp_dir,"terminationmask.nii.gz"),
                                                 join(tmp_dir,split(target)[1]),
@@ -50,6 +58,7 @@ run("fslmaths", " %s -add %s %s" % (join(tmp_dir,"terminationmask.nii.gz"),
 waypoint = open(join(tmp_dir,"waypoint.txt"),"w")
 waypoint.write(target + "\n")
 waypoint.close()
+
 
 arguments = (" -x %s " % join(tmp_dir,split(seed)[1])
     + " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000"

@@ -47,7 +47,7 @@ if force or not exists(join(root,"bedpostx_b1000.bedpostX","dyads3.nii.gz")):
             
     
     if exists(join(FSLDIR,"bedpostx_gpu")):
-        run("bedpostx_gpu",  " " + bedpostx)
+        run("bedpostx_gpu",  " " + bedpostx + " -NJOBS 4")
     else:
         run("bedpostx",  " " + bedpostx)
   
