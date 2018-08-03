@@ -41,8 +41,10 @@ if force or not exists(join(output_dir,"mri","aparc+aseg.mgz")):
     run('recon-all'," -s %s -all -no-isrunning" % subject)
 
 
-if force or not exists(join(output_dir,abspath(argv[2]))):
-    run('mri_convert'," %s %s " % (join(output_dir,"mri","brain.mgz"),T1))
+#if force or not exists(join(output_dir,abspath(argv[2]))):
+#    run('mri_convert'," %s %s " % (join(output_dir,"mri","brain.mgz"),T1))
+#if force or not exists(join(output_dir,abspath(argv[2]))):
+run('mri_convert'," %s %s " % (join(output_dir,"mri","brain.mgz"),T1))
 
 
 if force or not exists(join(output_dir,"FA2T1.mat")):
