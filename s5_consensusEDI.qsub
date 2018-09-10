@@ -1,0 +1,8 @@
+#!/bin/tcsh
+##### These lines are for Slurm
+#MSUB -l nodes=1
+#MSUB -l walltime=90:00
+#MSUB -q pbatch
+#MSUB -A asccasc
+#MSUB -o s5_consensusEDI.stdout
+./s5_consensusEDI.py output/03_1019/

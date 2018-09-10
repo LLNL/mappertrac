@@ -1,0 +1,8 @@
+#!/bin/tcsh
+##### These lines are for Slurm
+#MSUB -l nodes=1
+#MSUB -l walltime=60:00
+#MSUB -q pbatch
+#MSUB -A asccasc
+#MSUB -o s0_run_all.stdout
+./s0_run_all.py input/03_1019/ output/03_1019/
