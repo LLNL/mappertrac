@@ -3,7 +3,6 @@ import argparse
 import time
 import sys    
 import os
-from sys import argv
 from os.path import exists, join, split, splitext, abspath
 from os import system, mkdir, remove, environ
 from shutil import *

@@ -49,13 +49,10 @@ if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
     else:
         run("recon-all -s {} -all -no-isrunning".format(subject))
 
-#if args.force or not exists(join(odir,abspath(argv[2]))):
-#    run("mri_convert {} {} ".format(join(odir,"mri","brain.mgz"),T1))
-#if args.force or not exists(join(odir,abspath(argv[2]))):
 run("mri_convert {} {} ".format(join(odir,"mri","brain.mgz"),T1))
 
 if args.force or not exists(join(odir,"FA2T1.mat")):
-    run("flirt -in {} -ref {} -omat {}".format(join(odir,"FA.nii.gz"),abspath(argv[2]),join(odir,"FA2T1.mat")))
+    run("flirt -in {} -ref {} -omat {}".format(join(odir,"FA.nii.gz"),T1,join(odir,"FA2T1.mat")))
 
 if args.force or not exists(join(odir,"T12FA.mat")):
     run("convert_xfm -omat {} -inverse {}".format(join(odir,"T12FA.mat"),join(odir,"FA2T1.mat")))
@@ -88,7 +85,8 @@ if not exists(join(odir,sub_vol_dir)):
     mkdir(join(odir,sub_vol_dir))
 
 if args.force or not exists(join(odir,sub_vol_dir,"lh_acumbens.nii.gz")):
-    indices = join(split(abspath(argv[0]))[0],"subcortical_index")
+    # indices = join(split(abspath(sys.argv[0]))[0],"subcortical_index")
+    indices = "subcortical_index.txt"
 
     for line in open(indices,"r").readlines():
         num = line.split(":")[0].lstrip().rstrip()
@@ -104,7 +102,7 @@ if args.force or not exists(join(odir,vol_dir_out,"rh.bankssts_s2fa.nii.gz")):
     for volume in glob(join(odir,vol_dir,"*.nii.gz")):
         name = splitext(splitext(split(volume)[1])[0])[0] + "_s2fa.nii.gz"
         out_vol = join(odir,vol_dir_out,name)
-        print("Processing ",split(volume)[1]," -> ",split(out_vol)[1])
+        print("Processing {} -> {}".format(split(volume)[1], split(out_vol)[1]))
         run("flirt -in {} -ref {} -out {}  -applyxfm -init {}".format(volume,join(odir,"FA.nii.gz"),
                                                                                     out_vol,join(odir,"T12FA.mat")))
         run("fslmaths {} -thr {} -bin {} ".format(out_vol,threshold,out_vol))
@@ -145,9 +143,9 @@ if exists(join(odir,"bs.nii.gz")):
     run("fslmaths {} -sub {} {}".format(join(odir,"terminationmask.nii.gz"),join(odir,"intersection.nii.gz"),join(odir,"terminationmask.nii.gz")))
 
     run("fslmaths {} -add {} -add {} {}".format(join(odir,"bs.nii.gz"),
-                                                                 join(odir,sub_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
-                                                                 join(odir,sub_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
-                                                                 join(odir,"exlusion_bsplusthalami.nii.gz")))
+                                                join(odir,sub_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
+                                                join(odir,sub_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
+                                                join(odir,"exlusion_bsplusthalami.nii.gz")))
 ############
 ############
 ############

@@ -4,7 +4,6 @@ import time
 import sys    
 import os
 from os.path import exists,join,splitext,abspath
-from sys import argv
 from os import system
 from glob import glob
 from utilities import *

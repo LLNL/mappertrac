@@ -5,7 +5,6 @@ from utilities import *
 from shutil import *
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ
-from sys import argv
 
 def run_default(script_name, args, dirs):
 	run("python3 -u {} {} {}".format(
