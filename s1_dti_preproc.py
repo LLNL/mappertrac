@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import time
 import sys    
 import os
 from shutil import *
@@ -17,8 +16,7 @@ parser.add_argument('--force', help='Force re-compute if output already exists',
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
 args = parser.parse_args()
 
-start_time = time.time()
-print("Running {}".format(os.path.basename(sys.argv[0])))
+start_time = printStart()
 
 # load_environ()
 idir = abspath(args.input_dir)
@@ -72,4 +70,4 @@ if args.force or not exists(dti_params+"_MD.nii.gz"):
     copy(dti_params+"_FA.nii.gz",fa)
 
 if args.output_time:
-    print("{} took {}".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)))
+    printFinish(start_time)

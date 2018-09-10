@@ -1,10 +1,13 @@
 import time
 import os
 import subprocess
+import sys
 from shutil import *
 from os.path import exists, join, split, splitext, abspath
 from os import system, environ
 from subprocess import Popen, PIPE
+
+
 
 def smart_copy(src,dest,force=False):
     if force or not exists(dest):
@@ -98,12 +101,28 @@ def load_environ():
     if machine_name in ['surface', 'ray']:
         environ["COMPILE_GPU"] = "1"
 
-def isfloat(value):
+def isFloat(value):
   try:
     float(value)
     return True
   except ValueError:
     return False
+
+def isInteger(value):
+  try:
+    int(value)
+    return True
+  except ValueError:
+    return False
+
+def printStart():
+    print("Running {}".format(os.path.basename(sys.argv[0])))
+    return time.time()
+
+def printFinish(start_time):
+    print("\n=====================================\n" +
+          " {} took {} (h:m:s)".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)) +
+          "\n=====================================\n")
 
 def getTimeString(seconds):
     m, s = divmod(seconds, 60)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import time
 import sys    
 import os
 from os.path import exists, join, split, splitext, abspath
@@ -16,8 +15,8 @@ parser.add_argument('--force', help='Force re-compute if output already exists',
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
 args = parser.parse_args()
 
-start_time = time.time()
-print("Running {}".format(os.path.basename(sys.argv[0])))
+start_time = printStart()
+
 odir = abspath(args.output_dir)
 EDI = join(odir, "EDI")
 
@@ -46,6 +45,5 @@ if not exists(join(EDI, "bedpostx_b1000.bedpostX")):
     copytree(join(odir,"bedpostx_b1000.bedpostX"), join(EDI, "bedpostx_b1000.bedpostX"))
 
 if args.output_time:
-    print("{} took {}".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)))
-
+    printFinish(start_time)
 

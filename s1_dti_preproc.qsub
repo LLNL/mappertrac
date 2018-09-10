@@ -6,5 +6,4 @@
 #MSUB -q pbatch
 #MSUB -A asccasc
 #MSUB -o s1_dti_preproc.stdout
-# ./s1_dti_preproc.py input/03_1019/ output/03_1019/ --output_time --force
-./run_singularity.sh s1_dti_preproc.py input/03_1019/ output/03_1019/ --output_time --force
+./container_run.sh s1_dti_preproc.py input/03_1019/ output/03_1019/ --output_time --force

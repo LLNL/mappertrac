@@ -452,6 +452,8 @@ if machine_name in anl_systems:
     f.close()
     os.system("chmod +x %s" % name)
 
+print join(psub, script_name)
+
 #sys.exit(0)
 # submit it to the batch system
 # os.system('qsub %s'%name)

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import time
 import sys    
 import os
 from os.path import exists,join,split,splitext,abspath
@@ -23,8 +22,7 @@ parser.add_argument('--output_time', help='Print completion time', action='store
 parser.add_argument('--num_cores', help='Number of cores for OpenMP, should be half of actual count', default=18)
 args = parser.parse_args()
 
-start_time = time.time()
-print("Running {}".format(os.path.basename(sys.argv[0])))
+start_time = printStart()
 
 odir = abspath(args.output_dir)
 T1 = join(odir,"T1.nii.gz")
@@ -176,4 +174,5 @@ else:
     copy(join(odir,"terminationmask.nii.gz"),join(odir,"EDI"))
 
 if args.output_time:
-    print("{} took {}".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)))
+    printFinish(start_time)
+    

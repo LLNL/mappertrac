@@ -23,10 +23,10 @@ parser.add_argument('--force', help='Force re-compute if output already exists',
 args = parser.parse_args()
 
 run_default('s1_dti_preproc.py', args, args.input_dir + ' ' + args.output_dir)
-# run_default('s2a_bedpostx.py', args, args.output_dir)
+run_default('s2a_bedpostx.py', args, args.output_dir)
 run_default('s2b_freesurfer_preproc.py', args, args.output_dir)
-# run_default('s3_prepTract.py', args, args.output_dir)
-# run_default('s4_edi_preproc.py', args, args.output_dir)
-# run_default('s5_consensusEDI.py', args, args.output_dir)
+run_default('s3_prepTract.py', args, args.output_dir)
+run_default('s4_edi_preproc.py', args, args.output_dir)
+run_default('s5_consensusEDI.py', args, args.output_dir)
 
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import re
-import time
 import sys    
 import os
 from os import system,mkdir,remove,environ
@@ -25,8 +24,8 @@ args = parser.parse_args()
 if not exists(args.edge_list):
     raise Exception(args.edge_list + " not found")
 
-start_time = time.time()
-print("Running {}".format(os.path.basename(sys.argv[0])))
+start_time = printStart()
+
 odir = abspath(args.output_dir)
 pdir = join(odir, args.pbtk_dir)
 if not exists(pdir):
@@ -69,13 +68,13 @@ with open(args.edge_list) as f:
                 continue
 
             amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b), print_output=False, working_dir=pdir).strip()
-            if not isfloat(amax):
+            if not isFloat(amax):
                 print("fslstats on " + a_to_b + " returns invalid value")
                 continue
             amax = int(float(amax))
 
             bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a), print_output=False, working_dir=pdir).strip()
-            if not isfloat(bmax):
+            if not isFloat(bmax):
                 print("fslstats on " + b_to_a + " returns invalid value")
                 continue
             bmax = int(float(bmax))
@@ -104,6 +103,5 @@ with open(args.edge_list) as f:
 rmtree(tmp_dir)
 
 if args.output_time:
-    print("{} took {}".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)))
-
+    printFinish(start_time)
 
