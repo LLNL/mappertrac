@@ -11,6 +11,7 @@ from utilities import *
 parser = argparse.ArgumentParser(description='Preprocess EDI data')
 parser.add_argument('src_and_target', help='Region pair, in the form <source.nii.gz>:<target.nii.gz>')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')
+parser.add_argument('--bedpost_dir', help='The directory containing bedpost output, relative to output directory', default='bedpostx_b1000.bedpostX')
 parser.add_argument('--pbtk_dir', help='The directory to place region pair output, relative to output directory',
                     default=join("EDI","PBTKresults"))
 args = parser.parse_args()

@@ -20,11 +20,11 @@ start_time = printStart()
 odir = abspath(args.output_dir)
 EDI = join(odir, "EDI")
 
-if not exists(join(EDI, "PBTKresultsbedpostx_b1000distcorr0")):
-    mkdir(join(EDI, "PBTKresultsbedpostx_b1000distcorr0"))
+# if not exists(join(EDI, "PBTKresultsbedpostx_b1000distcorr0")):
+#     mkdir(join(EDI, "PBTKresultsbedpostx_b1000distcorr0"))
 
-if not exists(join(EDI, "PBTKresultsbedpostx_b1000_thalexcldistcorr0")):
-    mkdir(join(EDI, "PBTKresultsbedpostx_b1000_thalexcldistcorr0"))
+# if not exists(join(EDI, "PBTKresultsbedpostx_b1000_thalexcldistcorr0")):
+#     mkdir(join(EDI, "PBTKresultsbedpostx_b1000_thalexcldistcorr0"))
 
 if args.force or not exists(join(odir, "bedpostx_b1000.bedpostX", "dyads2_dispersion.nii.gz")):
     bed_dir = join(odir, "bedpostx_b1000.bedpostX")
@@ -37,9 +37,7 @@ if args.force or not exists(join(odir, "bedpostx_b1000.bedpostX", "dyads2_disper
                                                                 join(bed_dir, "merged_ph2samples"),
                                                                 join(bed_dir, "nodif_brain_mask"),
                                                                 join(bed_dir, "dyads2")))
-
     rmtree(join(EDI, "bedpostx_b1000.bedpostX"))
-
 
 if not exists(join(EDI, "bedpostx_b1000.bedpostX")):
     copytree(join(odir,"bedpostx_b1000.bedpostX"), join(EDI, "bedpostx_b1000.bedpostX"))

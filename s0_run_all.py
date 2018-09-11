@@ -12,7 +12,7 @@ def run_default(script_name, args, dirs):
 		"--force" if args.force else ""),
 		output_time=True, name_override=script_name)
 
-# load_environ()
+start_time = printStart()
 
 parser = argparse.ArgumentParser(description="Generate connectome data")
 parser.add_argument('input_dir', help='The directory with the input dataset '
@@ -20,6 +20,7 @@ parser.add_argument('input_dir', help='The directory with the input dataset '
 parser.add_argument('output_dir', help='The directory where the output files '
                     'should be stored')
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
+parser.add_argument('--output_time', help='Print completion time', action='store_true')
 args = parser.parse_args()
 
 run_default('s1_dti_preproc.py', args, args.input_dir + ' ' + args.output_dir)
@@ -29,4 +30,5 @@ run_default('s3_prepTract.py', args, args.output_dir)
 run_default('s4_edi_preproc.py', args, args.output_dir)
 run_default('s5_consensusEDI.py', args, args.output_dir)
 
-
+if args.output_time:
+    printFinish(start_time)

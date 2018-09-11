@@ -2,6 +2,7 @@
 import argparse
 import sys    
 import os
+import multiprocessing
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ
 from shutil import *
@@ -19,7 +20,7 @@ parser = argparse.ArgumentParser(description='Preprocess Freesurfer data')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
-parser.add_argument('--num_cores', help='Number of cores for OpenMP, should be half of actual count', default=18)
+parser.add_argument('--num_cores', help='Number of cores for OpenMP', default=multiprocessing.cpu_count())
 args = parser.parse_args()
 
 start_time = printStart()
@@ -41,7 +42,8 @@ if args.force or not exists(join(odir,"mri/orig/001.mgz")):
     run("mri_convert {} {}".format(T1,join(odir,"mri/orig/001.mgz")))
 
 if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
-    if int(args.num_cores) > 1:
+    cores = int(args.num_cores) / 2 # use half of actual, due to left-right hemisphere parallelization
+    if cores > 1:
         environ["OMP_NUM_THREADS"] = str(args.num_cores)
         run("recon-all -s {} -parallel -openmp -{} -all -no-isrunning".format(subject, args.num_cores))
     else:
