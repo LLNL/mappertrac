@@ -23,6 +23,10 @@ parser.add_argument('--force', help='Force re-compute if output already exists',
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
 args = parser.parse_args()
 
+if not exists(abspath("license.txt")) and not exists(join(environ['FREESURFER_HOME'], "license.txt")):
+    print("Error: Running this software requires a Freesurfer license. Make sure to place license.txt here or in $FREESURFER_HOME.")
+    print("You can obtain a license at https://surfer.nmr.mgh.harvard.edu/fswiki/License")
+
 run_default('s1_dti_preproc.py', args, args.input_dir + ' ' + args.output_dir)
 run_default('s2a_bedpostx.py', args, args.output_dir)
 run_default('s2b_freesurfer_preproc.py', args, args.output_dir)
