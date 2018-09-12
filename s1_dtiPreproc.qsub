@@ -6,4 +6,4 @@
 #MSUB -q pbatch
 #MSUB -A asccasc
 #MSUB -o s1_ediPreproc.stdout
-./containerRun.sh s1_dtiPreproc.py input/03_1019/ output/03_1019/ --output_time --force
+./containerRun.sh s1_dtiPreproc.py input/03_1037/ output/03_1037/ --output_time --force

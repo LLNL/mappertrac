@@ -6,4 +6,4 @@
 #MSUB -q pbatch
 #MSUB -A asccasc
 #MSUB -o s0_runAll.stdout
-./containerRun.sh s0_runAll.py input/03_1019/ output/03_1019/ --output_time
+./containerRun.sh s0_runAll.py input/03_1037/ output/03_1037/ --output_time

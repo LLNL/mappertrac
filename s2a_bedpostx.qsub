@@ -7,4 +7,4 @@
 #MSUB -A asccasc
 #MSUB -o s2a_bedpostx.stdout
 module load cuda/8.0
-./containerRunGPU.sh s2a_bedpostx.py output/03_1019/ --output_time --force
+./containerRunGPU.sh s2a_bedpostx.py output/03_1037/ --output_time --force

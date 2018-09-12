@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import getpass
 from os.path import exists,join,splitext,abspath
 from os import system,mkdir,remove,environ,chmod
 import stat
@@ -30,7 +31,13 @@ if not exists(bedpost_dir):
     exit(0)
 save_dir = join(odir, args.pbtk_dir)
 
-tmp_dir = mkdtemp()
+host = os.environ['HOSTNAME']
+user = getpass.getuser()
+tmp_dir = ""
+if exists(join("/p/lscratchh", user, "tmp")):
+    tmp_dir = mkdtemp(dir=join("/p/lscratchh", user, "tmp"))
+else:
+    tmp_dir = mkdtemp()
 
 fsl = join(environ['FSLDIR'],"bin")
 
