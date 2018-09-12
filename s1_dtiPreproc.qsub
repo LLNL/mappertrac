@@ -5,5 +5,5 @@
 #MSUB -l walltime=60:00
 #MSUB -q pbatch
 #MSUB -A asccasc
-#MSUB -o s1_dti_preproc.stdout
-./container_run.sh s1_dti_preproc.py input/03_1019/ output/03_1019/ --output_time --force
+#MSUB -o s1_ediPreproc.stdout
+./containerRun.sh s1_dtiPreproc.py input/03_1019/ output/03_1019/ --output_time --force

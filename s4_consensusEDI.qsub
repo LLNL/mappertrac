@@ -1,9 +1,9 @@
 #!/bin/tcsh
 ##### These lines are for Slurm
-#MSUB -N tbi_s3
+#MSUB -N tbi_s5
 #MSUB -l nodes=1
 #MSUB -l walltime=8:00:00
 #MSUB -q pbatch
 #MSUB -A asccasc
-#MSUB -o s3_prepTract.stdout
-./container_run.sh s3_prepTract.py output/03_1019/ --output_time
+#MSUB -o s4_consensusEDI.stdout
+./containerRun.sh s4_consensusEDI.py output/03_1019/ --output_time
