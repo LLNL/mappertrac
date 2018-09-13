@@ -16,7 +16,7 @@ config = Config(
                 'pbatch',
                 channel=SSHChannel(
                     hostname='quartz.llnl.gov',
-                    username=user_opts['cori']['username'],
+                    username='moon15',
                     script_dir=user_opts['cori']['script_dir']
                 ),
                 nodes_per_block=2,
@@ -25,8 +25,7 @@ config = Config(
                 max_blocks=1,
                 overrides=user_opts['cori']['overrides'],
                 launcher=SrunLauncher,
-            ),
-            controller=Controller(public_ip=user_opts['public_ip']),
+            )
         )
     ],
     run_dir=get_rundir(),

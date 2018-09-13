@@ -1,8 +1,8 @@
 #!/bin/tcsh
 ##### These lines are for Slurm
-#MSUB -N tbi_s4
+#MSUB -N tbi_s3
 #MSUB -l nodes=1
-#MSUB -l walltime=8:00:00
+#MSUB -l walltime=1:00:00
 #MSUB -q pbatch
 #MSUB -A asccasc
 #MSUB -o s3_ediPreproc.local.stdout

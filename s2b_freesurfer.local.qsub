@@ -6,4 +6,4 @@
 #MSUB -q pbatch
 #MSUB -A asccasc
 #MSUB -o s2b_freesurfer.local.stdout
-python3 s2b_freesurfer.py output/03_1019/ --output_time
+python3 s2b_freesurfer.py output/03_1037/ --output_time

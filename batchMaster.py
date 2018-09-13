@@ -179,8 +179,13 @@ runtime = int(sys.argv[next_arg+2])
 cmdName = basename(splitext(sys.argv[next_arg+3])[0])
 
 # if necessary create a subdirectory ./qsub to store the .qsub and log files
-psub = join(os.getcwd(),"qsub")
-if not os.path.exists(psub) :
+psub = ""
+if len(sys.argv) >= next_arg+6:
+    psub = join(sys.argv[next_arg+6],"qsub")
+else:
+    psub = join(os.getcwd(),"qsub")
+
+if not os.path.exists(psub):
     os.mkdir(psub)
 
 mpi_cmd_file = join(psub,"mpiCommandLines_%02d.cmd")
