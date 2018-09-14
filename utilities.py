@@ -13,7 +13,7 @@ def smart_copy(src,dest,force=False):
     if force or not exists(dest):
         copyfile(src,dest)
 
-def run(command, env={}, ignore_errors=False, print_output=True, output_time=False, name_override="", working_dir=None):
+def run(command, env={}, ignore_errors=False, print_output=True, output_time=False, name_override="", working_dir=None, write_output=None):
     start = time.time()
     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""
@@ -22,6 +22,9 @@ def run(command, env={}, ignore_errors=False, print_output=True, output_time=Fal
         new_line = str(new_line, 'utf-8')[:-1]
         if print_output:
             print(new_line)
+        if write_output != None:
+            with open(write_output, 'a') as f:
+                f.write("{}\n".format(new_line))
         if new_line == '' and process.poll() is not None:
             break
         line = new_line

@@ -28,6 +28,8 @@ start_time = printStart()
 odir = abspath(args.output_dir)
 T1 = join(odir,"T1.nii.gz")
 subject = split(odir)[1]
+cores = max(int(args.num_cores) / 2, 1) # use half of actual, due to left-right hemisphere parallelization
+environ["OMP_NUM_THREADS"] = str(cores)
 
 environ['SUBJECTS_DIR'] = split(odir)[0]
 
@@ -42,10 +44,8 @@ if args.force or not exists(join(odir,"mri/orig/001.mgz")):
     run("mri_convert {} {}".format(T1,join(odir,"mri/orig/001.mgz")))
 
 if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
-    cores = int(args.num_cores) / 2 # use half of actual, due to left-right hemisphere parallelization
     if cores > 1:
-        environ["OMP_NUM_THREADS"] = str(args.num_cores)
-        run("recon-all -s {} -parallel -openmp -{} -all -no-isrunning".format(subject, args.num_cores))
+        run("recon-all -s {} -parallel -openmp -{} -all -no-isrunning".format(subject, cores))
     else:
         run("recon-all -s {} -all -no-isrunning".format(subject))
 

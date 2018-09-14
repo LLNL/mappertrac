@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import time
 from os.path import exists,join,splitext,abspath
 from os import system,mkdir,remove,environ,chmod
 import stat
@@ -17,7 +18,9 @@ parser.add_argument('--pbtk_dir', help='The directory to place region pair outpu
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 args = parser.parse_args()
 
-load_environ()
+start_time = time.time()
+
+# load_environ()
 src, target = args.src_and_target.split(":", 1)
 src_name = splitext(splitext(os.path.split(src)[1])[0])[0]
 target_name = splitext(splitext(os.path.split(target)[1])[0])[0]
@@ -29,7 +32,7 @@ if not exists(bedpost_dir):
     exit(0)
 save_dir = join(odir, args.pbtk_dir)
 save_file = "{}to{}.nii.gz".format(src_name,target_name)
-print(join(save_dir, save_file))
+print("Running subproc: {} to {}".format(src_name, target_name))
 
 if not exists(join(save_dir, save_file)) or args.force:
 
@@ -96,4 +99,4 @@ if not exists(join(save_dir, save_file)) or args.force:
 
     rmtree(tmp_dir)
 
-
+print("{} to {}: {} seconds".format(src_name, target_name, time.time() - start_time))
