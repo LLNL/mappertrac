@@ -35,14 +35,15 @@ config = Config(
         IPyParallelExecutor(
             label='test_multinode',
             provider=SlurmProvider(
-                'pdebug',
+                'pbatch',
                 channel=LocalChannel(),
                 tasks_per_node=18,
                 nodes_per_block=4,
                 max_blocks=1,
+                walltime="01:00:00",
                 overrides="""
 #SBATCH -A asccasc
-#SBATCH -p pdebug
+#SBATCH -p pbatch
 #SBATCH -J tbi_s3""",
             )
         )
@@ -53,7 +54,7 @@ parsl.load(config)
 @python_app
 def subproc(src_and_target, output_dir):
     from utilities import run
-    run("python3 s3_subproc.py {} {}".format(src_and_target, output_dir), write_output="s3_subproc.test.out")
+    run("python3 s3_subproc.py {} {}".format(src_and_target, output_dir), write_output="s3_subproc.stdout")
   
 odir = abspath(args.output_dir)
 if not exists(join(odir, args.pbtk_dir)):
@@ -69,11 +70,11 @@ files = [abspath(f) for f in files]
 for f1 in files:
     for f2 in files:
         if f1 != f2:
-            if len(jobs) > 8:
-                break
+            # if len(jobs) > 8:
+            #    break
             jobs.append(subproc("{}:{}".format(f1, f2), odir))
             print("Starting {} to {}".format(f1, f2))
-    break
+    # break
                 # pairs.write(f1 + ":" + f2 + "\n")
 for job in jobs:
     job.result()

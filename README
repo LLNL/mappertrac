@@ -1,0 +1,11 @@
+### Run using Singularity
+Use Moab script ending with .qsub
+
+Run commands in container using containerRun.sh
+Shell into container using containerShell.sh
+
+### Run using local FSL and Freesurfer
+Use Moab script ending with .local.qsub
+
+Make sure to initialize environment variables with configLocal.sh
+For example: source configLocal.sh <FSL directory> <Freesurfer directory> <CUDA lib directory (optional)>
