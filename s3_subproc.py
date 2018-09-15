@@ -7,7 +7,7 @@ import stat
 from shutil import *
 from glob import glob
 from tempfile import *
-from utilities import *
+from subscripts.utilities import *
 
 parser = argparse.ArgumentParser(description='Preprocess EDI data')
 parser.add_argument('src_and_target', help='Region pair, in the form <source.nii.gz>:<target.nii.gz>')

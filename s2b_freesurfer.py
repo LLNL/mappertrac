@@ -7,9 +7,9 @@ from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ
 from shutil import *
 from glob import glob
-from maskseeds import *
 from posix import remove
-from utilities import *
+from subscripts.utilities import *
+from subscripts.maskseeds import *
 
 cortical_dir = "label_cortical"
 vol_dir = "volumes_cortical"
@@ -18,9 +18,9 @@ threshold = "0.2"
 
 parser = argparse.ArgumentParser(description='Preprocess Freesurfer data')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')
+parser.add_argument('--subcortical_index', help='Text list of region indices', default="lists/subcorticalIndex.txt")
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
-parser.add_argument('--num_cores', help='Number of cores for OpenMP', default=multiprocessing.cpu_count())
 args = parser.parse_args()
 
 start_time = printStart()
@@ -86,10 +86,7 @@ if not exists(join(odir,sub_vol_dir)):
     mkdir(join(odir,sub_vol_dir))
 
 if args.force or not exists(join(odir,sub_vol_dir,"lh_acumbens.nii.gz")):
-    # indices = join(split(abspath(sys.argv[0]))[0],"subcortical_index")
-    indices = "subcortical_index.txt"
-
-    for line in open(indices,"r").readlines():
+    for line in open(args.subcortical_index,"r").readlines():
         num = line.split(":")[0].lstrip().rstrip()
         area = line.split(":")[1].lstrip().rstrip()
         print("Processing " + area + ".nii.gz")

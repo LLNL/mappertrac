@@ -1,9 +1,0 @@
-#!/bin/tcsh
-##### These lines are for Slurm
-#MSUB -N tbi_s1
-#MSUB -l nodes=1
-#MSUB -l walltime=60:00
-#MSUB -q pbatch
-#MSUB -A asccasc
-#MSUB -o s1_dtiPreproc.stdout
-./containerRun.sh s1_dtiPreproc.py input/03_1037/ output/03_1037/ --output_time --force

@@ -1,9 +1,0 @@
-#!/bin/tcsh
-##### These lines are for Slurm
-#MSUB -N tbi_all
-#MSUB -l nodes=1
-#MSUB -l walltime=16:00:00
-#MSUB -q pbatch
-#MSUB -A asccasc
-#MSUB -o s0_runAll.stdout
-./containerRun.sh s0_runAll.py input/03_1037/ output/03_1037/ --output_time

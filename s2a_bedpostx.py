@@ -5,7 +5,7 @@ import os
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ,rmdir
 from shutil import *
-from utilities import *
+from subscripts.utilities import *
 
 parser = argparse.ArgumentParser(description='Run BedpostX')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')

@@ -3,7 +3,7 @@ import argparse
 import sys    
 import os
 from shutil import *
-from utilities import *
+from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ,makedirs
 

@@ -4,7 +4,7 @@ import re
 import sys    
 import os
 from os import system,mkdir,remove,environ
-from utilities import *
+from subscripts.utilities import *
 from tempfile import *
 
 # edge_list = "listEdgesEDI.txt"
@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Preprocess Freesurfer data')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')
 parser.add_argument('--pbtk_dir', help='The directory with inputs from bedpostX and PBTK processing, relative to output directory',
                     default=join("EDI","PBTKresults"))
-parser.add_argument('--edge_list', help='Text file list of edges for consensus EDI', default="listEdgesEDI.txt")
+parser.add_argument('--edge_list', help='Text list of edges for consensus EDI', default="lists/listEdgesEDI.txt")
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
 args = parser.parse_args()

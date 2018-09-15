@@ -7,7 +7,8 @@ from os.path import exists, join, split, splitext, abspath
 from os import system, environ
 from subprocess import Popen, PIPE
 
-
+def test():
+    print("blahblah")
 
 def smart_copy(src,dest,force=False):
     if force or not exists(dest):
