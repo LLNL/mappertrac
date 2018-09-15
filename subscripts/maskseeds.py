@@ -2,7 +2,7 @@ from os import system,mkdir,remove,environ
 from os.path import exists,join,split,splitext,abspath
 from shutil import *
 from glob import glob
-from utilities import *
+from subscripts.utilities import *
 
 def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_threshold_thalamus,force=False):
     

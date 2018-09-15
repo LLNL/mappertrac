@@ -1,0 +1,14 @@
+.*
+*.stdout
+*.simg
+*.json
+*.qsub
+license.txt
+configDefault.sh
+input/
+output/
+runinfo/
+parsl_scripts/
+test/
+__pycache__
+!.gitignore
