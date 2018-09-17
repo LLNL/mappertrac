@@ -18,22 +18,22 @@ def get_header(job_name, walltime, stdout):
 
 
 with open("scheduleContainer/s1_dtiPreproc.qsub", "w") as f:
-    f.write(get_header("tbi_s1", "60:00", "s1_dtiPreproc.stdout"))
+    f.write(get_header("tbi_s1", "45:00", "s1_dtiPreproc.stdout"))
     f.write("./container/run.sh s1_dtiPreproc.py {} {} --output_time --force\n".format(args.input_dir, args.output_dir))
 
-with open("scheduleLocal/s2a_bedpostx.qsub", "w") as f:
-    f.write(get_header("tbi_s2a", "30:00", "s2a_bedpostx.stdout"))
+with open("scheduleContainer/s2a_bedpostx.qsub", "w") as f:
+    f.write(get_header("tbi_s2a", "20:00", "s2a_bedpostx.stdout"))
     f.write("module load cuda/8.0\n")
     f.write("./container/runGPU.sh s2a_bedpostx.py {} --output_time --force\n".format(args.output_dir))
 
-with open("scheduleLocal/s2b_freesurfer.qsub", "w") as f:
+with open("scheduleContainer/s2b_freesurfer.qsub", "w") as f:
     f.write(get_header("tbi_s2b", "12:00:00", "s2b_freesurfer.stdout"))
     f.write("./container/run.sh s2b_freesurfer.py {} --output_time --force\n".format(args.output_dir))
 
-with open("scheduleLocal/s3_ediPreproc.qsub", "w") as f:
+with open("scheduleContainer/s3_ediPreproc.qsub", "w") as f:
     f.write(get_header("tbi_s3", "60:00", "s3_ediPreproc.stdout"))
     f.write("./container/run.sh s3_ediPreproc.py {} --output_time --force\n".format(args.output_dir))
 
-with open("scheduleLocal/s4_consensusEDI.qsub", "w") as f:
+with open("scheduleContainer/s4_consensusEDI.qsub", "w") as f:
     f.write(get_header("tbi_s4", "60:00", "s4_consensusEDI.stdout"))
     f.write("./container/run.sh s4_consensusEDI.py {} --output_time --force\n".format(args.output_dir))
