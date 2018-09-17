@@ -13,7 +13,7 @@ from shutil import rmtree
 from parsl.config import Config
 from parsl.app.app import python_app, bash_app
 from parsl.executors.ipp import IPyParallelExecutor
-from libsubmit.providers import SlurmProvider
+from libsubmit.providers import SlurmProvider, LocalProvider
 from libsubmit.channels import LocalChannel
 
 parser = argparse.ArgumentParser(description='Preprocess EDI data')
@@ -32,20 +32,25 @@ start_time = printStart()
 
 config = Config(
     executors=[
+
         IPyParallelExecutor(
-            label='test_multinode',
-            provider=SlurmProvider(
-                'pbatch',
-                channel=LocalChannel(),
-                tasks_per_node=18,
-                nodes_per_block=4,
-                max_blocks=1,
-                walltime="01:00:00",
-                overrides="""
-#SBATCH -A asccasc
-#SBATCH -p pbatch
-#SBATCH -J tbi_s3""",
+            label='test_singlenode',
+            provider=LocalProvider(
+                init_blocks=36,
+                max_blocks=72,
             )
+#             provider=SlurmProvider(
+#                 'pbatch',
+#                 channel=LocalChannel(),
+#                 tasks_per_node=18,
+#                 nodes_per_block=4,
+#                 max_blocks=1,
+#                 walltime="01:00:00",
+#                 overrides="""
+# #SBATCH -A asccasc
+# #SBATCH -p pbatch
+# #SBATCH -J tbi_s3""",
+#             )
         )
     ],
     retries=3,
@@ -55,7 +60,7 @@ parsl.load(config)
 
 @python_app
 def subproc(src_and_target, output_dir):
-    from utilities import run
+    from subscripts.utilities import run
     run("python3 s3_subproc.py {} {}".format(src_and_target, output_dir), write_output="s3_subproc.stdout")
   
 odir = abspath(args.output_dir)
@@ -71,11 +76,8 @@ files = [abspath(f) for f in files]
 for f1 in files:
     for f2 in files:
         if f1 != f2:
-            if len(jobs) > 128:
-               break
             jobs.append(subproc("{}:{}".format(f1, f2), odir))
             print("Starting {} to {}".format(f1, f2))
-    break
 for job in jobs:
     job.result()
 
