@@ -32,7 +32,8 @@ odir = abspath(args.output_dir)
 if split(idir)[-1] != split(odir)[-1]:
     # if not we create the patient directory
     odir = join(odir,split(idir)[-1])
-    makedirs(odir)
+    if not exists(odir):
+        makedirs(odir)
 
 # Create a list of files that this script is supposed to produce
 data = join(odir,"data.nii.gz")  # The target data file
