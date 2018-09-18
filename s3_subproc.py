@@ -58,8 +58,6 @@ if not exists(join(save_dir, save_file)) or args.force:
 
     copytree(bedpost_dir,join(tmp_dir,"bedpostx"))
 
-
-
     # Creating the masks
     run("fslmaths {} -sub {} {}".format(join(tmp_dir,"allvoxelscortsubcort.nii.gz"),
                                        join(tmp_dir,split(src)[1]),

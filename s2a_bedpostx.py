@@ -29,7 +29,7 @@ if not exists(FSLDIR):
 bedpostx = join(odir,"bedpostx_b1000")
 bedpostxResults = join(odir,"bedpostx_b1000.bedpostX")
 EDI = join(odir, "EDI")
-
+"""
 smart_copy(join(odir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),args.force)
 smart_copy(join(odir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),args.force)
 smart_copy(join(odir,"bvals"),join(bedpostx,"bvals"),args.force)
@@ -39,11 +39,12 @@ if args.force or not exists(join(bedpostxResults,"dyads3.nii.gz")):
     
     if exists(bedpostxResults):
         rmtree(bedpostxResults)
-            
-    if exists(join(FSLDIR,"bedpostx_gpu")):
-        run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
-    else:
-        run("bedpostx " + bedpostx)
+    
+    run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
+    # if exists(join(FSLDIR,"bedpostx_gpu")):
+        # run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
+    # else:
+        # run("bedpostx " + bedpostx)
 
 if args.force or not exists(join(bedpostxResults, "dyads2_dispersion.nii.gz")):
     bed_dir = join(odir, "bedpostx_b1000.bedpostX")
@@ -56,9 +57,10 @@ if args.force or not exists(join(bedpostxResults, "dyads2_dispersion.nii.gz")):
                                                  join(bedpostxResults, "merged_ph2samples"),
                                                  join(bedpostxResults, "nodif_brain_mask"),
                                                  join(bedpostxResults, "dyads2")))
-    rmtree(join(EDI, "bedpostx_b1000.bedpostX"))
-
-if not exists(bedpostxResults):
+"""
+if args.force or not exists(join(EDI, "bedpostx_b1000.bedpostX")):
+    if exists(join(EDI, "bedpostx_b1000.bedpostX")):
+        rmtree(join(EDI, "bedpostx_b1000.bedpostX"))
     copytree(bedpostxResults, join(EDI, "bedpostx_b1000.bedpostX"))
   
 if args.output_time:

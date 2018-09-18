@@ -5,8 +5,9 @@ import os
 import re
 import time
 import parsl
+import multiprocessing
 from os.path import exists,join,splitext,abspath
-from os import system,mkdir
+from os import system,mkdir,environ
 from glob import glob
 from subscripts.utilities import *
 from shutil import rmtree
@@ -36,8 +37,8 @@ config = Config(
         IPyParallelExecutor(
             label='test_singlenode',
             provider=LocalProvider(
-                init_blocks=36,
-                max_blocks=72,
+                init_blocks=multiprocessing.cpu_count(),
+                max_blocks=multiprocessing.cpu_count(),
             )
 #             provider=SlurmProvider(
 #                 'pbatch',
@@ -59,15 +60,18 @@ config = Config(
 parsl.load(config)
 
 @python_app
-def subproc(src_and_target, output_dir):
+def subproc(src_and_target, output_dir, force=False):
     from subscripts.utilities import run
-    run("python3 s3_subproc.py {} {}".format(src_and_target, output_dir), write_output="s3_subproc.stdout")
+    run("python3 s3_subproc.py {} {} {}".format(src_and_target, output_dir, "--force" if force else ""), write_output="s3_subproc.stdout")
   
 odir = abspath(args.output_dir)
 if not exists(join(odir, args.pbtk_dir)):
     mkdir(join(odir, args.pbtk_dir))
 if exists(join(odir, "qsub")):
     rmtree(join(odir, "qsub"), ignore_errors=True)
+if not 'FSLDIR' in environ:
+    print("FSLDIR not found in local environment")
+    exit(0)
 
 jobs = []
 files = glob(join(odir, args.vol_dir,"*_s2fa.nii.gz")) # Assemble all files 
@@ -76,8 +80,12 @@ files = [abspath(f) for f in files]
 for f1 in files:
     for f2 in files:
         if f1 != f2:
-            jobs.append(subproc("{}:{}".format(f1, f2), odir))
+            if len(jobs) > 50:
+                break
+            jobs.append(subproc("{}:{}".format(f1, f2), odir, args.force))
             print("Starting {} to {}".format(f1, f2))
+    if len(jobs) > 50:
+        break
 for job in jobs:
     job.result()
 

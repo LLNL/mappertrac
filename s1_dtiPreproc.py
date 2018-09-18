@@ -2,6 +2,14 @@
 import argparse
 import sys
 import os
+import multiprocessing
+import parsl
+from parsl.app.app import python_app, bash_app
+from parsl.config import Config
+from parsl.executors.ipp import IPyParallelExecutor
+from libsubmit.providers import LocalProvider
+from libsubmit.channels import LocalChannel
+from glob import glob
 from shutil import *
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath
@@ -21,7 +29,25 @@ args = parser.parse_args()
 
 start_time = printStart()
 
-# load_environ()
+config = Config(
+    executors=[
+        IPyParallelExecutor(
+            label='test_singlenode',
+            provider=LocalProvider(
+                init_blocks=multiprocessing.cpu_count(),
+                max_blocks=multiprocessing.cpu_count(),
+            )
+        )
+    ]
+)
+
+parsl.load(config)
+
+@python_app
+def eddy_correct(section, output_prefix):
+    from subscripts.utilities import run
+    run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(section, output_prefix))
+
 idir = abspath(args.input_dir)
 if not exists(abspath(args.output_dir)):  # make sure the output dir exists
     makedirs(abspath(args.output_dir))
@@ -54,14 +80,33 @@ smart_copy(join(idir,"bvecs"),bvecs)
 smart_copy(join(idir,"bvals"),bvals)
 smart_copy(join(idir,"anat.nii.gz"),T1)
 
-# run("echo 'hello'")
-
 # Start the eddy correction (30 minutes)
 if args.force or not exists(eddy):
     if exists(eddy_log):
         remove(eddy_log)
     print("Eddy correction")
-    run("eddy_correct {} {} 0".format(data,eddy),output_time=True)
+
+    input_prefix = join(odir,"data")
+    output_prefix = join(odir,"data_eddy")
+
+    run("fslroi {} {}_ref 0 1".format(input_prefix,output_prefix))
+    run("fslsplit {} {}_tmp".format(input_prefix,output_prefix))
+    full_list = glob(join("{}_tmp????.*").format(output_prefix))
+
+    jobs = []
+    for section in full_list:
+        print(section)
+        jobs.append(eddy_correct(section, output_prefix))
+        # run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1".format(i, eddy))
+    for job in jobs:
+        job.result()
+    run("fslmerge -t {} {}".format(eddy, " ".join(full_list)))
+    for i in full_list:
+        remove(i)
+    for j in glob(join("{}_ref*").format(output_prefix)):
+        remove(j)
+
+    # run("eddy_correct {} {} 0".format(data,eddy),output_time=True)
 
 if args.force or not exists(bet):
     print("Brain extraction")
