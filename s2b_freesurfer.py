@@ -29,9 +29,6 @@ odir = abspath(args.output_dir)
 T1 = join(odir,"T1.nii.gz")
 subject = split(odir)[1]
 
-# cores = max(int(int(args.num_cores) / 2), 1) # use half of actual, due to left-right hemisphere parallelization
-# environ["OMP_NUM_THREADS"] = str(cores)
-
 environ['SUBJECTS_DIR'] = split(odir)[0]
 
 # Make the output directories if necessary
@@ -118,7 +115,7 @@ if args.force or not exists(join(odir,vol_dir_out,"lh_acumbens_s2fa.nii.gz")):
         run("fslmaths {} -thr {} -bin {} ".format(out_vol,threshold,out_vol))
 
 ############
-# FOr now we fake a bs.nii.gz file
+# For now we fake a bs.nii.gz file
 if not exists(join(odir,"bs.nii.gz")):
     run("fslmaths {} -mul 0 {}".format(join(odir,"FA.nii.gz"),join(odir,"bs.nii.gz")))
 
@@ -145,12 +142,6 @@ if exists(join(odir,"bs.nii.gz")):
                                                 join(odir,sub_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
                                                 join(odir,"exlusion_bsplusthalami.nii.gz")))
 ############
-############
-############
-
-
-
-# exit(0)
 
 if not exists(join(odir,"EDI")):
     mkdir(join(odir,"EDI"))

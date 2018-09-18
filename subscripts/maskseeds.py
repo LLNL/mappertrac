@@ -42,8 +42,10 @@ def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force):
     fsl = environ['FSL_DIR']
 
     if force:
-        remove(join(root_dir,"cort.nii.gz"))
-        remove(join(root_dir,"subcort.nii.gz"))
+        if exists(join(root_dir,"cort.nii.gz")):
+            remove(join(root_dir,"cort.nii.gz"))
+        if exists(join(root_dir,"subcort.nii.gz")):
+            remove(join(root_dir,"subcort.nii.gz"))
     
     all_vols = ""
     for vol in glob(join(cortical_dir,"*_s2fa.nii.gz")):

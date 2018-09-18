@@ -1,4 +1,5 @@
 import time
+import datetime
 import os
 import subprocess
 import sys
@@ -30,6 +31,7 @@ def run(command, env={}, ignore_errors=False, print_output=True, output_time=Fal
             break
         line = new_line
     if process.returncode != 0 and not ignore_errors:
+        printTime()
         raise Exception("Non zero return code: {}".format(process.returncode))
     else:
         tokens = command.split(' ')
@@ -119,14 +121,19 @@ def isInteger(value):
   except ValueError:
     return False
 
+def printTime():
+    print("Time is {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")))
+
 def printStart():
     print("Running {}".format(os.path.basename(sys.argv[0])))
+    printTime()
     return time.time()
 
 def printFinish(start_time):
     print("\n=====================================\n" +
           " {} took {} (h:m:s)".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)) +
           "\n=====================================\n")
+    printTime()
 
 def getTimeString(seconds):
     m, s = divmod(seconds, 60)
