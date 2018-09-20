@@ -10,7 +10,6 @@ from tempfile import *
 # edge_list = "listEdgesEDI.txt"
 # PBTK_dir = "PBTKresults_EDI_bedpostx_b1000.bedpostX_withdc"
 # PBTK_dir = "PBTKresults"
-edge_prefix = "twoway"
 
 parser = argparse.ArgumentParser(description='Preprocess Freesurfer data')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')
@@ -32,6 +31,7 @@ if not exists(pdir):
     print("PBTK directory does not exist at {}".format(pdir))
     exit(0)
 
+edge_prefix = "twoway"
 total = join(odir,"EDI","EDImaps","FAtractsums{}.nii.gz".format(edge_prefix))
 if not args.force and exists(total):
     print("Consensus EDI output already exists. Use --force argument to re-compute.")
@@ -57,7 +57,8 @@ with open(args.edge_list) as f:
         a_to_b = "{}to{}.nii.gz".format(a, b)
         b_to_a = "{}to{}.nii.gz".format(b, a)
         output = join(pdir,"twoway_consensus_edges",a_to_b)
-        if not exists(output):
+        pair = join(pdir,"twoway_consensus_edges",b_to_a)
+        if not exists(output) and not exists(pair):
             print("{} and {}".format(a, b))
 
             if not exists(join(pdir,a_to_b)):

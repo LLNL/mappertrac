@@ -80,7 +80,7 @@ smart_copy(join(idir,"bvecs"),bvecs)
 smart_copy(join(idir,"bvals"),bvals)
 smart_copy(join(idir,"anat.nii.gz"),T1)
 
-# Start the eddy correction (30 minutes)
+# Start the eddy correction (3 minutes)
 if args.force or not exists(eddy):
     if exists(eddy_log):
         remove(eddy_log)

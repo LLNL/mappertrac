@@ -31,7 +31,7 @@ with open("scheduleContainer/s2b_freesurfer.qsub", "w") as f:
     f.write("./container/run.sh s2b_freesurfer.py {} --output_time --force\n".format(args.output_dir))
 
 with open("scheduleContainer/s3_ediPreproc.qsub", "w") as f:
-    f.write(get_header("tbi_s3", "60:00", "s3_ediPreproc.stdout"))
+    f.write(get_header("tbi_s3", "3:00:00", "s3_ediPreproc.stdout"))
     f.write("./container/run.sh s3_ediPreproc.py {} --output_time --force\n".format(args.output_dir))
 
 with open("scheduleContainer/s4_consensusEDI.qsub", "w") as f:
