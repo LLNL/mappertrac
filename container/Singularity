@@ -1,0 +1,104 @@
+BootStrap: yum
+OSVersion: 7
+MirrorURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/os/x86_64/
+Include: yum
+
+#UpdateURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/updates/$basearch/
+
+%files
+    run.py
+    fslinstaller.py
+
+%post
+    # Links
+    GET_PIP=https://bootstrap.pypa.io/get-pip.py
+    TESLA=http://us.download.nvidia.com/tesla/375.66/nvidia-diag-driver-local-repo-rhel7-375.66-1.x86_64.rpm
+    TESLA_RPM=$(basename $TESLA)
+    CUDA5=http://developer.download.nvidia.com/compute/cuda/5_0/rel-update-1/installers/cuda_5.0.35_linux_64_rhel6.x-1.run
+    CUDA5_RUN=$(basename $CUDA5)
+    CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
+    CUDA8_RUN=$(basename $CUDA8)
+    FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
+    FREESURFER_GZ=$(basename $FREESURFER)
+
+    mkdir /share
+    yum -y update
+    yum -y makecache
+    yum -y install yum-utils
+    yum -y groupinstall development
+    yum -y install wget openssl ca-certificates iputils which vi
+    yum -y install epel-release
+
+    # Python3 and Parsl
+    yum -y install python36 python36-devel
+    ln -s /bin/python36 /bin/python3
+    curl -Ok $GET_PIP
+    python3 get-pip.py
+    pip3 install parsl
+
+    # Nvidia Tesla Drivers
+    yum -y install kernel-devel-$(uname -r) kernel-headers-$(uname -r)
+    yum -y install dkms libstdc++.i686 perl-Env
+    wget -c $TESLA
+    rpm -i $TESLA_RPM
+    yum -y install cuda-drivers
+
+    # CUDA 5.0
+    wget --no-check-certificate $CUDA5
+    sh $CUDA5_RUN -silent -override -toolkit
+
+    # CUDA 8.0
+    wget --no-check-certificate $CUDA8
+    sh $CUDA8_RUN -silent -override -toolkit
+
+    # FSL
+    python /fslinstaller.py
+
+    # Freesurfer
+    wget --no-check-certificate $FREESURFER
+    tar -xzf $FREESURFER_GZ -C /opt
+
+    # Cleanup
+    rm -rf get-pip.py
+    rm -rf $TESLA_RPM
+    rm -rf $CUDA5_RUN
+    rm -rf $CUDA8_RUN
+    rm -rf $FREESURFER_GZ
+    rm -rf /fslinstaller.py
+    yum -y clean all
+    rm -rf /var/cache/yum
+
+%environment
+    export FSLDIR=/usr/local/fsl
+    FSL_DIR=$FSLDIR
+    FSLOUTPUTTYPE=NIFTI_GZ
+    FSLMULTIFILEQUIT=TRUE
+    FSLTCLSH=${FSLDIR}/bin/fsltclsh
+    FSLWISH=${FSLDIR}/bin/fslwish
+    FSLGECUDAQ="cuda.q"
+    FSL_BIN=${FSLDIR}/bin
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+
+    export FREESURFER_HOME=/opt/freesurfer
+    LOCAL_DIR=${FREESURFER_HOME}/local
+    PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    FSFAST_HOME=${FREESURFER_HOME}/fsfast
+    FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
+    FSF_OUTPUT_FORMAT="nii.gz"
+    MNI_DIR=${FREESURFER_HOME}/mni
+    MNI_DATAPATH=${FREESURFER_HOME}/mni/data
+    MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
+    MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
+    SUBJECTS_DIR=${FREESURFER_HOME}/subjects
+    FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
+    export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+
+    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
+    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export OS=LINUX
+
+%runscript
+    /run.py
