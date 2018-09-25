@@ -14,6 +14,7 @@ from shutil import rmtree
 from parsl.config import Config
 from parsl.app.app import python_app, bash_app
 from parsl.executors.ipp import IPyParallelExecutor
+from parsl.executors.threads import ThreadPoolExecutor
 from libsubmit.providers import SlurmProvider, LocalProvider
 from libsubmit.channels import LocalChannel
 
@@ -35,13 +36,16 @@ start_time = printStart()
 
 config = Config(
     executors=[
-
-        IPyParallelExecutor(
-            label='test_singlenode',
-            provider=LocalProvider(
-                init_blocks=multiprocessing.cpu_count(),
-                max_blocks=multiprocessing.cpu_count(),
-            )
+        ThreadPoolExecutor(
+            max_threads=multiprocessing.cpu_count(),
+            label='local_threads'
+        )
+#         IPyParallelExecutor(
+#             label='test_singlenode',
+#             provider=LocalProvider(
+#                 init_blocks=multiprocessing.cpu_count(),
+#                 max_blocks=multiprocessing.cpu_count(),
+#             )
 #             provider=SlurmProvider(
 #                 'pbatch',
 #                 channel=LocalChannel(),
@@ -54,9 +58,9 @@ config = Config(
 # #SBATCH -p pbatch
 # #SBATCH -J tbi_s3""",
 #             )
-        )
+#         )
     ],
-    # retries=3,
+    retries=3,
     checkpoint_mode = 'dfk_exit'
 )
 parsl.load(config)
@@ -98,7 +102,7 @@ def subproc(src, target, odir, bdir, pdir, force, stdout="s3_ediPreproc.stdout",
         + " --omatrix1"
     )
     run("probtrackx2" + arguments)
-
+    print("Finished subproc: {} to {}".format(src_name, target_name))
     # run("python3 s3_subproc.py {} {} {}".format(src_and_target, output_dir, "--force" if force else ""), write_output="s3_subproc.stdout")
   
 odir = abspath(args.output_dir)

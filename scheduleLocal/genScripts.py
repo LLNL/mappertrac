@@ -18,7 +18,7 @@ def get_header(job_name, walltime, stdout):
 
 
 with open("scheduleLocal/s1_dtiPreproc.local.qsub", "w") as f:
-    f.write(get_header("tbi_s1", "60:00", "s1_dtiPreproc.local.stdout"))
+    f.write(get_header("tbi_s1", "10:00", "s1_dtiPreproc.local.stdout"))
     f.write("python3 s1_dtiPreproc.py {} {} --output_time --force\n".format(args.input_dir, args.output_dir))
 
 with open("scheduleLocal/s2a_bedpostx.local.qsub", "w") as f:
@@ -27,8 +27,9 @@ with open("scheduleLocal/s2a_bedpostx.local.qsub", "w") as f:
     f.write("python3 s2a_bedpostx.py {} --output_time --force\n".format(args.output_dir))
 
 with open("scheduleLocal/s2b_freesurfer.local.qsub", "w") as f:
-    f.write(get_header("tbi_s2b", "12:00:00", "s2b_freesurfer.local.stdout"))
-    f.write("python3 s2b_freesurfer.py {} --output_time --force\n".format(args.output_dir))
+    f.write(get_header("tbi_s2b", "1:00:00", "s2b_freesurfer.local.stdout"))
+    f.write("module load cuda/8.0\n")
+    f.write("python3 s2b_freesurfer.py {} --output_time --force --use_gpu\n".format(args.output_dir))
 
 with open("scheduleLocal/s3_ediPreproc.local.qsub", "w") as f:
     f.write(get_header("tbi_s3", "60:00", "s3_ediPreproc.local.stdout"))
