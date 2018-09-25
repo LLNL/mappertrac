@@ -6,8 +6,8 @@ Include: yum
 #UpdateURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/updates/$basearch/
 
 %files
-    run.py
-    fslinstaller.py
+    container/internal/run.py
+    container/internal/fslinstaller.py
 
 %post
     # Links
@@ -95,6 +95,9 @@ Include: yum
     SUBJECTS_DIR=${FREESURFER_HOME}/subjects
     FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
     export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+
+    export CUDA_5_LIB_DIR=/usr/local/cuda-5.0/lib64
+    export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
 
     export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
