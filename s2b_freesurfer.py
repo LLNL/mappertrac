@@ -3,6 +3,7 @@ import argparse
 import sys    
 import os
 import multiprocessing
+import parsl
 from parsl.app.app import python_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -25,24 +26,24 @@ parser.add_argument('output_dir', help='The directory where the output files sho
 parser.add_argument('--subcortical_index', help='Text list of region indices', default="lists/subcorticalIndex.txt")
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
-parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_true')
+parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_false')
 args = parser.parse_args()
 
 start_time = printStart()
 
-config = Config(
-    executors=[
-        IPyParallelExecutor(
-            label='test_singlenode',
-            provider=LocalProvider(
-                init_blocks=multiprocessing.cpu_count(),
-                max_blocks=multiprocessing.cpu_count(),
-            )
-        )
-    ]
-)
+# config = Config(
+#     executors=[
+#         IPyParallelExecutor(
+#             label='test_singlenode',
+#             provider=LocalProvider(
+#                 init_blocks=multiprocessing.cpu_count(),
+#                 max_blocks=multiprocessing.cpu_count(),
+#             )
+#         )
+#     ]
+# )
 
-parsl.load(config)
+# parsl.load(config)
 
 # @python_app
 # def extract_vol_label(vol_name):
@@ -67,6 +68,10 @@ T1 = join(odir,"T1.nii.gz")
 subject = split(odir)[1]
 
 environ['SUBJECTS_DIR'] = split(odir)[0]
+
+environ['CUDA_LIB_DIR'] = "/usr/local/cuda-5.0/lib64"
+if "CUDA_5_LIB_DIR" in environ:
+    environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
 
 # Make the output directories if necessary
 if not exists(join(odir,"mri")):

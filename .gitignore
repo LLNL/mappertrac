@@ -3,6 +3,7 @@
 *.simg
 *.json
 *.qsub
+*.core
 license.txt
 configDefault.sh
 input/

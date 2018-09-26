@@ -1,7 +1,16 @@
 # TRACK TBI
 
 ### Running Scripts
-Requires a local install of FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki) and Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)
+Requires a local install of: 
+* FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
+* Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)
+* Parsl (http://parsl-project.org/)
+* Python 3.5+
+
+With optional libraries:
+* Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
+* CUDA 6.5-9.2, for Bedpostx GPU
+* CUDA 5.0, for Freesurfer GPU
 
 **OR**
 
@@ -11,9 +20,15 @@ Support for Singlarity containers, version 2.5+ (https://www.sylabs.io/guides/2.
 IMPORTANT: Either way, always call scripts from the repo's base directory
 ```
 
-### Building the Singularity Image ###
+### Building the Singularity Container ###
 
-Though Singularity can run with limited privileges, building an image requires root privileges. From the base directory, simply run "./container/build.sh". This process requires internet connection and 10 GB free disk space. It may take several hours, depending on connection speed.
+Though Singularity can run with limited privileges, building a container requires root access. 
+
+From the base directory, simply run "./container/build.sh". This process requires internet connection and 10 GB free disk space. It may take several hours, depending on connection speed.
+
+If you do not have root access (e.g. using a cluster), then clone this repo on a system where you do. After building, copy "container/image.simg" into the repo on the desired system.
+
+Make sure to place a Freesurfer license in the base directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
 
 ### File Overview
 
@@ -22,28 +37,32 @@ TracktographyScripts/
 +- configLocal.sh               # source configLocal.sh <FSL dir> <Freesurfer dir> <CUDA lib dir (optional)> 
 |                                 IMPORTANT: Run this before using local install
 +- container/
+|  +- build.sh                  # ./container/build.sh
+|  |                              Build a compressed Singularity image with required libraries
 |  +- internal/
 |  |  +- fslinstaller.py        # Custom FSL install script (do not change)
 |  |  +- run.py                 # Container runscript (do not change)
 |  |
 |  +- image.simg                # Not included
-|  |                              Singularity container with FSL & Freesurfer, roughly 7 GB size
+|  |                              Singularity container with FSL & Freesurfer
 |  |
 |  +- run.sh                    # ./container/run.sh <command>
 |  |                              Run command in container
 |  |
 |  +- runGPU.sh                 # ./container/runGPU.sh <command>
-|  |                              Run GPU-enabled command in container, requires Nvidia Tesla GPU and CUDA 8.0
+|  |                              Run GPU-enabled command in container, requires Nvidia Tesla GPU
 |  |
 |  +- shell.sh                  # ./container/shell.sh
-|                                 Open shell in container
-|  
-+- license.txt                  # Not included, required to use container
+|  |                              Open shell in container
+|  |
+|  +- Singularity               # Singularity build recipe
+|
++- license.txt                  # Not included, required to use Freesurfer in container
 |                                 Download at https://surfer.nmr.mgh.harvard.edu/fswiki/License
 +- lists/
 |  +- listEdgesEDI.txt          # See s4_consensusEDI.py
 |  +- subcorticalIndex.txt      # See s2b_freesurfer.py
-+- README
++- README.md
 +- s1_dtiPreproc.py             # ./s1_dtiPreproc.py <input dir> <output dir>
 |                                 Setup and image correction (~5 minutes with 36 cores)
 |

@@ -6,27 +6,25 @@ Include: yum
 #UpdateURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/updates/$basearch/
 
 %files
-    container/internal/run.py
-    container/internal/fslinstaller.py
+    run.py
+    fslinstaller.py
+    license.txt
 
 %post
     # Links
     GET_PIP=https://bootstrap.pypa.io/get-pip.py
     TESLA=http://us.download.nvidia.com/tesla/375.66/nvidia-diag-driver-local-repo-rhel7-375.66-1.x86_64.rpm
-    TESLA_RPM=$(basename $TESLA)
     CUDA5=http://developer.download.nvidia.com/compute/cuda/5_0/rel-update-1/installers/cuda_5.0.35_linux_64_rhel6.x-1.run
-    CUDA5_RUN=$(basename $CUDA5)
     CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
-    CUDA8_RUN=$(basename $CUDA8)
     FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
-    FREESURFER_GZ=$(basename $FREESURFER)
+    BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_8.0/bedpostx_gpu.zip
 
     mkdir /share
     yum -y update
     yum -y makecache
     yum -y install yum-utils
     yum -y groupinstall development
-    yum -y install wget openssl ca-certificates iputils which vi
+    yum -y install wget openssl ca-certificates iputils which vi tcsh
     yum -y install epel-release
 
     # Python3 and Parsl
@@ -37,6 +35,7 @@ Include: yum
     pip3 install parsl
 
     # Nvidia Tesla Drivers
+    TESLA_RPM=$(basename $TESLA)
     yum -y install kernel-devel-$(uname -r) kernel-headers-$(uname -r)
     yum -y install dkms libstdc++.i686 perl-Env
     wget -c $TESLA
@@ -44,19 +43,28 @@ Include: yum
     yum -y install cuda-drivers
 
     # CUDA 5.0
+    CUDA5_RUN=$(basename $CUDA5)
     wget --no-check-certificate $CUDA5
     sh $CUDA5_RUN -silent -override -toolkit
 
     # CUDA 8.0
+    CUDA8_RUN=$(basename $CUDA8)
     wget --no-check-certificate $CUDA8
     sh $CUDA8_RUN -silent -override -toolkit
 
     # FSL
     python /fslinstaller.py
 
+    # Bedpostx GPU
+    BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
+    wget --no-check-certificate $BEDPOSTX_GPU
+    unzip -o -d /usr/local/fsl $BEDPOSTX_GPU_ZIP
+
     # Freesurfer
+    FREESURFER_GZ=$(basename $FREESURFER)
     wget --no-check-certificate $FREESURFER
     tar -xzf $FREESURFER_GZ -C /opt
+    cp license.txt /opt/freesurfer/license.txt
 
     # Cleanup
     rm -rf get-pip.py
@@ -64,7 +72,9 @@ Include: yum
     rm -rf $CUDA5_RUN
     rm -rf $CUDA8_RUN
     rm -rf $FREESURFER_GZ
+    rm -rf $BEDPOSTX_GPU_ZIP
     rm -rf /fslinstaller.py
+    rm -rf /license.txt
     yum -y clean all
     rm -rf /var/cache/yum
 
