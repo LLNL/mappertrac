@@ -4,8 +4,9 @@
 *.json
 *.qsub
 *.core
+*.out
 license.txt
-configDefault.sh
+configDefault*
 input/
 output/
 runinfo/

@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='Run BedpostX')
 parser.add_argument('output_dir', help='The directory where the output files should be stored')
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
-parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_false')
+parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_true', default=True)
 args = parser.parse_args()
 
 start_time = printStart()
@@ -39,8 +39,9 @@ smart_copy(join(odir,"bvecs"),join(bedpostx,"bvecs"),args.force)
 if args.use_gpu:
     if 'CUDA_8_LIB_DIR' in environ:
         environ['CUDA_LIB_DIR'] = environ['CUDA_8_LIB_DIR']
-    if not 'CUDA_LIB_DIR' in environ:
-        print("Environment variable CUDA_LIB_DIR not set.")
+        environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
+    else:
+        print("Environment variable CUDA_8_LIB_DIR not set.")
         exit(0)
 
 if args.force or not exists(join(bedpostxResults,"dyads3.nii.gz")):
@@ -48,9 +49,13 @@ if args.force or not exists(join(bedpostxResults,"dyads3.nii.gz")):
     if exists(bedpostxResults):
         rmtree(bedpostxResults)
     
-    if args.use_gpu and exists(join(FSLDIR,"bedpostx_gpu")):
-        print("Running Bedpostx with GPU")
-        run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
+    if args.use_gpu:
+        if exists(join(FSLDIR,"bedpostx_gpu")):
+            print("Running Bedpostx with GPU")
+            run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
+        else:
+            print("Failed to find {}".format(join(FSLDIR,"bedpostx_gpu")))
+            exit(0)
     else:
         print("Running Bedpostx without GPU")
         run("bedpostx " + bedpostx)

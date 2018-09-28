@@ -1,46 +1,42 @@
-BootStrap: yum
-OSVersion: 7
-MirrorURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/os/x86_64/
-Include: yum
-
-#UpdateURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/updates/$basearch/
+Bootstrap: docker
+From: ubuntu:16.04
 
 %files
     run.py
-    fslinstaller.py
     license.txt
 
 %post
     # Links
     GET_PIP=https://bootstrap.pypa.io/get-pip.py
-    TESLA=http://us.download.nvidia.com/tesla/375.66/nvidia-diag-driver-local-repo-rhel7-375.66-1.x86_64.rpm
-    CUDA5=http://developer.download.nvidia.com/compute/cuda/5_0/rel-update-1/installers/cuda_5.0.35_linux_64_rhel6.x-1.run
+    TESLA=http://us.download.nvidia.com/tesla/396.44/NVIDIA-Linux-x86_64-396.44.run
+    CUDA5=http://developer.download.nvidia.com/compute/cuda/5_0/rel-update-1/installers/cuda_5.0.35_linux_64_ubuntu11.10-1.run
     CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
     FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
     BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_8.0/bedpostx_gpu.zip
 
     mkdir /share
-    yum -y update
-    yum -y makecache
-    yum -y install yum-utils
-    yum -y groupinstall development
-    yum -y install wget openssl ca-certificates iputils which vi tcsh
-    yum -y install epel-release
+    apt-get -y update
+    apt-get install -y software-properties-common
+    add-apt-repository -y universe
+    apt-get -y update
+    apt-get -y install wget tcsh build-essential python3 python3-dev curl libtool unzip kmod initramfs-tools locales vim-tiny dkms
+    locale-gen en_US.UTF-8
+    rm /bin/sh
+    ln -s /bin/bash /bin/sh
 
     # Python3 and Parsl
-    yum -y install python36 python36-devel
-    ln -s /bin/python36 /bin/python3
     curl -Ok $GET_PIP
     python3 get-pip.py
-    pip3 install parsl
+    python3 -m pip install parsl
 
-    # Nvidia Tesla Drivers
-    TESLA_RPM=$(basename $TESLA)
-    yum -y install kernel-devel-$(uname -r) kernel-headers-$(uname -r)
-    yum -y install dkms libstdc++.i686 perl-Env
-    wget -c $TESLA
-    rpm -i $TESLA_RPM
-    yum -y install cuda-drivers
+    # Nvidia Drivers
+    apt-get -y install linux-headers-`uname -r`
+    echo "blacklist nouveau" >> /etc/modprobe.d/blacklist-nouveau.conf
+    echo "options nouveau modeset=0" >> /etc/modprobe.d/blacklist-nouveau.conf
+    update-initramfs -u
+    TESLA_RUN=$(basename $TESLA)
+    wget --no-check-certificate $TESLA
+    sh $TESLA_RUN --dkms -s --no-drm
 
     # CUDA 5.0
     CUDA5_RUN=$(basename $CUDA5)
@@ -53,12 +49,16 @@ Include: yum
     sh $CUDA8_RUN -silent -override -toolkit
 
     # FSL
-    python /fslinstaller.py
+    wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
+    apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9
+    apt-get -y update
+    apt-get -y install fsl-5.0-complete
 
     # Bedpostx GPU
     BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
     wget --no-check-certificate $BEDPOSTX_GPU
-    unzip -o -d /usr/local/fsl $BEDPOSTX_GPU_ZIP
+    unzip -o -d /usr/share/fsl/5.0 $BEDPOSTX_GPU_ZIP
+    cp /usr/share/fsl/5.0/bin/*.so /usr/share/fsl/5.0/lib/
 
     # Freesurfer
     FREESURFER_GZ=$(basename $FREESURFER)
@@ -68,18 +68,16 @@ Include: yum
 
     # Cleanup
     rm -rf get-pip.py
-    rm -rf $TESLA_RPM
+    rm -rf $TESLA_RUN
     rm -rf $CUDA5_RUN
     rm -rf $CUDA8_RUN
     rm -rf $FREESURFER_GZ
     rm -rf $BEDPOSTX_GPU_ZIP
-    rm -rf /fslinstaller.py
     rm -rf /license.txt
-    yum -y clean all
-    rm -rf /var/cache/yum
+    apt-get -y clean
 
 %environment
-    export FSLDIR=/usr/local/fsl
+    export FSLDIR=/usr/share/fsl/5.0
     FSL_DIR=$FSLDIR
     FSLOUTPUTTYPE=NIFTI_GZ
     FSLMULTIFILEQUIT=TRUE

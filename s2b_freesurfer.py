@@ -26,7 +26,7 @@ parser.add_argument('output_dir', help='The directory where the output files sho
 parser.add_argument('--subcortical_index', help='Text list of region indices', default="lists/subcorticalIndex.txt")
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
-parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_false')
+parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_true', default=True)
 args = parser.parse_args()
 
 start_time = printStart()
@@ -69,9 +69,13 @@ subject = split(odir)[1]
 
 environ['SUBJECTS_DIR'] = split(odir)[0]
 
-environ['CUDA_LIB_DIR'] = "/usr/local/cuda-5.0/lib64"
-if "CUDA_5_LIB_DIR" in environ:
-    environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
+if args.use_gpu:
+    if 'CUDA_5_LIB_DIR' in environ:
+        environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
+        environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
+    else:
+        print("Environment variable CUDA_5_LIB_DIR not set.")
+        exit(0)
 
 # Make the output directories if necessary
 if not exists(join(odir,"mri")):
@@ -85,6 +89,9 @@ if args.force or not exists(join(odir,"mri/orig/001.mgz")):
 
 if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
     if args.use_gpu:
+        print("\n=====================================\n" +
+"GPU enabled. Running with CUDA device." +
+"\n=====================================\n")
         run("recon-all -s {} -all -no-isrunning -use-gpu".format(subject))
     elif "OMP_NUM_THREADS" in environ and int(environ["OMP_NUM_THREADS"]) > 2:
         run("recon-all -s {} -parallel -openmp {} -all -no-isrunning".format(subject, environ["OMP_NUM_THREADS"]))

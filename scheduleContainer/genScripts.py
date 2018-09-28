@@ -22,12 +22,12 @@ with open("scheduleContainer/s1_dtiPreproc.qsub", "w") as f:
     f.write("./container/run.sh s1_dtiPreproc.py {} {} --output_time --force\n".format(args.input_dir, args.output_dir))
 
 with open("scheduleContainer/s2a_bedpostx.qsub", "w") as f:
-    f.write(get_header("tbi_s2a", "30:00", "s2a_bedpostx.stdout"))
+    f.write(get_header("tbi_s2a", "45:00", "s2a_bedpostx.stdout"))
     # f.write("module load cuda/8.0\n")
-    f.write("./container/runGPU.sh s2a_bedpostx.py {} --output_time --force\n".format(args.output_dir))
+    f.write("./container/runGPU.sh s2a_bedpostx.py {} --output_time --force --use_gpu\n".format(args.output_dir))
 
 with open("scheduleContainer/s2b_freesurfer.qsub", "w") as f:
-    f.write(get_header("tbi_s2b", "1:00:00", "s2b_freesurfer.stdout"))
+    f.write(get_header("tbi_s2b", "10:00:00", "s2b_freesurfer.stdout"))
     f.write("./container/run.sh s2b_freesurfer.py {} --output_time --force --use_gpu\n".format(args.output_dir))
 
 with open("scheduleContainer/s3_ediPreproc.qsub", "w") as f:

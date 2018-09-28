@@ -15,7 +15,7 @@ def smart_copy(src,dest,force=False):
     if force or not exists(dest):
         copyfile(src,dest)
 
-def run(command, env={}, ignore_errors=False, print_output=True, output_time=False, name_override="", working_dir=None, write_output=None):
+def run(command, ignore_errors=False, print_output=True, output_time=False, name_override="", working_dir=None, write_output=None):
     start = time.time()
     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""
