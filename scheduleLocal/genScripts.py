@@ -27,8 +27,7 @@ with open("scheduleLocal/s2a_bedpostx.local.qsub", "w") as f:
     f.write("python3 s2a_bedpostx.py {} --output_time --force\n".format(args.output_dir))
 
 with open("scheduleLocal/s2b_freesurfer.local.qsub", "w") as f:
-    f.write(get_header("tbi_s2b", "1:00:00", "s2b_freesurfer.local.stdout"))
-    f.write("module load cuda/8.0\n")
+    f.write(get_header("tbi_s2b", "8:00:00", "s2b_freesurfer.local.stdout"))
     f.write("python3 s2b_freesurfer.py {} --output_time --force --use_gpu\n".format(args.output_dir))
 
 with open("scheduleLocal/s3_ediPreproc.local.qsub", "w") as f:
