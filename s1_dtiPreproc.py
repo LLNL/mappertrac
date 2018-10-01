@@ -12,7 +12,7 @@ from libsubmit.channels import LocalChannel
 from glob import glob
 from shutil import *
 from subscripts.utilities import *
-from os.path import exists,join,split,splitext,abspath,basename
+from os.path import exists,join,split,splitext,abspath,basename,isdir
 from os import system,mkdir,remove,environ,makedirs
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
@@ -46,18 +46,19 @@ def j1_split_timesteps(input_dir, sdir, outputs=[]):
     smart_copy(join(input_dir,"bvals"),join(sdir,"bvals"))
     smart_copy(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
     input_data = join(input_dir, "hardi.nii.gz")
-    run("fslroi {} {}data_eddy_ref 0 1".format(input_data, sdir))
-    run("fslsplit {} {}data_eddy_tmp".format(input_data, sdir))
+    output_prefix = join(sdir, "data_eddy")
+    run("fslroi {} {}_ref 0 1".format(input_data, output_prefix))
+    run("fslsplit {} {}_tmp".format(input_data, output_prefix))
 
 @python_app
 def j2_timestep_process(sdir, step, inputs=[], outputs=[]):
     from subscripts.utilities import run
-    from os.path import join
-    img = join(sdir,"data_eddy_tmp{:04d}.nii.gz".format(step))
-    if not exists(img):
-        print("Failed to open timestep image {}".format(img))
-    sdir_prefix = join(sdir,"data_eddy")
-    run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(img, sdir_prefix))
+    from os.path import join,exists
+    step_data = join(sdir,"data_eddy_tmp{:04d}.nii.gz".format(step))
+    if not exists(step_data):
+        print("Failed to open timestep image {}".format(step_data))
+    output_prefix = join(sdir,"data_eddy")
+    run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(step_data, output_prefix))
 
 @python_app
 def j3_dti_fit(input_dir, sdir, inputs=[]):
@@ -65,13 +66,13 @@ def j3_dti_fit(input_dir, sdir, inputs=[]):
     from os.path import join
     from glob import glob
     from os import remove
-    sdir_prefix = join(sdir,"data_eddy")
-    data_eddy = join(sdir,"data_eddy.nii.gz")
-    timesteps = glob("{}_tmp????.*".format(sdir_prefix))
-    run("fslmerge -t {} {}".format(data_eddy, " ".join(timesteps)))
+    output_prefix = join(sdir,"data_eddy")
+    output_data = join(sdir,"data_eddy.nii.gz")
+    timesteps = glob("{}_tmp????.*".format(output_prefix))
+    run("fslmerge -t {} {}".format(output_data, " ".join(timesteps)))
     for i in timesteps:
         remove(i)
-    for j in glob("{}_ref*".format(sdir_prefix)):
+    for j in glob("{}_ref*".format(output_prefix)):
         remove(j)
 
     eddy_log = join(sdir,"data_eddy.ecclog")
@@ -82,9 +83,9 @@ def j3_dti_fit(input_dir, sdir, inputs=[]):
     bvals = join(sdir,"bvals")
     dti_params = join(sdir,"DTIparams")
     fa = join(sdir,"FA.nii.gz")
-    run("bet {} {} -m -f 0.3".format(data_eddy,bet))
+    run("bet {} {} -m -f 0.3".format(output_data,bet))
     # run("fdt_rotate_bvecs {} {} {}".format(bvecs,bvecs_rotated,eddy_log))
-    run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(data_eddy,dti_params,bet_mask,bvecs,bvals))
+    run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(output_data,dti_params,bet_mask,bvecs,bvals))
     run("fslmaths {} -add {} -add {} -div 3 {} ".format(dti_params + "_L1.nii.gz",dti_params + "_L2.nii.gz",dti_params + "_L3.nii.gz",dti_params + "_MD.nii.gz"))
     run("fslmaths {} -add {}  -div 2 {} ".format(dti_params + "_L2.nii.gz",dti_params + "_L3.nii.gz",dti_params + "_RD.nii.gz"))
 
@@ -92,26 +93,26 @@ def j3_dti_fit(input_dir, sdir, inputs=[]):
     smart_copy(dti_params + "_FA.nii.gz",fa)
 
 odir = abspath(args.output_dir)
+if not isdir(odir):
+    makedirs(odir)
 jobs = []
 with open(args.subject_list) as f:
     for input_dir in f.readlines():
         input_dir = input_dir.strip()
         input_data = join(input_dir, "hardi.nii.gz")
         sdir = join(odir, basename(input_dir))
+        if not isdir(sdir):
+            mkdir(sdir)
         num_timesteps = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data)).split()[-1]
-        print(num_timesteps)
         if not isInteger(num_timesteps):
             print("Failed to read timesteps from {}".format(input_data))
             continue
         j1_future = j1_split_timesteps(input_dir, sdir)
-        # jobs.append(j1_future)
         j2_futures = []
         for i in range(int(num_timesteps)):
-            j2_future = j2_timestep_process(sdir, i, inputs=[i.outputs[0] for i in output_files], outputs=["all.txt"])
+            j2_future = j2_timestep_process(sdir, i, inputs=[j1_future])
             j2_futures.append(j2_future)
-        # jobs.extend(j2_futures)
-        inputs = []
-        j3_future = j3_dti_fit(input_dir, sdir, j2_futures)
+        j3_future = j3_dti_fit(input_dir, sdir, inputs=j2_futures)
         jobs.append(j3_future)
 for job in jobs:
     job.result()
