@@ -22,7 +22,8 @@ sub_vol_dir = "volumes_subcortical"
 threshold = "0.2"
 
 parser = argparse.ArgumentParser(description='Preprocess Freesurfer data')
-parser.add_argument('output_dir', help='The directory where the output files should be stored')
+parser.add_argument('subject_list',help='Text file with list of subject directories.')
+parser.add_argument('output_dir',help='The super-directory that contains an output directory for each subject')
 parser.add_argument('--subcortical_index', help='Text list of region indices', default="lists/subcorticalIndex.txt")
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')

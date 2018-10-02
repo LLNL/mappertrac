@@ -4,13 +4,23 @@ import os
 import subprocess
 import sys
 import shutil
-from os.path import exists, join, split, splitext, abspath
-from os import system, environ
-from subprocess import Popen, PIPE
+from os.path import exists,join,split,splitext,abspath
+from os import system,environ,makedirs
+from subprocess import Popen,PIPE
 
 def smart_copy(src,dest,force=False):
     if force or not exists(dest):
         shutil.copyfile(src,dest)
+
+def smart_mkdir(path):
+    if not exists(path):
+        makedirs(path)
+
+def exist_all(paths):
+    for path in paths:
+        if not exists(path):
+            return False
+    return True
 
 def run(command, ignore_errors=False, print_output=True, output_time=False, name_override="", working_dir=None, write_output=None):
     start = time.time()
