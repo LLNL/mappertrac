@@ -30,11 +30,21 @@ If you do not have root access (e.g. using a cluster), then clone this repo on a
 
 Make sure to place a Freesurfer license in the base directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
 
+### Example Workflow
+
+```
+source configLocal.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib64 dir> <CUDA 5 lib64 dir>
+./scheduleLocal/genScripts.py <path to subject dir (should contain hardi.nii.gz, bvals, bvecs)> <path to output dir>
+msub scheduleLocal/s1_dtiPreproc.local.qsub
+```
+After it finishes, repeat msub with s2a and s2b (independent, so can be done in simultaneously). After both of those finish, msub s3. After that finishes, msub s4.
+TODO: replace workflow with single Parsl script
+
 ### File Overview
 
 ```
 TracktographyScripts/
-+- configLocal.sh               # source configLocal.sh <FSL dir> <Freesurfer dir> <CUDA lib dir (optional)> 
++- configLocal.sh               # source configLocal.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir (optional)> <CUDA 5 lib dir (optional)> 
 |                                 IMPORTANT: Run this before using local install
 +- container/
 |  +- build.sh                  # ./container/build.sh
@@ -67,13 +77,13 @@ TracktographyScripts/
 |                                 Setup and image correction (~5 minutes with 36 cores)
 |
 +- s2a_bedpostx.py              # ./s2a_bedpostx.py <output dir>
-|                                 Generate streamlines (~30 minutes with GPU)
+|                                 Generate streamlines (~15 minutes with GPU)
 |
 +- s2b_freesurfer.py            # ./s2b_freesurfer.py <output dir>
-|                                 Map regions (~10 hours)
+|                                 Map regions (~8 hours with 36 cores)
 |
 +- s3_ediPreproc.py             # ./s3_ediPreproc.py <output dir>  
-|                                 Generate connectome and analyze tractography (~3 hours)
+|                                 Generate connectome and analyze tractography (~3 hours with 36 cores)
 |
 +- s4_consensusEDI.py           # ./s4_consensusEDI.py <output dir>
 |                                 Generate edge density image (~1 hour)
