@@ -69,8 +69,6 @@ if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
     else:
         run("recon-all -s {} -all -no-isrunning".format(subject))
 
-exit(0)
-
 run("mri_convert {} {} ".format(join(odir,"mri","brain.mgz"),T1))
 
 if args.force or not exists(join(odir,"FA2T1.mat")):
