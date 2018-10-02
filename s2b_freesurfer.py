@@ -8,7 +8,7 @@ from parsl.app.app import python_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from libsubmit.providers import LocalProvider
-from os.path import exists,join,split,splitext,abspath
+from os.path import exists,join,split,splitext,abspath,islink
 from os import system,mkdir,remove,environ
 from shutil import *
 from glob import glob
@@ -31,38 +31,6 @@ parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_
 args = parser.parse_args()
 
 start_time = printStart()
-
-# config = Config(
-#     executors=[
-#         IPyParallelExecutor(
-#             label='test_singlenode',
-#             provider=LocalProvider(
-#                 init_blocks=multiprocessing.cpu_count(),
-#                 max_blocks=multiprocessing.cpu_count(),
-#             )
-#         )
-#     ]
-# )
-
-# parsl.load(config)
-
-# @python_app
-# def extract_vol_label(vol_name):
-#     run("mri_label2vol --label {} --temp {} --identity --o {}".format(label,T1,join(odir,vol_dir,vol_name)))
-
-# @python_app
-# def create_subvol(vol_name):
-#     run("fslmaths {} -uthr {} -thr {} -bin {}".format(join(odir,"aseg.nii.gz"),num,num, join(odir,sub_vol_dir,area + ".nii.gz")))
-
-# @python_app
-# def process_vol(vol_name):
-#     run("flirt -in {} -ref {} -out {}  -applyxfm -init {}".format(volume,join(odir,"FA.nii.gz"), out_vol,join(odir,"T12FA.mat")))
-#     run("fslmaths {} -thr {} -bin {} ".format(out_vol,threshold,out_vol))
-
-# @python_app
-# def process_subvol(vol_name):
-#     run("flirt -in {} -ref {} -out {}  -applyxfm -init {}".format(volume,join(odir,"FA.nii.gz"), out_vol,join(odir,"T12FA.mat")))
-#     run("fslmaths {} -thr {} -bin {} ".format(out_vol,threshold,out_vol))
 
 odir = abspath(args.output_dir)
 T1 = join(odir,"T1.nii.gz")
@@ -88,12 +56,15 @@ if not exists(join(odir,"mri/orig")):
 if args.force or not exists(join(odir,"mri/orig/001.mgz")):
     run("mri_convert {} {}".format(T1,join(odir,"mri/orig/001.mgz")))
 
+if islink(join(environ['SUBJECTS_DIR'],"fsaverage")):
+    run("unlink {}".format(join(environ['SUBJECTS_DIR'],"fsaverage")))
+
 if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
     if args.use_gpu:
         print("\n=====================================\n" +
 "GPU enabled. Running with CUDA device." +
 "\n=====================================\n")
-        run("recon-all -s {} -all -no-isrunning -use-gpu".format(subject))
+        run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, multiprocessing.cpu_count()))
     elif "OMP_NUM_THREADS" in environ and int(environ["OMP_NUM_THREADS"]) > 2:
         run("recon-all -s {} -parallel -openmp {} -all -no-isrunning".format(subject, environ["OMP_NUM_THREADS"]))
     else:
