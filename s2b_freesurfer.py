@@ -59,15 +59,14 @@ if islink(join(environ['SUBJECTS_DIR'],"fsaverage")):
     run("unlink {}".format(join(environ['SUBJECTS_DIR'],"fsaverage")))
 
 if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
+    num_cores = max(int(multiprocessing.cpu_count() / 2), 1)
     if args.use_gpu:
         print("\n=====================================\n" +
 "GPU enabled. Running with CUDA device." +
 "\n=====================================\n")
-        run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, int(multiprocessing.cpu_count() / 2)))
-    elif "OMP_NUM_THREADS" in environ and int(environ["OMP_NUM_THREADS"]) > 2:
-        run("recon-all -s {} -parallel -openmp {} -all -no-isrunning".format(subject, environ["OMP_NUM_THREADS"]))
+        run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, num_cores))
     else:
-        run("recon-all -s {} -all -no-isrunning".format(subject))
+        run("recon-all -s {} -parallel -openmp {} -all -no-isrunning".format(subject, num_cores))
 
 run("mri_convert {} {} ".format(join(odir,"mri","brain.mgz"),T1))
 

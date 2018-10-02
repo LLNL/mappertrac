@@ -40,25 +40,6 @@ config = Config(
             max_threads=multiprocessing.cpu_count(),
             label='local_threads'
         )
-#         IPyParallelExecutor(
-#             label='test_singlenode',
-#             provider=LocalProvider(
-#                 init_blocks=multiprocessing.cpu_count(),
-#                 max_blocks=multiprocessing.cpu_count(),
-#             )
-#             provider=SlurmProvider(
-#                 'pbatch',
-#                 channel=LocalChannel(),
-#                 tasks_per_node=18,
-#                 nodes_per_block=4,
-#                 max_blocks=1,
-#                 walltime="01:00:00",
-#                 overrides="""
-# #SBATCH -A asccasc
-# #SBATCH -p pbatch
-# #SBATCH -J tbi_s3""",
-#             )
-#         )
     ],
     retries=3,
     checkpoint_mode = 'dfk_exit'

@@ -13,7 +13,7 @@ def get_header(job_name, walltime, stdout):
 #MSUB -l nodes=1
 #MSUB -l walltime={}
 #MSUB -q pbatch
-#MSUB -A asccasc
+#MSUB -A ccp
 #MSUB -o scheduleLocal/{}\n""".format(job_name, walltime, stdout)
 
 

@@ -50,7 +50,7 @@ config = Config(
                 init_blocks=1,
                 max_blocks=1,
                 walltime="00:15:00",
-                overrides="#SBATCH -A asccasc"
+                overrides="#SBATCH -A ccp"
 #SBATCH -o pascal_node_parsl.stdout
 # module load cuda/8.0;"""
             ),
@@ -136,52 +136,78 @@ def j3_dti_fit(input_dir, sdir, force, inputs=[]):
 
 @python_app(executors=["pascal_node"])
 def j4_bedpostx(sdir, force, inputs=[]):
-    print("b")
-    # import shutil
-    # from subscripts.utilities import run,smart_copy,smart_mkdir,exist_all
-    # from os.path import join,exists
-    # bedpostx = join(sdir,"bedpostx_b1000")
-    # bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
-    # bedpostxResultsEDI = join(sdir,"EDI","bedpostx_b1000.bedpostX")
-    # smart_mkdir(bedpostx)
-    # smart_mkdir(bedpostxResults)
-    # smart_copy(join(sdir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
-    # smart_copy(join(sdir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
-    # smart_copy(join(sdir,"bvals"),join(bedpostx,"bvals"),force)
-    # smart_copy(join(sdir,"bvecs"),join(bedpostx,"bvecs"),force)
+    import shutil
+    from subscripts.utilities import run,smart_copy,smart_mkdir,exist_all
+    from os.path import join,exists
+    bedpostx = join(sdir,"bedpostx_b1000")
+    bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
+    bedpostxResultsEDI = join(sdir,"EDI","bedpostx_b1000.bedpostX")
+    smart_mkdir(bedpostx)
+    smart_mkdir(bedpostxResults)
+    smart_copy(join(sdir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
+    smart_copy(join(sdir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
+    smart_copy(join(sdir,"bvals"),join(bedpostx,"bvals"),force)
+    smart_copy(join(sdir,"bvecs"),join(bedpostx,"bvecs"),force)
 
-    # th1 = join(bedpostxResults, "merged_th1samples")
-    # ph1 = join(bedpostxResults, "merged_ph1samples")
-    # th2 = join(bedpostxResults, "merged_th2samples")
-    # ph2 = join(bedpostxResults, "merged_ph2samples")
-    # dyads1 = join(bedpostxResults, "dyads1")
-    # dyads2 = join(bedpostxResults, "dyads2")
-    # brain_mask = join(bedpostxResults, "nodif_brain_mask")
-    # if force or not exist_all([th1,ph1,th2,ph2]):
-    #     run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
-    # if force or not exists(dyads1):
-    #     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1))
-    # if force or not exists(dyads2):
-    #     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2))
-    # if force or not exists(bedpostxResultsEDI):
-    #     if exists(bedpostxResultsEDI):
-    #         shutil.rmtree(bedpostxResultsEDI)
-    #     shutil.copytree(bedpostxResults, bedpostxResultsEDI)
+    th1 = join(bedpostxResults, "merged_th1samples")
+    ph1 = join(bedpostxResults, "merged_ph1samples")
+    th2 = join(bedpostxResults, "merged_th2samples")
+    ph2 = join(bedpostxResults, "merged_ph2samples")
+    dyads1 = join(bedpostxResults, "dyads1")
+    dyads2 = join(bedpostxResults, "dyads2")
+    brain_mask = join(bedpostxResults, "nodif_brain_mask")
+    if force or not exist_all([th1,ph1,th2,ph2]):
+        run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
+    if force or not exists(dyads1):
+        run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1))
+    if force or not exists(dyads2):
+        run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2))
+    if force or not exists(bedpostxResultsEDI):
+        if exists(bedpostxResultsEDI):
+            shutil.rmtree(bedpostxResultsEDI)
+        shutil.copytree(bedpostxResults, bedpostxResultsEDI)
+
+@python_app(executors=["pascal_node"])
+@python_app
+def j5_freesurfer(sdir, force, use_gpu=True, inputs=[]):
+    from subscripts.utilities import run,smart_mkdir
+    from os import environ
+    from os.path import join,exists,islink,split
+    T1 = join(sdir,"T1.nii.gz")
+    subject = split(sdir)[1]
+    environ['SUBJECTS_DIR'] = split(sdir)[0]
+    if use_gpu:
+        environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
+        environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
+    smart_mkdir(join(sdir,"mri"))
+    smart_mkdir(join(sdir,"mri","orig"))
+
+    if force or not exists(join(sdir,"mri","orig"."001.mgz")):
+        run("mri_convert {} {}".format(T1,join(sdir,"mri","orig"."001.mgz")))
+
+    if islink(join(environ['SUBJECTS_DIR'],"fsaverage")):
+        run("unlink {}".format(join(environ['SUBJECTS_DIR'],"fsaverage")))
+
+    if force or not exists(join(sdir,"mri","aparc+aseg.mgz")):
+        if use_gpu:
+            run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, multiprocessing.cpu_count()))
+        else:
+            run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, multiprocessing.cpu_count()))
 
 @python_app
-def j5_freesurfer(sdir, inputs=[]):
+def j6_freesurfer_postproc(sdir, force, inputs=[]):
     pass
 
 @python_app
-def j6_freesurfer_postproc(sdir, inputs=[]):
+def j7_edi_preproc(sdir, force, inputs=[]):
     pass
 
 @python_app
-def j7_edi_preproc(sdir, inputs=[]):
+def j8_edi_oneway(sdir, force, inputs=[]):
     pass
 
 @python_app
-def j8_edi(sdir, inputs=[]):
+def j9_edi_consensus(sdir, force, inputs=[]):
     pass
 
 odir = abspath(args.output_dir)
@@ -206,6 +232,9 @@ with open(args.subject_list) as f:
             j2_futures.append(j2_future)
         j3_future = j3_dti_fit(input_dir, sdir, args.force, inputs=j2_futures)
         # j4_future = j4_bedpostx(sdir, args.force, inputs=[j3_future])
+        # j5_future = j5_freesurfer(sdir, args.force, inputs=[j3_future])
+        # j6_future = j6_freesurfer(sdir, args.force, inputs=[j5_future])
+        # j7_future = j7_freesurfer(sdir, args.force, inputs=[j4_future, j6_future])
         jobs.append(j3_future)
 for job in jobs:
     job.result()
