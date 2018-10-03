@@ -54,7 +54,7 @@ if args.force or not exists(join(bedpostxResults,"dyads3.nii.gz")):
         if exists(join(FSLDIR,"bedpostx_gpu")):
             print("Running Bedpostx with GPU")
             run("bedpostx_gpu " + bedpostx + " -NJOBS 4")
-            exit(0)
+            # exit(0)
         else:
             print("Failed to find {}".format(join(FSLDIR,"bedpostx_gpu")))
             exit(0)

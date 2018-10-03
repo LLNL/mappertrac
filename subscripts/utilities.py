@@ -5,7 +5,7 @@ import subprocess
 import sys
 import shutil
 from os.path import exists,join,split,splitext,abspath
-from os import system,environ,makedirs
+from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
 
 def smart_copy(src,dest,force=False):
@@ -15,6 +15,14 @@ def smart_copy(src,dest,force=False):
 def smart_mkdir(path):
     if not exists(path):
         makedirs(path)
+
+def smart_run(command, path, force=False):
+    if not exists(path):
+        run(command)
+
+def smart_remove(path):
+    if exists(path):
+        remove(path)
 
 def exist_all(paths):
     for path in paths:
