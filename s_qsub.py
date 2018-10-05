@@ -18,11 +18,12 @@ parser.add_argument('script',help='Script to run in parallel')
 parser.add_argument('--force',help='Force re-compute if output already exists',action='store_true')
 parser.add_argument('--output_time',help='Print completion time',action='store_true')
 parser.add_argument('--use_input',help='Add an input argument before the subject dir argument',action='store_true')
-parser.add_argument('--max_nodes',help='Max nodes per Moab batch script',default=2)
+parser.add_argument('--max_jobs',help='Max jobs per Moab batch script',default=36)
+parser.add_argument('--max_time',help='Walltime of batch script',default=7)
+parser.add_argument('--cpus_per_job',help='Number of CPUs per job',default=36)
+parser.add_argument('--use_gpu',help='Request a gpu per job, load CUDA 8.0',action='store_true')
 args = parser.parse_args()
 
-# cores_per_task = 36
-max_time = 10
 qsub = join('qsub','arguments')
 
 force = "--force" if args.force else ""
@@ -39,7 +40,7 @@ lines = []
 with open(args.subject_list) as f:
     for line in f.readlines():
         lines.append(line.strip())
-input_dirs = list(chunks(lines, args.max_nodes))
+input_dirs = list(chunks(lines, args.max_jobs))
 
 i=0
 for chunk in input_dirs:
@@ -55,12 +56,16 @@ for chunk in input_dirs:
     i+=1
 
 i=0
+gpu = "True" if args.use_gpu else "False"
 for chunk in input_dirs:
     pbs_cmd = ("python batch_scripts/PBSBatchMaster.py" 
-               + " {}{}.list {} {}".format(qsub,i,len(chunk),max_time)
+               + " {}{}.list {} {} {} {}".format(qsub,i,len(chunk),args.cpus_per_job,gpu,args.max_time)
                + " python3 {}".format(args.script)
                + " --input {} {}".format(force, output_time)
                )
-    run(pbs_cmd)
+    print(pbs_cmd)
+    script_name = run(pbs_cmd)
+    # if args.load_cuda8:
+        # run("sed -i '/date;/a module load cuda\/8.0' {}".format(join('qsub',script_name)))
     i+=1
 

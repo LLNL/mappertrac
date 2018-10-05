@@ -8,6 +8,10 @@ import struct
 import time
 import stat
 import glob
+from math import ceil
+
+def str2bool(v):
+  return v.lower() in ("yes", "true", "t", "1")
 
 src_dir = split(abspath(sys.argv[0]))[0]
 
@@ -91,10 +95,15 @@ else:
     next_arg = 2
 
 nr_of_jobs = int(sys.argv[next_arg])
+cpus_per_job = int(sys.argv[next_arg+1])
+use_gpu = str2bool(sys.argv[next_arg+2])
 
-runtime = int(sys.argv[next_arg+1])
-cmdName = basename(splitext(sys.argv[next_arg+2])[0])
-scriptName = basename(splitext(sys.argv[next_arg+3])[0])
+runtime = int(sys.argv[next_arg+3])
+cmdName = basename(splitext(sys.argv[next_arg+4])[0])
+scriptName = basename(splitext(sys.argv[next_arg+5])[0])
+
+cpus_per_node = 36
+nr_of_nodes = int(ceil(nr_of_jobs * cpus_per_job / cpus_per_node))
 
 # if necessary create a subdirectory ./qsub to store the .qsub and log files
 psub = join(os.getcwd(),"qsub")
@@ -110,7 +119,7 @@ if have_range:
     for i in range(start,stop,sub_step):
         cmd = ""
         
-        for arg in sys.argv[next_arg+2:] : #The rest of the command-line
+        for arg in sys.argv[next_arg+4:] : #The rest of the command-line
             if arg == "--index":
                 cmd += " %d" % i
             elif arg == "--next":
@@ -145,7 +154,7 @@ else:
 
         cmd = ""
         
-        for arg in sys.argv[next_arg+2:] : #The rest of the command-line
+        for arg in sys.argv[next_arg+4:] : #The rest of the command-line
             if arg == "--input":
                 cmd += " " + file
             else:
@@ -169,27 +178,34 @@ while isfile(script_name) :
     log_file = join(psub,"log_%s_%02d.stdout" % (scriptName,fileCount))
 
 script_llnl = """#!/bin/sh
-#MSUB -N %s
-#MSUB -o %s
-#MSUB -j oe
-#MSUB -l walltime=%02d:%02d:00
-#MSUB -l nodes=%s
-#MSUB -A %s
-#MSUB -q %s
-date; 
-"""
+#SBATCH -J %s
+#SBATCH -o %s
+#SBATCH -t %02d:%02d:00
+#SBATCH -N %s
+#SBATCH -A %s
+#SBATCH -p %s"""
 
-script = script_llnl % (cmdName,log_file,runtime / 60, runtime % 60, nr_of_jobs, project, queue)
+script = script_llnl % (scriptName,log_file,runtime / 60, runtime % 60, nr_of_nodes, project, queue)
+# if use_gpu:
+    # script += "\n#SBATCH --gres=gpu:%d" % nr_of_jobs
+script += "\ndate;"
+# gpu = ""
+if use_gpu:
+    script += "\nmodule load cuda/8.0"
+    # gpu = " --gres=gpu:1"
 
-for i in xrange(0,len(command_lines),nr_of_jobs):
-    for cmd in command_lines[i:i+nr_of_jobs]:
-        script += "\nsrun -n 1 -c 36%s &" % cmd
-    script += "\nwait\n"
+for i in xrange(0,len(command_lines)):
+    script += "\nsrun -N 1 -n 1 -c %d%s" % (cpus_per_job,command_lines[i])
+    # if use_gpu:
+        # script += " --gpu_idx=%d" % i
+    script += " &"
+script += "\nwait\n"
 
 # write the script
 print "Creating %s\n"% script_name
 f = open(script_name, "w")
 f.write(script)
 f.close()
+print script_name
 
    

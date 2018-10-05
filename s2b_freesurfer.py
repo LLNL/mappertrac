@@ -26,7 +26,7 @@ parser.add_argument('output_dir', help='The directory where the output files sho
 parser.add_argument('--subcortical_index', help='Text list of region indices', default="lists/subcorticalIndex.txt")
 parser.add_argument('--force', help='Force re-compute if output already exists', action='store_true')
 parser.add_argument('--output_time', help='Print completion time', action='store_true')
-parser.add_argument('--use_gpu', help='Use GPU-enabled binaries', action='store_true', default=True)
+parser.add_argument('--disable_gpu', help='Use GPU-enabled binaries', action='store_true')
 args = parser.parse_args()
 
 start_time = printStart()
@@ -37,7 +37,7 @@ subject = split(odir)[1]
 
 environ['SUBJECTS_DIR'] = split(odir)[0]
 
-if args.use_gpu:
+if not args.disable_gpu:
     if 'CUDA_5_LIB_DIR' in environ:
         environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
         environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
@@ -60,7 +60,7 @@ if islink(join(environ['SUBJECTS_DIR'],"fsaverage")):
 
 if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
     num_cores = max(int(multiprocessing.cpu_count() / 2), 1)
-    if args.use_gpu:
+    if not args.disable_gpu:
         print("\n=====================================\n" +
 "GPU enabled. Running with CUDA device." +
 "\n=====================================\n")
