@@ -37,7 +37,7 @@ def run(command, ignore_errors=False, print_output=True, output_time=False, name
     while True:
         new_line = process.stdout.readline()
         new_line = str(new_line, 'utf-8')[:-1]
-        if print_output:
+        if print_output and new_line:
             print(new_line)
         if write_output != None:
             with open(write_output, 'a') as f:

@@ -30,12 +30,12 @@ config = Config(
             provider=SlurmProvider(
                 'pbatch',
                 channel=LocalChannel(),
-                # launcher=SrunLauncher(),
+                launcher=SrunLauncher(),
                 nodes_per_block=1,
-                tasks_per_node=72,
+                tasks_per_node=36,
                 init_blocks=1,
                 max_blocks=1,
-                walltime="00:15:00",
+                walltime="00:03:00",
                 overrides="""#SBATCH -A ccp"""
             ),
         ),
@@ -57,10 +57,11 @@ config = Config(
     ]
 )
 
+parsl.set_stream_logger()
 parsl.load(config)
 
 @python_app(executors=["threaded"])
-def j1_split_timesteps(input_dir, sdir, force, outputs=[]):
+def j1_split_timesteps(input_dir, sdir, force):
     from subscripts.utilities import run, smart_copy
     from os.path import join,exists
     smart_copy(join(input_dir,"bvecs"),join(sdir,"bvecs"),force)
@@ -291,12 +292,17 @@ def j8_edi_oneway(sdir, force, inputs=[]):
 def j9_edi_consensus(sdir, force, inputs=[]):
     pass
 
+@python_app(executors=["threaded"])
+def reflect(input):
+    return input
+
 odir = abspath(args.output_dir)
 if not isdir(odir):
     makedirs(odir)
 jobs = []
 with open(args.subject_list) as f:
     for input_dir in f.readlines():
+        # jobs.append(reflect(input_dir))
         input_dir = input_dir.strip()
         input_data = join(input_dir, "hardi.nii.gz")
         sdir = join(odir, basename(input_dir))
@@ -307,16 +313,16 @@ with open(args.subject_list) as f:
             print("Failed to read timesteps from {}".format(input_data))
             continue
         j1_future = j1_split_timesteps(input_dir, sdir, args.force)
-        j2_futures = []
-        for i in range(int(num_timesteps)):
-            j2_future = j2_timestep_process(sdir, i, args.force, inputs=[j1_future])
-            j2_futures.append(j2_future)
-        j3_future = j3_dti_fit(input_dir, sdir, args.force, inputs=j2_futures)
+        # j2_futures = []
+        # for i in range(int(num_timesteps)):
+        #     j2_future = j2_timestep_process(sdir, i, args.force, inputs=[j1_future])
+        #     j2_futures.append(j2_future)
+        # j3_future = j3_dti_fit(input_dir, sdir, args.force, inputs=j2_futures)
         # j4_future = j4_bedpostx(sdir, args.force, inputs=[j3_future])
         # j5_future = j5_freesurfer(sdir, args.force, inputs=[j3_future])
         # j6_future = j6_freesurfer_postproc(sdir, args.force, inputs=[j5_future])
         # j7_future = j7_edi_preproc(sdir, args.force, inputs=[j4_future, j6_future])
-        jobs.append(j3_future)
+        jobs.append(j1_future)
 for job in jobs:
     job.result()
 if args.output_time:

@@ -30,7 +30,7 @@ If you do not have root access (e.g. using a cluster), then clone this repo on a
 
 Make sure to place a Freesurfer license in the base directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
 
-### Example Workflow
+### Local Workflow
 
 ```
 source configLocal.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib64 dir> <CUDA 5 lib64 dir>
@@ -39,6 +39,14 @@ msub scheduleLocal/s1_dtiPreproc.local.qsub
 ```
 After it finishes, repeat msub with s2a and s2b (independent, so can be done in simultaneously). After both of those finish, msub s3. After that finishes, msub s4.
 TODO: replace workflow with single Parsl script
+
+### Singularity Workflow
+
+```
+./scheduleContainer/genScripts.py <path to subject dir (should contain hardi.nii.gz, bvals, bvecs)> <path to output dir>
+msub scheduleContainer/s1_dtiPreproc.qsub
+```
+Just like before, run the subsequent steps after the previous ones finish.
 
 ### File Overview
 
@@ -50,8 +58,8 @@ TracktographyScripts/
 |  +- build.sh                  # ./container/build.sh
 |  |                              Build a compressed Singularity image with required libraries
 |  +- internal/
-|  |  +- fslinstaller.py        # Custom FSL install script (do not change)
-|  |  +- run.py                 # Container runscript (do not change)
+|  |  +- fslinstaller.py        # Custom FSL install script (used while building, do not change)
+|  |  +- run.py                 # Container runscript (used while building, do not change)
 |  |
 |  +- image.simg                # Not included
 |  |                              Singularity container with FSL & Freesurfer
@@ -80,7 +88,7 @@ TracktographyScripts/
 |                                 Generate streamlines (~15 minutes with GPU)
 |
 +- s2b_freesurfer.py            # ./s2b_freesurfer.py <output dir>
-|                                 Map regions (~8 hours with 36 cores)
+|                                 Map regions (~3 hours with GPU and 36 cores)
 |
 +- s3_ediPreproc.py             # ./s3_ediPreproc.py <output dir>  
 |                                 Generate connectome and analyze tractography (~3 hours with 36 cores)

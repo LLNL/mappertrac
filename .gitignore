@@ -12,5 +12,8 @@ output/
 runinfo/
 parsl_scripts/
 test/
+qsub/
 __pycache__
 !.gitignore
+*~
+subjects*.txt

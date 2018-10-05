@@ -1,2 +1,2 @@
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI10
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI11
+/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI2
+/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI3

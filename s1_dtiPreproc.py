@@ -4,9 +4,11 @@ import sys
 import os
 import multiprocessing
 import parsl
+from mpi4py import MPI
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
+from parsl.executors.threads import ThreadPoolExecutor
 from libsubmit.providers import LocalProvider
 from libsubmit.channels import LocalChannel
 from glob import glob
@@ -14,6 +16,9 @@ from shutil import *
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath
 from os import system,mkdir,remove,environ,makedirs
+from parsl.configs.local_threads import config
+
+comm = MPI.COMM_WORLD
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('input_dir',help='The directory with the input dataset '
@@ -32,20 +37,40 @@ start_time = printStart()
 config = Config(
     executors=[
         IPyParallelExecutor(
-            label='test_singlenode',
+            label="single_node",
             provider=LocalProvider(
                 init_blocks=multiprocessing.cpu_count(),
                 max_blocks=multiprocessing.cpu_count(),
             )
         )
-    ]
+        # ThreadPoolExecutor(
+        #     max_threads=multiprocessing.cpu_count(),
+        # )
+    ],
+    # run_dir="runinfo{}".format(comm.rank)
 )
-
+parsl.set_stream_logger()
 parsl.load(config)
 
-@python_app
+@python_app(executors=["single_node"])
 def eddy_correct(section, output_prefix):
     from subscripts.utilities import run
+    # import subprocess
+    # from os import system,environ
+    # from subprocess import Popen,PIPE
+    # def run(command):
+    #     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ)
+    #     line = ""
+    #     while True:
+    #         new_line = str(process.stdout.readline(),'utf-8')[:-1]
+    #         if new_line:
+    #             print(new_line)
+    #         if new_line == '' and process.poll() is not None:
+    #             break
+    #         line = new_line
+    #     if process.returncode != 0 and not ignore_errors:
+    #         raise Exception("Non zero return code: {}".format(process.returncode))
+    #     return line
     run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(section, output_prefix))
 
 idir = abspath(args.input_dir)
@@ -73,6 +98,8 @@ bvals = join(odir,"bvals")
 dti_params = join(odir,"DTIparams")
 fa = join(odir,"FA.nii.gz")
 T1 = join(odir,"T1.nii.gz")
+rd = dti_params + "_RD.nii.gz"
+md = dti_params + "_MD.nii.gz"
 
 # If necessary copy the data into the target directory
 smart_copy(join(idir,"hardi.nii.gz"),data,args.force)
@@ -81,7 +108,7 @@ smart_copy(join(idir,"bvals"),bvals)
 smart_copy(join(idir,"anat.nii.gz"),T1)
 
 # Start the eddy correction (3 minutes)
-if args.force or not exists(eddy):
+if args.force or not exist_all([eddy,bet,bvecs_rotated,fa,rd,md]):
     if exists(eddy_log):
         remove(eddy_log)
     print("Eddy correction")
@@ -97,7 +124,6 @@ if args.force or not exists(eddy):
     for section in full_list:
         print(section)
         jobs.append(eddy_correct(section, output_prefix))
-        # run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1".format(i, eddy))
     for job in jobs:
         job.result()
     run("fslmerge -t {} {}".format(eddy, " ".join(full_list)))
@@ -106,20 +132,15 @@ if args.force or not exists(eddy):
     for j in glob(join("{}_ref*").format(output_prefix)):
         remove(j)
 
-    # run("eddy_correct {} {} 0".format(data,eddy),output_time=True)
-
-if args.force or not exists(bet):
     print("Brain extraction")
     run("bet {} {} -m -f 0.3".format(eddy,bet),output_time=True)
 
-if args.force or not exists(bvecs_rotated):
     print("Rotating")
     run("fdt_rotate_bvecs {} {} {}".format(bvecs,bvecs_rotated,eddy_log),output_time=True)
 
-if args.force or not exists(dti_params + "_MD.nii.gz"):
     run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(eddy,dti_params,bet_mask,bvecs,bvals),output_time=True)
-    run("fslmaths {} -add {} -add {} -div 3 {} ".format(dti_params + "_L1.nii.gz",dti_params + "_L2.nii.gz",dti_params + "_L3.nii.gz",dti_params + "_MD.nii.gz"),output_time=True)
-    run("fslmaths {} -add {}  -div 2 {} ".format(dti_params + "_L2.nii.gz",dti_params + "_L3.nii.gz",dti_params + "_RD.nii.gz"),output_time=True)
+    run("fslmaths {} -add {} -add {} -div 3 {} ".format(dti_params + "_L1.nii.gz",dti_params + "_L2.nii.gz",dti_params + "_L3.nii.gz",md),output_time=True)
+    run("fslmaths {} -add {}  -div 2 {} ".format(dti_params + "_L2.nii.gz",dti_params + "_L3.nii.gz",rd),output_time=True)
 
     copy(dti_params + "_L1.nii.gz",dti_params + "_AD.nii.gz")
     copy(dti_params + "_FA.nii.gz",fa)
