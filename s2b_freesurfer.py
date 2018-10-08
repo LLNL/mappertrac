@@ -65,8 +65,10 @@ if args.force or not exists(join(odir,"mri","aparc+aseg.mgz")):
 "GPU enabled. Running with CUDA device." +
 "\n=====================================\n")
         run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, num_cores))
-    else:
+    elif num_cores > 1:
         run("recon-all -s {} -parallel -openmp {} -all -no-isrunning".format(subject, num_cores))
+    else:
+        run("recon-all -s {} -all -no-isrunning".format(subject))
 
 run("mri_convert {} {} ".format(join(odir,"mri","brain.mgz"),T1))
 

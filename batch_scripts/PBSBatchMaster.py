@@ -103,7 +103,7 @@ cmdName = basename(splitext(sys.argv[next_arg+4])[0])
 scriptName = basename(splitext(sys.argv[next_arg+5])[0])
 
 cpus_per_node = 36
-nr_of_nodes = int(ceil(nr_of_jobs * cpus_per_job / cpus_per_node))
+nr_of_nodes = int(ceil(float(nr_of_jobs) * float(cpus_per_job) / float(cpus_per_node)))
 
 # if necessary create a subdirectory ./qsub to store the .qsub and log files
 psub = join(os.getcwd(),"qsub")
@@ -170,11 +170,11 @@ else:
 
 # Search for a free .qsub name to write this script into
 fileCount = 0
-script_name = join(psub,"%s_%02d.qsub" % (scriptName,fileCount))
+qsub_path = join(psub,"%s_%02d.qsub" % (scriptName,fileCount))
 log_file = join(psub,"log_%s_%02d.stdout" % (scriptName,fileCount))
-while isfile(script_name) :
+while isfile(qsub_path) :
     fileCount += 1
-    script_name = join(psub,"%s_%02d.qsub" % (scriptName,fileCount))
+    qsub_path = join(psub,"%s_%02d.qsub" % (scriptName,fileCount))
     log_file = join(psub,"log_%s_%02d.stdout" % (scriptName,fileCount))
 
 script_llnl = """#!/bin/sh
@@ -194,18 +194,22 @@ if use_gpu:
     script += "\nmodule load cuda/8.0"
     # gpu = " --gres=gpu:1"
 
+node_flag = ""
+if int(nr_of_nodes) == int(nr_of_jobs):
+    node_flag = " -N 1"
+
 for i in xrange(0,len(command_lines)):
-    script += "\nsrun -N 1 -n 1 -c %d%s" % (cpus_per_job,command_lines[i])
+    script += "\nsrun%s -n 1 -c %d%s" % (node_flag,cpus_per_job,command_lines[i])
     # if use_gpu:
         # script += " --gpu_idx=%d" % i
     script += " &"
 script += "\nwait\n"
 
 # write the script
-print "Creating %s\n"% script_name
-f = open(script_name, "w")
+print "Creating %s\n"% qsub_path
+f = open(qsub_path, "w")
 f.write(script)
 f.close()
-print script_name
-
+print qsub_path
+# print basename(splitext(qsub_path)[0])
    

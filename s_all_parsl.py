@@ -7,9 +7,9 @@ import parsl
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
-from parsl.providers import LocalProvider,SlurmProvider
-from parsl.channels import LocalChannel,SSHInteractiveLoginChannel
-from parsl.launchers import SrunLauncher
+from libsubmit.providers import LocalProvider,SlurmProvider
+from libsubmit.channels import LocalChannel,SSHInteractiveLoginChannel
+from libsubmit.launchers import SrunLauncher
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,isdir
 from os import system,mkdir,remove,environ,makedirs
@@ -19,6 +19,7 @@ parser.add_argument('subject_list',help='Text file with list of subject director
 parser.add_argument('output_dir',help='The super-directory that will contain output directories for each subject')
 parser.add_argument('--force',help='Force re-compute if output already exists',action='store_true')
 parser.add_argument('--output_time',help='Print completion time',action='store_true')
+parser.add_argument('--edge_list',help='Edges processed by probtrackx, in j7_edi_preproc',default=join("lists","listEdgesEDI.txt"))
 args = parser.parse_args()
 
 start_time = printStart()
@@ -29,8 +30,12 @@ config = Config(
             label='threaded',
             provider=SlurmProvider(
                 'pbatch',
-                channel=LocalChannel(),
+                # channel=LocalChannel(),
                 launcher=SrunLauncher(),
+                channel=SSHInteractiveLoginChannel(
+                    hostname='quartz.llnl.gov',
+                    username='moon15',
+                ),
                 nodes_per_block=1,
                 tasks_per_node=36,
                 init_blocks=1,
@@ -280,16 +285,16 @@ def j6_freesurfer_postproc(sdir, force, inputs=[]):
     smart_copy(join(sdir,"exlusion_bsplusthalami.nii.gz"),EDI,force)
     smart_copy(allvoxelscortsubcort,EDI,force)
 
+# @python_app(executors=["threaded"])
+# def j7_edi_preproc(sdir, force, inputs=[]):
+#     pass
+
 @python_app(executors=["threaded"])
-def j7_edi_preproc(sdir, force, inputs=[]):
+def j7_edi_oneway(sdir, force, inputs=[]):
     pass
 
 @python_app(executors=["threaded"])
-def j8_edi_oneway(sdir, force, inputs=[]):
-    pass
-
-@python_app(executors=["threaded"])
-def j9_edi_consensus(sdir, force, inputs=[]):
+def j8_edi_consensus(sdir, force, inputs=[]):
     pass
 
 @python_app(executors=["threaded"])
@@ -300,6 +305,14 @@ odir = abspath(args.output_dir)
 if not isdir(odir):
     makedirs(odir)
 jobs = []
+edges = []
+with open(args.edge_list,'r') as e:
+    for edge in e.readlines():
+        a, b = edge.strip().split(',', 1)
+        if [b, a] not in edges:
+            edges.append([a, b])
+print(len(edges))
+exit(0)
 with open(args.subject_list) as f:
     for input_dir in f.readlines():
         # jobs.append(reflect(input_dir))
@@ -322,6 +335,10 @@ with open(args.subject_list) as f:
         # j5_future = j5_freesurfer(sdir, args.force, inputs=[j3_future])
         # j6_future = j6_freesurfer_postproc(sdir, args.force, inputs=[j5_future])
         # j7_future = j7_edi_preproc(sdir, args.force, inputs=[j4_future, j6_future])
+        for edge in edges:
+            j7_edi_oneway(sdir, edge, args.force, inputs=[j4_future, j6_future])
+
+
         jobs.append(j1_future)
 for job in jobs:
     job.result()

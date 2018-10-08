@@ -4,7 +4,8 @@ import os
 import subprocess
 import sys
 import shutil
-from os.path import exists,join,split,splitext,abspath
+from glob import glob
+from os.path import exists,join,split,splitext,abspath,basename
 from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
 
@@ -76,13 +77,13 @@ def printTime():
     print("Time is {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")))
 
 def printStart():
-    print("Running {}".format(os.path.basename(sys.argv[0])))
+    print("Running {}".format(basename(sys.argv[0])))
     printTime()
     return time.time()
 
 def printFinish(start_time):
     print("\n=====================================\n" +
-          " {} took {} (h:m:s)".format(os.path.basename(sys.argv[0]), getTimeString(time.time() - start_time)) +
+          " {} took {} (h:m:s)".format(basename(sys.argv[0]), getTimeString(time.time() - start_time)) +
           "\n=====================================\n")
     printTime()
 
@@ -90,3 +91,14 @@ def getTimeString(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return "{:d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+
+def generateListAllEdges(vol_dir, path='lists/listEdgesEDIAll.txt'):
+    with open(path,'w') as l:
+        files = glob(join(vol_dir,"*_s2fa.nii.gz")) # Assemble all files 
+        files = [abspath(f) for f in files]
+        for a in files:
+            for b in files:
+                if a != b:
+                    a1 = splitext(splitext(split(a)[1])[0])[0]
+                    b1 = splitext(splitext(split(b)[1])[0])[0]
+                    l.write("{},{}\n".format(basename(a1),basename(b1)))
