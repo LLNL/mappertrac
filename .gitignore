@@ -17,3 +17,4 @@ __pycache__
 !.gitignore
 *~
 subjects*.txt
+cmd_parsl.auto*

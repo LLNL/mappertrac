@@ -33,8 +33,8 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
            
         
         
-    remove("tmp_thalamus.nii.gz")
-    remove("tmp.nii.gz")
+    smart_remove("tmp_thalamus.nii.gz")
+    smart_remove("tmp.nii.gz")
     
     
 def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force):
@@ -42,10 +42,8 @@ def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force):
     fsl = environ['FSL_DIR']
 
     if force:
-        if exists(join(root_dir,"cort.nii.gz")):
-            remove(join(root_dir,"cort.nii.gz"))
-        if exists(join(root_dir,"subcort.nii.gz")):
-            remove(join(root_dir,"subcort.nii.gz"))
+        smart_remove(join(root_dir,"cort.nii.gz"))
+        smart_remove(join(root_dir,"subcort.nii.gz"))
     
     all_vols = ""
     for vol in glob(join(cortical_dir,"*_s2fa.nii.gz")):
