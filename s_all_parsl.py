@@ -60,11 +60,11 @@ elif s2a:
             label='batch',
             provider=SlurmProvider('pbatch',
                 launcher=SrunLauncher(),
-                nodes_per_block=2,
+                nodes_per_block=4,
                 tasks_per_node=1,
                 init_blocks=1,
-                max_blocks=1,
-                walltime="00:05:00",
+                max_blocks=2,
+                walltime="03:00:00",
                 overrides=slurm_override_gpu)))
 elif s2b:
     executors.append(IPyParallelExecutor(
@@ -72,22 +72,22 @@ elif s2b:
             provider=SlurmProvider('pbatch',
                 launcher=SrunLauncher(),
                 nodes_per_block=8,
-                tasks_per_node=2,
+                tasks_per_node=3,
                 init_blocks=1,
-                max_blocks=1,
-                walltime="00:20:00",
+                max_blocks=2,
+                walltime="18:00:00",
                 overrides=slurm_override)))
 elif s2b_gpu:
     executors.append(IPyParallelExecutor(
             label='batch',
             provider=SlurmProvider('pbatch',
                 launcher=SrunLauncher(),
-                nodes_per_block=4,
+                nodes_per_block=2,
                 tasks_per_node=1,
                 init_blocks=1,
                 max_blocks=1,
-                walltime="00:20:00",
-                overrides=slurm_override)))
+                walltime="04:00:00",
+                overrides=slurm_override))) # we use CUDA 5 instead of 8
 config = Config(executors=executors)
 
 start_time = printStart()
@@ -179,13 +179,6 @@ elif s2a:
         bedpostx = join(sdir,"bedpostx_b1000")
         bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
         # bedpostxResultsEDI = join(sdir,"EDI","bedpostx_b1000.bedpostX")
-        smart_mkdir(bedpostx)
-        smart_mkdir(bedpostxResults)
-        smart_copy(join(sdir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
-        smart_copy(join(sdir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
-        smart_copy(join(sdir,"bvals"),join(bedpostx,"bvals"),force)
-        smart_copy(join(sdir,"bvecs"),join(bedpostx,"bvecs"),force)
-
         th1 = join(bedpostxResults, "merged_th1samples")
         ph1 = join(bedpostxResults, "merged_ph1samples")
         th2 = join(bedpostxResults, "merged_th2samples")
@@ -193,9 +186,19 @@ elif s2a:
         dyads1 = join(bedpostxResults, "dyads1")
         dyads2 = join(bedpostxResults, "dyads2")
         brain_mask = join(bedpostxResults, "nodif_brain_mask")
-        if force and exists(bedpostxResults):
+        do_run = force or not exist_all([th1,ph1,th2,ph2],".nii.gz") # we re-run many commands for fault tolerance
+        if not do_run:
+            print("Already finished bedpostx in {}. Use --force argument to re-compute.".format(bedpostxResults))
+        elif exists(bedpostxResults):
             shutil.rmtree(bedpostxResults)
-        if force or not exist_all([th1,ph1,th2,ph2]):
+        smart_mkdir(bedpostx)
+        smart_mkdir(bedpostxResults)
+        smart_copy(join(sdir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"),force)
+        smart_copy(join(sdir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"),force)
+        smart_copy(join(sdir,"bvals"),join(bedpostx,"bvals"),force)
+        smart_copy(join(sdir,"bvecs"),join(bedpostx,"bvecs"),force)
+
+        if do_run:
             run("bedpostx_gpu " + bedpostx + " -NJOBS 4", write_output=join(sdir,"parsl.stdout"))
         smart_run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), dyads1, force)
         smart_run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), dyads2, force)
@@ -207,20 +210,24 @@ elif s2a:
 elif s2b or s2b_gpu:
     @python_app(executors=['batch'])
     def s2b_1_freesurfer(sdir, force, use_gpu):
-        from subscripts.utilities import run,smart_mkdir
+        import multiprocessing
+        from subscripts.utilities import run,smart_mkdir,smart_run
         from os import environ
         from os.path import join,exists,islink,split
         T1 = join(sdir,"T1.nii.gz")
+        mri_out = join(sdir,"mri","orig","001.mgz")
         subject = split(sdir)[1]
         environ['SUBJECTS_DIR'] = split(sdir)[0]
 
         if use_gpu:
+            if not 'CUDA_5_LIB_DIR' in environ:
+                print("Environment variable CUDA_5_LIB_DIR not set. Please install CUDA 5 to use Freesurfer GPU functions.")
+                return
             environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
             environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
         smart_mkdir(join(sdir,"mri"))
         smart_mkdir(join(sdir,"mri","orig"))
 
-        mri_out = join(sdir,"mri","orig","001.mgz")
         smart_run("mri_convert {} {}".format(T1,mri_out), mri_out, force)
 
         if islink(join(environ['SUBJECTS_DIR'],"fsaverage")):
@@ -254,10 +261,14 @@ elif s2b or s2b_gpu:
         terminationmask = join(sdir,"terminationmask.nii.gz")
         allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
         intersection = join(sdir,"intersection.nii.gz")
+        exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
         EDI = join(sdir,"EDI")
         EDI_allvols = join(EDI,"allvols")
-
-        run("mri_convert {} {} ".format(join(sdir,"mri","brain.mgz"),T1))
+        do_run = force or not exists(exclusion_bsplusthalami) # we re-run many commands for fault tolerance
+        if not do_run:
+            print("Already finished freesurfer in {}. Use --force argument to re-compute.".format(sdir))
+        else:
+            run("mri_convert {} {} ".format(join(sdir,"mri","brain.mgz"),T1))
         smart_run("flirt -in {} -ref {} -omat {}".format(FA,T1,FA2T1), FA2T1, force)
         smart_run("convert_xfm -omat {} -inverse {}".format(T12FA,FA2T1), T12FA, force)
 
@@ -272,7 +283,8 @@ elif s2b or s2b_gpu:
             vol_dir = join(cort_vol_dir, splitext(split(label)[1])[0] + ".nii.gz")
             smart_run("mri_label2vol --label {} --temp {} --identity --o {}".format(label,T1,vol_dir), vol_dir, force)
 
-        run("mri_convert {} {}".format(join(sdir,"mri","aseg.mgz"),aseg), aseg, force)
+        if do_run:
+            run("mri_convert {} {}".format(join(sdir,"mri","aseg.mgz"),aseg), aseg, force)
 
         smart_mkdir(subcort_vol_dir)
         for line in open(args.subcortical_index,"r").readlines():
@@ -298,49 +310,124 @@ elif s2b or s2b_gpu:
                 run("flirt -in {} -ref {} -out {}  -applyxfm -init {}".format(volume,FA,out_vol,T12FA))
                 run("fslmaths {} -thr 0.2 -bin {} ".format(out_vol,out_vol))
 
-        run("fslmaths {} -mul 0 {}".format(FA,bs)) # For now we fake a bs.nii.gz file
-        maskseeds(sdir,join(cort_vol_dir + "_s2fa"),join(cort_vol_dir + "_s2fa_m"),0.05,1,1)
-        maskseeds(sdir,join(subcort_vol_dir + "_s2fa"),join(subcort_vol_dir + "_s2fa_m"),0.05,0.4,0.4)
-
-        saveallvoxels(sdir,join(cort_vol_dir + "_s2fa_m"),join(subcort_vol_dir + "_s2fa_m"),allvoxelscortsubcort,force)
-
-        smart_remove(terminationmask)
-        run("fslmaths {} -uthr .15 {}".format(FA, terminationmask))
-        run("fslmaths {} -add {} {}".format(terminationmask, bs, terminationmask))
-        run("fslmaths {} -bin {}".format(terminationmask, terminationmask))
-        run("fslmaths {} -mul {} {}".format(terminationmask, allvoxelscortsubcort, intersection))
-        run("fslmaths {} -sub {} {}".format(terminationmask, intersection, terminationmask))
-        run("fslmaths {} -add {} -add {} {}".format(bs,
-                                                    join(subcort_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
-                                                    join(subcort_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
-                                                    join(sdir,"exlusion_bsplusthalami.nii.gz")))
+        if do_run:
+            run("fslmaths {} -mul 0 {}".format(FA,bs)) # For now we fake a bs.nii.gz file
+            maskseeds(sdir,join(cort_vol_dir + "_s2fa"),join(cort_vol_dir + "_s2fa_m"),0.05,1,1)
+            maskseeds(sdir,join(subcort_vol_dir + "_s2fa"),join(subcort_vol_dir + "_s2fa_m"),0.05,0.4,0.4)
+            saveallvoxels(sdir,join(cort_vol_dir + "_s2fa_m"),join(subcort_vol_dir + "_s2fa_m"),allvoxelscortsubcort,force)
+            smart_remove(terminationmask)
+            run("fslmaths {} -uthr .15 {}".format(FA, terminationmask))
+            run("fslmaths {} -add {} {}".format(terminationmask, bs, terminationmask))
+            run("fslmaths {} -bin {}".format(terminationmask, terminationmask))
+            run("fslmaths {} -mul {} {}".format(terminationmask, allvoxelscortsubcort, intersection))
+            run("fslmaths {} -sub {} {}".format(terminationmask, intersection, terminationmask))
+            run("fslmaths {} -add {} -add {} {}".format(bs,
+                                                        join(subcort_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
+                                                        join(subcort_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
+                                                        exclusion_bsplusthalami))
         smart_mkdir(EDI)
         smart_mkdir(EDI_allvols)
         for file in glob(join(sdir,"volumes_cortical_s2fa","*")):
             smart_copy(file,EDI_allvols,force)
-
         for file in glob(join(sdir,"volumes_subcortical_s2fa","*")):
             smart_copy(file,EDI_allvols,force)
-        smart_copy(bs,EDI,force)
-        smart_copy(terminationmask,EDI,force)
-        smart_copy(join(sdir,"exlusion_bsplusthalami.nii.gz"),EDI,force)
-        smart_copy(allvoxelscortsubcort,EDI,force)
+        # smart_copy(bs,EDI,force)
+        # smart_copy(terminationmask,EDI,force)
+        # smart_copy(exclusion_bsplusthalami,EDI,force)
+        # smart_copy(allvoxelscortsubcort,EDI,force)
 
 elif s3:
-    with open(args.edge_list,'r') as e:
-        for edge in e.readlines():
-            a, b = edge.strip().split(',', 1)
-            if [b, a] not in edges:
-                edges.append([a, b])
+    @python_app
+    def s3_1_edi_oneway(sdir, a, b, force):
+        from subscripts.utilities import run,smart_remove,smart_mkdir
+        from os.path import exists,join,splitext,abspath,split
+        EDI_allvols = join(EDI,"allvols")
+        a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
+        b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
+        a_to_b = "{}to{}".format(a, b)
+        pbtk_dir = join(sdir,"EDI","PBTKresults")
+        a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+        waypoints = join(sdir,"tmp","tmp_waypoint_{}.txt".format(a_to_b))
+        exclusion = join(sdir,"tmp","tmp_exclusion_{}.nii.gz".format(a_to_b))
+        termination = join(sdir,"tmp","tmp_termination_{}.nii.gz".format(a_to_b))
+        bs = join(sdir,"bs.nii.gz")
+        allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
+        terminationmask = join(sdir,"terminationmask.nii.gz")
+        bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
+        merged = join(bedpostxResults,"merged")
+        nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
+
+        if not exists(a_file) or not exists(b_file):
+            print("Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
+            return
+
+        do_run = force or not exists(a_to_b_file)
+        if not do_run:
+            print("Already calculated edge {}. Use --force to re-compute.".format(a_to_b))
+            return
+        smart_remove(a_to_b_file)
+        smart_mkdir(pbtk_dir)
+        print("Running subproc: {}".format(a_to_b))
+
+        run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion))
+        run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion))
+        run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion))
+        run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination))
+
+        with open((waypoints),"w") as f:
+            f.write(b_file + "\n")
+
+        arguments = (" -x {} ".format(a_file)
+            + " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000"
+            + " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination)
+            + " --forcedir --opd"
+            + " -s {}".format(merged)
+            + " -m {}".format(nodif_brain_mask)
+            + " --dir={}".format(pbtk_dir)
+            + " --out={}".format(a_to_b_file)
+            + " --omatrix1"
+        )
+        run("probtrackx2" + arguments)
+        print("Finished subproc: {}".format(a_to_b))
 
     @python_app
-    def s3_edi_oneway(sdir, force):
-        pass
+    def s3_2_edi_consensus(sdir, a, b, force, inputs=[]):
+        from subscripts.utilities import run,isFloat,smart_mkdir,smart_remove
+        from os.path import exists,join,splitext,abspath,split
+        pbtk_dir = join(sdir,"EDI","PBTKresults")
+        a_to_b = "{}to{}".format(a, b)
+        a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+        b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
+        smart_mkdir(join(pbtk_dir,"twoway_consensus_edges"))
+        consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b)
+        do_run = force or not exists(consensus)
+        if not do_run:
+            print("Already calculated edge consensus {}. Use --force to re-compute.".format(consensus))
+            return
+        amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), print_output=False, working_dir=pbtk_dir).strip()
+        if not isFloat(amax):
+            print("fslstats on " + a_to_b_file + " returns invalid value")
+            return
+        amax = int(float(amax))
 
-elif s4:
-    @python_app
-    def s4_edi_consensus(sdir, force):
-        pass
+        bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), print_output=False, working_dir=pbtk_dir).strip()
+        if not isFloat(bmax):
+            print("fslstats on " + b_to_a_file + " returns invalid value")
+            return
+        bmax = int(float(bmax))
+        if amax > 0 and bmax > 0:
+            tmp1 = join(pbtk_dir, "{}to{}_tmp1.nii.gz".format(a, b))
+            tmp2 = join(pbtk_dir, "{}to{}_tmp2.nii.gz".format(b, a))
+            run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), working_dir=pbtk_dir)
+            run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), working_dir=pbtk_dir)
+            run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), working_dir=pbtk_dir)
+            smart_remove(tmp1)
+            smart_remove(tmp2)
+        else:
+            with open(join(pbtk_dir, "zerosl.txt", "a")) as log:
+                log.write(edge)
+                log.write(amax)
+                log.write(bmax)
 
 with open(args.subject_list) as f:
     for input_dir in f.readlines():
@@ -369,11 +456,22 @@ with open(args.subject_list) as f:
             s2b_2_future = s2b_2_freesurfer_postproc(sdir, args.force, inputs=[s2b_1_future])
             jobs.append(s2b_2_future)
         elif s3:
-            s3_future = s3_edi_oneway(sdir, args.force)
-            jobs.append(s3_future)
-        elif s4:
-            s4_future = s4_edi_consensus(sdir, args.force)
-            jobs.append(s4_future)
+            visited_edges = []
+            with open(args.edge_list) as f:
+                for edge in f.readlines():
+                    if edge.isspace():
+                        continue
+                    edge = edge.replace("_s2fa", "")
+                    a, b = edge.strip().split(',', 1)
+                    a_to_b = "{}to{}".format(a, b)
+                    b_to_a = "{}to{}".format(b, a)
+                    if not a_to_b in visited_edges and not b_to_a in visited_edges:
+                        s3_1_future_ab = s3_1_edi_oneway(sdir, a, b, args.force)
+                        s3_1_future_ba = s3_1_edi_oneway(sdir, b, a, args.force)
+                        s3_2_future = s3_2_edi_consensus(sdir, a, b, inputs=[s3_1_future_ab, s3_1_future_ba])
+                        visited_edges.append(a_to_b)
+                        visited_edges.append(b_to_a)
+                        jobs.append(s3_2_future)
 for job in jobs:
     job.result()
 printFinish(start_time)

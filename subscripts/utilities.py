@@ -25,9 +25,9 @@ def smart_remove(path):
     if exists(path):
         remove(path)
 
-def exist_all(paths):
+def exist_all(paths,ext=""):
     for path in paths:
-        if not exists(path):
+        if not exists(path + ext):
             return False
     return True
 
