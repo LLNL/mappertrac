@@ -16,10 +16,13 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
     
     if not exists(output_dir):
         mkdir(output_dir)
+
+    tmp_thalamus = join(root_dir, "tmp_thalamus.nii.gz")
+    tmp = join(root_dir, "tmp.nii.gz")
         
     # Now create two transformed volumes with threshold 1 and 2
-    run("fslmaths {} -thr {} -uthr {} -bin tmp.nii.gz".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold))
-    run("fslmaths {} -thr {} -uthr {} -bin tmp_thalamus.nii.gz".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus))
+    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold,tmp))
+    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus,tmp_thalamus))
     
     for seed in glob(join(input_dir,"*s2fa.nii.gz")):
 
@@ -27,14 +30,14 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
     
         if force or not exists(join(output_dir,split(seed)[1])):           
             if region == "thalamus":
-                run("fslmaths {} -mas tmp_thalamus.nii.gz {}".format(seed, join(output_dir,split(seed)[1])))
+                run("fslmaths {} -mas {} {}".format(seed, tmp_thalamus, join(output_dir,split(seed)[1])))
             else:
-                run("fslmaths {} -mas tmp.nii.gz {}".format(seed, join(output_dir,split(seed)[1])))
+                run("fslmaths {} -mas {} {}".format(seed, tmp, join(output_dir,split(seed)[1])))
            
         
         
-    smart_remove("tmp_thalamus.nii.gz")
-    smart_remove("tmp.nii.gz")
+    smart_remove(tmp_thalamus)
+    smart_remove(tmp)
     
     
 def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force):

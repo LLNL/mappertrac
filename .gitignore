@@ -11,6 +11,7 @@ input/
 output/
 runinfo/
 parsl_scripts/
+parsl_logs/
 test/
 qsub/
 __pycache__

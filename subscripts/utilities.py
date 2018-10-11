@@ -17,9 +17,9 @@ def smart_mkdir(path):
     if not exists(path):
         makedirs(path)
 
-def smart_run(command, path, force=False):
-    if not exists(path):
-        run(command)
+def smart_run(command, path, force=False, write_output=None):
+    if force or not exists(path):
+        run(command, write_output=write_output)
 
 def smart_remove(path):
     if exists(path):
@@ -48,6 +48,8 @@ def run(command, ignore_errors=False, print_output=True, output_time=False, name
         line = new_line
     if process.returncode != 0 and not ignore_errors:
         printTime()
+        if write_output != None:
+            writeTime(write_output)
         raise Exception("Non zero return code: {}".format(process.returncode))
     else:
         tokens = command.split(' ')
@@ -73,19 +75,46 @@ def isInteger(value):
   except ValueError:
     return False
 
+def getTime():
+    return "Time is {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p"))
+
+def getStart(function_name=sys.argv[0]):
+    return ("\n=====================================\n" +
+           "Starting {}".format(basename(str(function_name))) +
+           "\n" + getTime() +
+           "\n=====================================\n")
+
+def getFinish(start_time, function_name=sys.argv[0]):
+    return ("\n=====================================\n" +
+           "Finished {}, took {} (h:m:s)".format(basename(str(function_name)), getTimeString(time.time() - start_time)) +
+           "\n" + getTime() +
+           "\n=====================================\n")
+
 def printTime():
-    print("Time is {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")))
+    print(getTime())
 
 def printStart():
-    print("Running {}".format(basename(sys.argv[0])))
-    printTime()
+    print(getStart())
     return time.time()
 
 def printFinish(start_time):
-    print("\n=====================================\n" +
-          " {} took {} (h:m:s)".format(basename(sys.argv[0]), getTimeString(time.time() - start_time)) +
-          "\n=====================================\n")
-    printTime()
+    print(getFinish(start_time))
+
+def writeOutput(path, output):
+    with open(path, 'a') as f:
+        f.write(output + "\n")
+
+def writeTime(path):
+    writeOutput(path, getTime())
+
+def writeStart(path, function_name=sys.argv[0]):
+    with open(path, 'a') as f:
+        f.write(getStart(function_name))
+    return time.time()
+
+def writeFinish(path, start_time, function_name=sys.argv[0]):
+    with open(path, 'a') as f:
+        f.write(getFinish(start_time, function_name))
 
 def getTimeString(seconds):
     m, s = divmod(seconds, 60)
