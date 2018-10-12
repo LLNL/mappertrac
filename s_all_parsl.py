@@ -83,7 +83,7 @@ edges = []
 if s1:
     @python_app(executors=executor_labels)
     def s1_1_split_timesteps(input_dir, sdir, log_dir, force):
-        from subscripts.utilities import run, smart_copy, writeStart, writeFinish, write
+        from subscripts.utilities import run,smart_copy,writeStart,writeFinish,writeOutput
         from os.path import join,exists,basename
         stdout = join(log_dir, basename(sdir) + ".stdout")
         # start_time = writeStart(stdout, "s1_1_split_timesteps")
@@ -353,8 +353,9 @@ elif s3:
         a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
         b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
         a_to_b = "{}to{}".format(a, b)
+        a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
         pbtk_dir = join(sdir,"EDI","PBTKresults")
-        a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+        a_to_b_file = join(pbtk_dir,a_to_b_formatted)
         waypoints = join(sdir,"tmp","tmp_waypoint_{}.txt".format(a_to_b))
         exclusion = join(sdir,"tmp","tmp_exclusion_{}.nii.gz".format(a_to_b))
         termination = join(sdir,"tmp","tmp_termination_{}.nii.gz".format(a_to_b))
@@ -392,14 +393,15 @@ elif s3:
             + " -s {}".format(merged)
             + " -m {}".format(nodif_brain_mask)
             + " --dir={}".format(pbtk_dir)
-            + " --out={}".format(a_to_b_file)
+            + " --out={}".format(a_to_b_formatted)
             + " --omatrix1"
         )
         run("probtrackx2" + arguments, write_output=stdout)
-        writeOutput(stdout, "Finished s_3_1 subproc: {}, took {}".format(a_to_b, getTimeString(time.time() - start_time)))
+        writeOutput(stdout, "Finished s_3_1 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeString(time.time() - start_time)))
 
     @python_app(executors=executor_labels)
     def s3_2_edi_consensus(sdir, a, b, log_dir, force, inputs=[]):
+        import time
         from subscripts.utilities import run,isFloat,smart_mkdir,smart_remove,writeStart,writeFinish,writeOutput,getTimeString
         from os.path import exists,join,splitext,abspath,split,basename
         stdout = join(log_dir, basename(sdir) + ".stdout")
@@ -418,13 +420,13 @@ elif s3:
             return
         amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), print_output=False, working_dir=pbtk_dir).strip()
         if not isFloat(amax):
-            writeOutput(stdout, "fslstats on " + a_to_b_file + " returns invalid value")
+            writeOutput(stdout, "Error: fslstats on " + a_to_b_file + " returns invalid value")
             return
         amax = int(float(amax))
 
         bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), print_output=False, working_dir=pbtk_dir).strip()
         if not isFloat(bmax):
-            writeOutput(stdout, "fslstats on " + b_to_a_file + " returns invalid value")
+            writeOutput(stdout, "Error: fslstats on " + b_to_a_file + " returns invalid value")
             return
         bmax = int(float(bmax))
         if amax > 0 and bmax > 0:
@@ -436,12 +438,34 @@ elif s3:
             smart_remove(tmp1)
             smart_remove(tmp2)
         else:
-            with open(join(pbtk_dir, "zerosl.txt", "a")) as log:
-                log.write(edge)
-                log.write(amax)
-                log.write(bmax)
+            with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
+                log.write("For edge {}:\n".format(a_to_b))
+                log.write("{} is thresholded to {}\n".format(a, amax))
+                log.write("{} is thresholded to {}\n".format(b, bmax))
 
-        writeOutput(stdout, "Finished s_3_2 subproc: {}, took {}".format(a_to_b, getTimeString(time.time() - start_time)))
+        writeOutput(stdout, "Finished s_3_2 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeString(time.time() - start_time)))
+
+    @python_app(executors=executor_labels)
+    def s3_3_edi_combine(sdir, consensus_edges, log_dir, force, inputs=[]):
+        from subscripts.utilities import run,smart_copy,smart_mkdir,writeStart,writeFinish,writeOutput
+        from os.path import exists,join,split,basename
+        stdout = join(log_dir, basename(sdir) + ".stdout")
+        start_time = writeStart(stdout, "s3_3_edi_combine")
+        pbtk_dir = join(sdir,"EDI","PBTKresults")
+        edi_maps = join(sdir,"EDI","EDImaps")
+        smart_mkdir(edi_maps)
+        total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+
+        for a_to_b in consensus_edges:
+            consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b+".nii.gz")
+            if not exists(consensus):
+                writeOutput(stdout,"{} has been thresholded. See {} for details".format(a_to_b, join(pbtk_dir, "zerosl.txt")))
+                continue
+            if not exists(total):
+                smart_copy(consensus, total)
+            else:    
+                run("fslmaths {0} -add {1} {1}".format(consensus, total), write_output=stdout)
+        writeFinish(stdout, start_time, "s3_3_edi_combine")
 
 log_dir = abspath(args.log_dir)
 smart_mkdir(log_dir)
@@ -472,7 +496,9 @@ with open(args.subject_list) as f:
             s2b_2_future = s2b_2_freesurfer_postproc(sdir, log_dir, args.force, inputs=[s2b_1_future])
             jobs.append(s2b_2_future)
         elif s3:
-            visited_edges = []
+            s3_2_futures = []
+            oneway_edges = []
+            consensus_edges = []
             with open(args.edge_list) as f:
                 for edge in f.readlines():
                     if edge.isspace():
@@ -481,13 +507,21 @@ with open(args.subject_list) as f:
                     a, b = edge.strip().split(',', 1)
                     a_to_b = "{}to{}".format(a, b)
                     b_to_a = "{}to{}".format(b, a)
-                    if not a_to_b in visited_edges and not b_to_a in visited_edges:
+                    if not a_to_b in oneway_edges and not b_to_a in oneway_edges:
                         s3_1_future_ab = s3_1_edi_oneway(sdir, a, b, log_dir, args.force)
                         s3_1_future_ba = s3_1_edi_oneway(sdir, b, a, log_dir, args.force)
                         s3_2_future = s3_2_edi_consensus(sdir, a, b, log_dir, args.force, inputs=[s3_1_future_ab, s3_1_future_ba])
-                        visited_edges.append(a_to_b)
-                        visited_edges.append(b_to_a)
-                        jobs.append(s3_2_future)
+                        s3_2_futures.append(s3_2_future)
+                        oneway_edges.append(a_to_b)
+                        oneway_edges.append(b_to_a)
+                        consensus_edges.append(a_to_b)
+            s3_3_future = s3_3_edi_combine(sdir, consensus_edges, log_dir, args.force, inputs=s3_2_futures)
+            jobs.append(s3_3_future)
+
 for job in jobs:
     job.result()
+if s3:
+    for a_to_b in consensus_edges:
+        output = join(pdir,"twoway_consensus_edges",a_to_b)
+        run("fslmaths {0} -add {1} {1}".format(output, total))
 printFinish(start_time)

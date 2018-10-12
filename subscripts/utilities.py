@@ -48,7 +48,7 @@ def run(command, ignore_errors=False, print_output=True, output_time=False, name
         line = new_line
     if process.returncode != 0 and not ignore_errors:
         printTime()
-        if write_output != None:
+        if write_output != None and not new_line.isspace():
             writeTime(write_output)
         raise Exception("Non zero return code: {}".format(process.returncode))
     else:

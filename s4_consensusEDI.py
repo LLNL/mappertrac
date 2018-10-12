@@ -90,7 +90,7 @@ def subproc(pdir,a_to_b,b_to_a):
         remove(tmp2)
     else:
         with open(join(pdir, "zerosl.txt", "a")) as log:
-            log.write(edge)
+            log.write(a_to_b)
             log.write(amax)
             log.write(bmax)
 
