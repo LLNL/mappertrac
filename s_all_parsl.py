@@ -50,10 +50,11 @@ def get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, overrid
                 overrides=overrides))
         ]
 def get_executor_labels(nodes_per_block, max_blocks):
-    labels = ['local']
-    for i in range(nodes_per_block * max_blocks):
-        labels.append('batch')
-    return labels
+    # labels = ['local']
+    # for i in range(nodes_per_block * max_blocks):
+        # labels.append('batch')
+    # return labels
+    return ['batch']
 
 num_cores = multiprocessing.cpu_count()
 tasks_per_node = 1
@@ -364,12 +365,12 @@ elif s2b or s2b_gpu:
 
 elif s3:
     @python_app(executors=executor_labels)
-    def s3_1_edi_oneway(sdir, a, b, log_dir, force):
+    def s3_1_probtrackx(sdir, a, b, log_dir, force):
         import time
         from subscripts.utilities import run,smart_remove,smart_mkdir,writeStart,writeFinish,writeOutput,getTimeString
         from os.path import exists,join,splitext,abspath,split,basename
         stdout = join(log_dir, basename(sdir) + ".stdout")
-        # start_time = writeStart(stdout, "s3_1_edi_oneway")
+        # start_time = writeStart(stdout, "s3_1_probtrackx")
         start_time = time.time()
 
         EDI_allvols = join(sdir,"EDI","allvols")
@@ -531,8 +532,8 @@ with open(args.subject_list) as f:
                     a_to_b = "{}to{}".format(a, b)
                     b_to_a = "{}to{}".format(b, a)
                     if not a_to_b in oneway_edges and not b_to_a in oneway_edges:
-                        s3_1_future_ab = s3_1_edi_oneway(sdir, a, b, log_dir, args.force)
-                        s3_1_future_ba = s3_1_edi_oneway(sdir, b, a, log_dir, args.force)
+                        s3_1_future_ab = s3_1_probtrackx(sdir, a, b, log_dir, args.force)
+                        s3_1_future_ba = s3_1_probtrackx(sdir, b, a, log_dir, args.force)
                         s3_2_future = s3_2_edi_consensus(sdir, a, b, log_dir, args.force, inputs=[s3_1_future_ab, s3_1_future_ba])
                         s3_2_futures.append(s3_2_future)
                         oneway_edges.append(a_to_b)
@@ -543,8 +544,4 @@ with open(args.subject_list) as f:
 
 for job in jobs:
     job.result()
-if s3:
-    for a_to_b in consensus_edges:
-        output = join(pdir,"twoway_consensus_edges",a_to_b)
-        run("fslmaths {0} -add {1} {1}".format(output, total))
 printFinish(start_time)
