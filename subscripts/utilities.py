@@ -75,19 +75,23 @@ def isInteger(value):
   except ValueError:
     return False
 
-def getTime():
-    return "Time is {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p"))
+def getTimeDate():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")
+
+def getTimeDuration(start_seconds):
+    duration = time.time() - int(start_seconds)
+    m, s = divmod(duration, 60)
+    h, m = divmod(m, 60)
+    return "{:d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
 
 def getStart(function_name=sys.argv[0]):
     return ("\n=====================================\n" +
-           "Starting {}".format(basename(str(function_name))) +
-           "\n" + getTime() +
+           "Starting {} at {}".format(basename(str(function_name)), getTimeDate()) +
            "\n=====================================\n")
 
-def getFinish(start_time, function_name=sys.argv[0]):
+def getFinish(function_name=sys.argv[0]):
     return ("\n=====================================\n" +
-           "Finished {}, took {} (h:m:s)".format(basename(str(function_name)), getTimeString(time.time() - start_time)) +
-           "\n" + getTime() +
+           "Finished {} at {}".format(basename(str(function_name)), getTimeDate()) +
            "\n=====================================\n")
 
 def printTime():
@@ -98,28 +102,31 @@ def printStart():
     return time.time()
 
 def printFinish(start_time):
-    print(getFinish(start_time))
+    print(getFinish())
 
 def writeOutput(path, output):
     with open(path, 'a') as f:
         f.write(output + "\n")
 
-def writeTime(path):
-    writeOutput(path, getTime())
-
 def writeStart(path, function_name=sys.argv[0]):
     with open(path, 'a') as f:
         f.write(getStart(function_name))
-    return time.time()
+        f.write("record_time,{}\n".format(int(time.time())))
 
-def writeFinish(path, start_time, function_name=sys.argv[0]):
+def writeFinish(path, function_name=sys.argv[0]):
+    start_time = ""
+    with open(path, 'r') as f:
+        for line in f.readlines():
+            line = line.strip()
+            if line.startswith("record_time,"):
+                chunks = ",".split(line)
+                if len(chunks) > 1:
+                    start_time = chunks[1]
+
     with open(path, 'a') as f:
-        f.write(getFinish(start_time, function_name))
-
-def getTimeString(seconds):
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    return "{:d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+        f.write(getFinish(function_name))
+        if isInteger(start_time):
+            f.write("Function took {} (h:m:s)\n".format(getTimeDuration(start_time)))
 
 def generateListAllEdges(vol_dir, path='lists/listEdgesEDIAll.txt'):
     with open(path,'w') as l:

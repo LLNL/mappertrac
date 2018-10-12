@@ -55,8 +55,6 @@ def get_executor_labels(_nodes_per_block, _max_blocks):
     for i in range(_nodes_per_block * _max_blocks):
         labels.append('batch')
     return labels
-    # return ['batch']
-    # return ['local']
 
 num_cores = int(floor(multiprocessing.cpu_count() / 2))
 tasks_per_node = 1
@@ -111,8 +109,7 @@ if s1:
     def s1_1_split_timesteps(input_dir, sdir, stdout, force):
         from subscripts.utilities import run,smart_copy,writeStart,writeFinish,writeOutput
         from os.path import join,exists,basename
-        return
-        # start_time = writeStart(stdout, "s1_1_split_timesteps")
+        writeStart(stdout, "s1_dtiPreproc")
         smart_copy(join(input_dir,"bvecs"),join(sdir,"bvecs"),force)
         smart_copy(join(input_dir,"bvals"),join(sdir,"bvals"),force)
         smart_copy(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"),force)
@@ -122,16 +119,13 @@ if s1:
         if force or not exists(output_data):
             run("fslroi {} {}_ref 0 1".format(input_data, output_prefix), write_output=stdout)
             run("fslsplit {} {}_tmp".format(input_data, output_prefix), write_output=stdout)
-        # writeFinish(stdout, start_time, "s1_1_split_timesteps")
 
     @python_app(executors=executor_labels)
     def s1_2_timestep_process(sdir, step, stdout, force, inputs=[]):
         from subscripts.utilities import run
         from os.path import join,exists
-        return
         step_data = join(sdir,"data_eddy_tmp{:04d}.nii.gz".format(step))
         if not exists(step_data):
-            # print("Failed to open timestep image {}".format(step_data))
             return
         output_prefix = join(sdir,"data_eddy")
         run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(step_data, output_prefix))
@@ -142,8 +136,6 @@ if s1:
         from glob import glob
         from os import remove
         from os.path import join,exists,basename
-        return
-        # start_time = writeStart(stdout, "s1_3_dti_fit")
         output_prefix = join(sdir,"data_eddy")
         output_data = join(sdir,"data_eddy.nii.gz")
         timesteps = glob("{}_tmp????.*".format(output_prefix))
@@ -182,7 +174,7 @@ if s1:
         # eddy_log = join(sdir,"data_eddy.ecclog")
         # run("fdt_rotate_bvecs {} {} {}".format(bvecs,bvecs_rotated,eddy_log))
 
-        # writeFinish(stdout, start_time, "s1_3_dti_fit")
+        writeFinish(stdout, "s1_dtiPreproc")
 
 elif s2a:
     @python_app(executors=['batch'])
@@ -190,7 +182,7 @@ elif s2a:
         import shutil
         from subscripts.utilities import run,smart_copy,smart_mkdir,smart_run,exist_all,writeStart,writeFinish,writeOutput
         from os.path import join,exists,basename
-        start_time = writeStart(stdout, "s2a_bedpostx")
+        writeStart(stdout, "s2a_bedpostx")
         bedpostx = join(sdir,"bedpostx_b1000")
         bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
         # bedpostxResultsEDI = join(sdir,"EDI","bedpostx_b1000.bedpostX")
@@ -221,7 +213,7 @@ elif s2a:
         #     if exists(bedpostxResultsEDI):
         #         shutil.rmtree(bedpostxResultsEDI)
         #     shutil.copytree(bedpostxResults, bedpostxResultsEDI)
-        writeFinish(stdout, start_time, "s2a_bedpostx")
+        writeFinish(stdout, "s2a_bedpostx")
 
 elif s2b or s2b_gpu:
     @python_app(executors=['batch'])
@@ -230,7 +222,7 @@ elif s2b or s2b_gpu:
         from subscripts.utilities import run,smart_mkdir,smart_run,writeStart,writeFinish,writeOutput
         from os import environ
         from os.path import join,exists,islink,split,basename
-        start_time = writeStart(stdout, "s2b_1_freesurfer")
+        writeStart(stdout, "s2b_1_freesurfer")
 
         T1 = join(sdir,"T1.nii.gz")
         mri_out = join(sdir,"mri","orig","001.mgz")
@@ -259,7 +251,7 @@ elif s2b or s2b_gpu:
             else:
                 run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, num_cores), write_output=stdout)
 
-        writeFinish(stdout, start_time, "s2b_1_freesurfer")
+        writeFinish(stdout, "s2b_1_freesurfer")
 
     @python_app(executors=executor_labels)
     def s2b_2_freesurfer_postproc(sdir, stdout, force, inputs=[]):
@@ -268,7 +260,7 @@ elif s2b or s2b_gpu:
         from glob import glob
         from os import remove
         from os.path import join,exists,split,splitext,basename
-        start_time = writeStart(stdout, "s2b_2_freesurfer_postproc")
+        writeStart(stdout, "s2b_2_freesurfer_postproc")
 
         subject = split(sdir)[1]
         T1 = join(sdir,"T1.nii.gz")
@@ -361,7 +353,7 @@ elif s2b or s2b_gpu:
         # smart_copy(exclusion_bsplusthalami,EDI,force)
         # smart_copy(allvoxelscortsubcort,EDI,force)
 
-        writeFinish(stdout, start_time, "s2b_2_freesurfer_postproc")
+        writeFinish(stdout, "s2b_2_freesurfer_postproc")
 
 elif s3:
     @python_app(executors=executor_labels)
@@ -369,7 +361,6 @@ elif s3:
         import time
         from subscripts.utilities import run,smart_remove,smart_mkdir,writeStart,writeFinish,writeOutput,getTimeString
         from os.path import exists,join,splitext,abspath,split,basename
-        # start_time = writeStart(stdout, "s3_1_probtrackx")
         start_time = time.time()
 
         EDI_allvols = join(sdir,"EDI","allvols")
@@ -427,7 +418,6 @@ elif s3:
         import time
         from subscripts.utilities import run,isFloat,smart_mkdir,smart_remove,writeStart,writeFinish,writeOutput,getTimeString
         from os.path import exists,join,splitext,abspath,split,basename
-        # start_time = writeStart(stdout, "s3_2_edi_consensus")
         start_time = time.time()
 
         pbtk_dir = join(sdir,"EDI","PBTKresults")
@@ -486,7 +476,7 @@ elif s3:
                 smart_copy(consensus, total)
             else:    
                 run("fslmaths {0} -add {1} {1}".format(consensus, total), write_output=stdout)
-        writeFinish(stdout, start_time, "s3_3_edi_combine")
+        writeFinish(stdout, "s3_connectome_and_edi")
 
 log_dir = join(odir, args.log_dir)
 smart_mkdir(log_dir)
@@ -494,7 +484,8 @@ with open(args.subject_list) as f:
     for input_dir in f.readlines():
         input_dir = input_dir.strip()
         input_data = join(input_dir, "hardi.nii.gz")
-        sdir = join(odir, basename(input_dir))
+        subject = basename(input_dir)
+        sdir = join(odir, subject)
         stdout = join(log_dir, basename(sdir) + ".stdout")
         if not isdir(sdir):
             mkdir(sdir)
@@ -509,18 +500,19 @@ with open(args.subject_list) as f:
                 s1_2_future = s1_2_timestep_process(sdir, i, stdout, args.force, inputs=[s1_1_future])
                 s1_2_futures.append(s1_2_future)
             s1_3_future = s1_3_dti_fit(input_dir, sdir, stdout, args.force, inputs=s1_2_futures)
-            jobs.append(s1_1_future)
+            jobs.append((subject, s1_3_future))
         elif s2a:
             s2a_future = s2a_bedpostx(sdir, stdout, args.force)
-            jobs.append(s2a_future)
+            jobs.append((subject, s2a_future))
         elif s2b or s2b_gpu:
             s2b_1_future = s2b_1_freesurfer(sdir, s2b_gpu, stdout, args.force)
             s2b_2_future = s2b_2_freesurfer_postproc(sdir, stdout, args.force, inputs=[s2b_1_future])
-            jobs.append(s2b_2_future)
+            jobs.append((subject, s2b_2_future))
         elif s3:
             s3_2_futures = []
             oneway_edges = []
             consensus_edges = []
+            writeStart(stdout, "s3_connectome_and_edi")
             with open(args.edge_list) as f:
                 for edge in f.readlines():
                     if edge.isspace():
@@ -538,7 +530,10 @@ with open(args.subject_list) as f:
                         oneway_edges.append(b_to_a)
                         consensus_edges.append(a_to_b)
             s3_3_future = s3_3_edi_combine(sdir, consensus_edges, stdout, args.force, inputs=s3_2_futures)
-            jobs.append(s3_3_future)
+            jobs.append((subject, s3_3_future))
 
 for job in jobs:
-    job.result()
+    try:
+        job[1].result()
+    except:
+        print("Error: failed to process subject {}".format(job[0]))
