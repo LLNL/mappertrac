@@ -32,42 +32,65 @@ s3 = args.script == 's3'
 # Use only two Slurm executors for now, to prevent requesting unnecessary resources
 # 1. Local uses the initially running node's cpus, so we don't waste them.
 # 2. Batch requests additional nodes on the same cluster.
-# Parsl will automatically distribute tasks between both executors.
-executors = []
-executor_labels = ['local',
-                   #'batch'
-                   ]
-num_cores = multiprocessing.cpu_count()
-slurm_override = """#SBATCH -A ccp"""
-slurm_override_gpu = """#SBATCH -A ccp
-module load cuda/8.0;"""
+# Parsl will distribute tasks between both executors.
 
 def get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, overrides):
     return [IPyParallelExecutor(label='local',
                 provider=LocalProvider(
                 init_blocks=tasks_per_node,
                 max_blocks=tasks_per_node)),
-            # IPyParallelExecutor(label='batch',
-            #     provider=SlurmProvider('pbatch',
-            #     launcher=SrunLauncher(),
-            #     nodes_per_block=nodes_per_block,
-            #     tasks_per_node=tasks_per_node,
-            #     init_blocks=1,
-            #     max_blocks=max_blocks,
-            #     walltime=walltime,
-            #     overrides=overrides))
+            IPyParallelExecutor(label='batch',
+                provider=SlurmProvider('pbatch',
+                launcher=SrunLauncher(),
+                nodes_per_block=nodes_per_block,
+                tasks_per_node=tasks_per_node,
+                init_blocks=max_blocks,
+                max_blocks=max_blocks,
+                walltime=walltime,
+                overrides=overrides))
         ]
+def get_executor_labels(nodes_per_block, max_blocks):
+    labels = ['local']
+    for i in range(nodes_per_block * max_blocks):
+        labels.append('batch')
+    return labels
+
+num_cores = multiprocessing.cpu_count()
+tasks_per_node = 1
+nodes_per_block = 4
+max_blocks = 1
+walltime = "03:00:00"
+slurm_override = """#SBATCH -A ccp"""
 
 if s1:
-    executors = get_executors(num_cores, 8, 1, "00:30:00", slurm_override)
+    tasks_per_node = num_cores
+    nodes_per_block = 8
+    max_blocks = 1
+    walltime = "03:00:00"
 elif s2a:
-    executors = get_executors(1, 4, 2, "03:00:00", slurm_override_gpu)
+    tasks_per_node = 1
+    nodes_per_block = 4
+    max_blocks = 2
+    walltime = "03:00:00"
+    slurm_override = """#SBATCH -A ccp
+module load cuda/8.0;"""
 elif s2b:
-    executors = get_executors(8, 8, 2, "23:59:00", slurm_override)
+    tasks_per_node = 1
+    nodes_per_block = 8
+    max_blocks = 2
+    walltime = "23:59:00"
 elif s2b_gpu:
-    executors = get_executors(1, 4, 2, "06:00:00", slurm_override) # we use CUDA 5 instead of 8
+    tasks_per_node = 1
+    nodes_per_block = 4
+    max_blocks = 2
+    walltime = "06:00:00"
 elif s3:
-    executors = get_executors(num_cores, 8, 1, "03:00:00", slurm_override)
+    tasks_per_node = num_cores
+    nodes_per_block = 8
+    max_blocks = 1
+    walltime = "03:00:00"
+executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
+executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 config = Config(executors=executors)
 
 start_time = printStart()
@@ -158,7 +181,7 @@ if s1:
         # writeFinish(stdout, start_time, "s1_3_dti_fit")
 
 elif s2a:
-    @python_app(executors=executor_labels)
+    @python_app(executors=['batch'])
     def s2a_bedpostx(sdir, log_dir, force):
         import shutil
         from subscripts.utilities import run,smart_copy,smart_mkdir,smart_run,exist_all,writeStart,writeFinish,writeOutput
@@ -198,7 +221,7 @@ elif s2a:
         writeFinish(stdout, start_time, "s2a_bedpostx")
 
 elif s2b or s2b_gpu:
-    @python_app(executors=executor_labels)
+    @python_app(executors=['batch'])
     def s2b_1_freesurfer(sdir, use_gpu, log_dir, force):
         import multiprocessing
         from subscripts.utilities import run,smart_mkdir,smart_run,writeStart,writeFinish,writeOutput
@@ -467,7 +490,7 @@ elif s3:
                 run("fslmaths {0} -add {1} {1}".format(consensus, total), write_output=stdout)
         writeFinish(stdout, start_time, "s3_3_edi_combine")
 
-log_dir = abspath(args.log_dir)
+log_dir = join(odir, args.log_dir)
 smart_mkdir(log_dir)
 with open(args.subject_list) as f:
     for input_dir in f.readlines():
