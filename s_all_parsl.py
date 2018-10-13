@@ -65,8 +65,8 @@ slurm_override = """#SBATCH -A ccp"""
 
 if s1:
     tasks_per_node = num_cores
-    nodes_per_block = 4
-    max_blocks = 1
+    nodes_per_block = 8
+    max_blocks = 2
     walltime = "03:00:00"
 elif s2a:
     tasks_per_node = 1
@@ -87,7 +87,7 @@ elif s2b_gpu:
     walltime = "06:00:00"
 elif s3:
     tasks_per_node = num_cores
-    nodes_per_block = 8
+    nodes_per_block = 4
     max_blocks = 1
     walltime = "03:00:00"
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
@@ -359,7 +359,7 @@ elif s3:
     @python_app(executors=executor_labels)
     def s3_1_probtrackx(sdir, a, b, stdout, force):
         import time
-        from subscripts.utilities import run,smart_remove,smart_mkdir,writeStart,writeFinish,writeOutput,getTimeString
+        from subscripts.utilities import run,smart_remove,smart_mkdir,writeStart,writeFinish,writeOutput,getTimeDuration
         from os.path import exists,join,splitext,abspath,split,basename
         start_time = time.time()
 
@@ -411,12 +411,12 @@ elif s3:
             + " --omatrix1"
         )
         run("probtrackx2" + arguments, write_output=stdout)
-        writeOutput(stdout, "Finished s_3_1 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeString(time.time() - start_time)))
+        writeOutput(stdout, "Finished s_3_1 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeDuration(start_time)))
 
     @python_app(executors=executor_labels)
     def s3_2_edi_consensus(sdir, a, b, stdout, force, inputs=[]):
         import time
-        from subscripts.utilities import run,isFloat,smart_mkdir,smart_remove,writeStart,writeFinish,writeOutput,getTimeString
+        from subscripts.utilities import run,isFloat,smart_mkdir,smart_remove,writeStart,writeFinish,writeOutput,getTimeDuration
         from os.path import exists,join,splitext,abspath,split,basename
         start_time = time.time()
 
@@ -455,13 +455,12 @@ elif s3:
                 log.write("{} is thresholded to {}\n".format(a, amax))
                 log.write("{} is thresholded to {}\n".format(b, bmax))
 
-        writeOutput(stdout, "Finished s_3_2 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeString(time.time() - start_time)))
+        writeOutput(stdout, "Finished s_3_2 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeDuration(start_time)))
 
     @python_app(executors=executor_labels)
     def s3_3_edi_combine(sdir, consensus_edges, stdout, force, inputs=[]):
         from subscripts.utilities import run,smart_copy,smart_mkdir,writeStart,writeFinish,writeOutput
         from os.path import exists,join,split
-        start_time = writeStart(stdout, "s3_3_edi_combine")
         pbtk_dir = join(sdir,"EDI","PBTKresults")
         edi_maps = join(sdir,"EDI","EDImaps")
         smart_mkdir(edi_maps)

@@ -85,14 +85,10 @@ def getTimeDuration(start_seconds):
     return "{:d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
 
 def getStart(function_name=sys.argv[0]):
-    return ("\n=====================================\n" +
-           "Starting {} at {}".format(basename(str(function_name)), getTimeDate()) +
-           "\n=====================================\n")
+    return "Starting {} at {}\n".format(basename(str(function_name)), getTimeDate())
 
 def getFinish(function_name=sys.argv[0]):
-    return ("\n=====================================\n" +
-           "Finished {} at {}".format(basename(str(function_name)), getTimeDate()) +
-           "\n=====================================\n")
+    return "Finished {} at {}\n".format(basename(str(function_name)), getTimeDate())
 
 def printTime():
     print(getTime())
@@ -110,7 +106,9 @@ def writeOutput(path, output):
 
 def writeStart(path, function_name=sys.argv[0]):
     with open(path, 'a') as f:
+        f.write("\n=====================================\n")
         f.write(getStart(function_name))
+        f.write("=====================================\n\n")
         f.write("record_time,{}\n".format(int(time.time())))
 
 def writeFinish(path, function_name=sys.argv[0]):
@@ -119,14 +117,16 @@ def writeFinish(path, function_name=sys.argv[0]):
         for line in f.readlines():
             line = line.strip()
             if line.startswith("record_time,"):
-                chunks = ",".split(line)
+                chunks = line.split(',',1)
                 if len(chunks) > 1:
                     start_time = chunks[1]
 
     with open(path, 'a') as f:
+        f.write("\n=====================================\n")
         f.write(getFinish(function_name))
         if isInteger(start_time):
-            f.write("Function took {} (h:m:s)\n".format(getTimeDuration(start_time)))
+            f.write("Took {} (h:m:s)\n".format(getTimeDuration(start_time)))
+        f.write("=====================================\n\n")
 
 def generateListAllEdges(vol_dir, path='lists/listEdgesEDIAll.txt'):
     with open(path,'w') as l:
