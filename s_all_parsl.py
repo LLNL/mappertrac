@@ -1,39 +1,41 @@
 #!/usr/bin/env python3
 import argparse
-import sys
-import os
 import multiprocessing
 import parsl
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from libsubmit.providers import LocalProvider,SlurmProvider
-from libsubmit.channels import LocalChannel,SSHInteractiveLoginChannel
 from libsubmit.launchers import SrunLauncher
 from subscripts.utilities import *
-from os.path import exists,join,split,splitext,abspath,basename,isdir
+from os.path import exists,join,split,splitext,abspath,basename,isdir,islink
 from os import system,mkdir,remove,environ,makedirs
 from math import floor
 
-parser = argparse.ArgumentParser(description='Generate connectome data',usage="%(prog)s subject_list output_dir [--force] [--edge_list EDGE_LIST] [s1] [s2a] [s2b] [s3] [s4]\n")
-parser.add_argument('subject_list',help='Text file with list of subject directories.')
-parser.add_argument('output_dir',help='The super-directory that will contain output directories for each subject')
-parser.add_argument('script', choices=['s1','s2a','s2b','s2b_gpu','s3'], type=str.lower, default='s1', help='Script to run across subjects')
-parser.add_argument('--force',help='Force re-compute if output already exists',action='store_true')
-parser.add_argument('--edge_list',help='Edges processed by probtrackx, in s3_ediPreproc',default=join("lists","listEdgesEDI.txt"))
-parser.add_argument('--log_dir',help='Directory containing log output',default=join("parsl_logs"))
+parser = argparse.ArgumentParser(description='Generate connectome data', usage="%(prog)s subject_list output_dir [--force] [--edge_list EDGE_LIST] [s1] [s2a] [s2b] [s3] [s4]\n")
+parser.add_argument('subject_list', help='Text file with list of subject directories.')
+parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
+parser.add_argument('step_choice', choices=['s1','s2a','s2b','s2b_gpu','s3'], type=str.lower, help='Script to run across subjects')
+parser.add_argument('--force', help='Force re-compute if output already exists',action='store_true')
+parser.add_argument('--edge_list', help='Edges processed by probtrackx, in s3_ediPreproc', default=join("lists","listEdgesEDI.txt"))
+parser.add_argument('--log_dir', help='Directory containing log output', default=join("parsl_logs"))
+parser.add_argument('--tasks_per_node', help='Override default setting, number of tasks per node', type=int)
+parser.add_argument('--nodes_per_block', help='Override default setting, number of nodes per block', type=int)
+parser.add_argument('--max_blocks', help='Override default setting, max blocks to request', type=int)
+parser.add_argument('--walltime', help='Override default setting, max walltime')
 args = parser.parse_args()
 
-s1 = args.script == 's1'
-s2a = args.script == 's2a'
-s2b = args.script == 's2b'
-s2b_gpu = args.script == 's2b_gpu'
-s3 = args.script == 's3'
+s1 = args.step_choice == 's1'
+s2a = args.step_choice == 's2a'
+s2b = args.step_choice == 's2b'
+s2b_gpu = args.step_choice == 's2b_gpu'
+s3 = args.step_choice == 's3'
 
 # Use only two Slurm executors for now, to prevent requesting unnecessary resources
 # 1. Local uses the initially running node's cpus, so we don't waste them.
 # 2. Batch requests additional nodes on the same cluster.
 # Parsl will distribute tasks between both executors.
+
 
 def get_executors(_tasks_per_node, _nodes_per_block, _max_blocks, _walltime, _overrides):
     return [IPyParallelExecutor(label='local',
@@ -49,32 +51,31 @@ def get_executors(_tasks_per_node, _nodes_per_block, _max_blocks, _walltime, _ov
                 max_blocks=_max_blocks,
                 walltime=_walltime,
                 overrides=_overrides))
-        ]
+            ]
+
+
 def get_executor_labels(_nodes_per_block, _max_blocks):
     labels = ['local']
     for i in range(_nodes_per_block * _max_blocks):
         labels.append('batch')
     return labels
 
+
 num_cores = int(floor(multiprocessing.cpu_count() / 2))
-tasks_per_node = 1
-nodes_per_block = 4
-max_blocks = 1
-walltime = "03:00:00"
-slurm_override = """#SBATCH -A ccp"""
+tasks_per_node = nodes_per_block = max_blocks = walltime = None
+slurm_override = "#SBATCH -A ccp"
 
 if s1:
-    tasks_per_node = num_cores
-    nodes_per_block = 8
-    max_blocks = 2
+    tasks_per_node = 1
+    nodes_per_block = 1
+    max_blocks = 1
     walltime = "03:00:00"
 elif s2a:
     tasks_per_node = 1
     nodes_per_block = 4
     max_blocks = 2
-    walltime = "03:00:00"
-    slurm_override = """#SBATCH -A ccp
-module load cuda/8.0;"""
+    walltime = "12:00:00"
+    slurm_override += "\nmodule load cuda/8.0;"
 elif s2b:
     tasks_per_node = 1
     nodes_per_block = 8
@@ -84,17 +85,21 @@ elif s2b_gpu:
     tasks_per_node = 1
     nodes_per_block = 4
     max_blocks = 2
-    walltime = "06:00:00"
+    walltime = "12:00:00"
 elif s3:
     tasks_per_node = num_cores
     nodes_per_block = 4
     max_blocks = 1
-    walltime = "03:00:00"
+    walltime = "12:00:00"
+tasks_per_node = args.tasks_per_node if args.tasks_per_node is not None else tasks_per_node
+nodes_per_block = args.nodes_per_block if args.nodes_per_block is not None else nodes_per_block
+max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
+walltime = args.walltime if args.walltime is not None else walltime
+
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
 executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 config = Config(executors=executors)
-
-start_time = printStart()
+config.retries = 2
 parsl.set_stream_logger()
 parsl.load(config)
 
@@ -170,14 +175,14 @@ if s1:
         smart_copy(dti_FA,FA,force)
 
         ### not used anywhere else, delete?
-        # bvecs_rotated = join(sdir,"bvecs_rotated") 
+        # bvecs_rotated = join(sdir,"bvecs_rotated")
         # eddy_log = join(sdir,"data_eddy.ecclog")
         # run("fdt_rotate_bvecs {} {} {}".format(bvecs,bvecs_rotated,eddy_log))
 
         writeFinish(stdout, "s1_dtiPreproc")
 
 elif s2a:
-    @python_app(executors=['batch'])
+    @python_app(executors=executor_labels)
     def s2a_bedpostx(sdir, stdout, force):
         import shutil
         from subscripts.utilities import run,smart_copy,smart_mkdir,smart_run,exist_all,writeStart,writeFinish,writeOutput
@@ -193,7 +198,7 @@ elif s2a:
         dyads1 = join(bedpostxResults, "dyads1")
         dyads2 = join(bedpostxResults, "dyads2")
         brain_mask = join(bedpostxResults, "nodif_brain_mask")
-        do_run = force or not exist_all([th1,ph1,th2,ph2],".nii.gz") # we re-run many commands for fault tolerance
+        do_run = force or not exist_all([th1,ph1,th2,ph2],".nii.gz")  # we re-run many commands for fault tolerance
         if not do_run:
             writeOutput(stdout,"Already finished bedpostx in {}. Use --force argument to re-compute.".format(bedpostxResults))
         elif exists(bedpostxResults):
@@ -216,22 +221,25 @@ elif s2a:
         writeFinish(stdout, "s2a_bedpostx")
 
 elif s2b or s2b_gpu:
-    @python_app(executors=['batch'])
+    if islink(join(odir,"fsaverage")):
+        run("unlink {}".format(join(odir,"fsaverage")))
+
+    @python_app(executors=executor_labels)
     def s2b_1_freesurfer(sdir, use_gpu, stdout, force):
         import multiprocessing
         from subscripts.utilities import run,smart_mkdir,smart_run,writeStart,writeFinish,writeOutput
         from os import environ
-        from os.path import join,exists,islink,split,basename
+        from os.path import join,exists,split,basename
         writeStart(stdout, "s2b_1_freesurfer")
 
         T1 = join(sdir,"T1.nii.gz")
         mri_out = join(sdir,"mri","orig","001.mgz")
         subject = split(sdir)[1]
         environ['SUBJECTS_DIR'] = split(sdir)[0]
-        num_cores = multiprocessing.cpu_count()
+        num_cpus = multiprocessing.cpu_count()
 
         if use_gpu:
-            if not 'CUDA_5_LIB_DIR' in environ:
+            if environ and 'CUDA_5_LIB_DIR' not in environ:
                 writeOutput(stdout, "Error: Environment variable CUDA_5_LIB_DIR not set. Please install CUDA 5 to use Freesurfer GPU functions.")
                 return
             environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
@@ -241,15 +249,16 @@ elif s2b or s2b_gpu:
 
         smart_run("mri_convert {} {}".format(T1,mri_out), mri_out, force, write_output=stdout)
 
-        if islink(join(environ['SUBJECTS_DIR'],"fsaverage")):
-            run("unlink {}".format(join(environ['SUBJECTS_DIR'],"fsaverage")), write_output=stdout)
-
         if force or not exists(join(sdir,"mri","aparc+aseg.mgz")):
-            writeOutput(stdout, "Running Freesurfer with {} cores".format(num_cores))
             if use_gpu:
-                run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, num_cores), write_output=stdout)
+                writeOutput(stdout, "Running Freesurfer with GPU and {} cpus".format(num_cpus))
+                run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, num_cpus), write_output=stdout)
+            elif num_cpus > 2:
+                writeOutput(stdout, "Running Freesurfer with {} cpus".format(num_cpus))
+                run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, num_cpus), write_output=stdout)
             else:
-                run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, num_cores), write_output=stdout)
+                writeOutput(stdout, "Running Freesurfer with single core")
+                run("recon-all -s {} -all -no-isrunning".format(subject), write_output=stdout)
 
         writeFinish(stdout, "s2b_1_freesurfer")
 
@@ -258,11 +267,12 @@ elif s2b or s2b_gpu:
         from subscripts.utilities import run,smart_copy,smart_run,smart_mkdir,smart_remove,exist_all,writeStart,writeFinish,writeOutput
         from subscripts.maskseeds import maskseeds,saveallvoxels
         from glob import glob
-        from os import remove
+        from os import remove,environ
         from os.path import join,exists,split,splitext,basename
         writeStart(stdout, "s2b_2_freesurfer_postproc")
 
         subject = split(sdir)[1]
+        environ['SUBJECTS_DIR'] = split(sdir)[0]
         T1 = join(sdir,"T1.nii.gz")
         FA = join(sdir,"FA.nii.gz")
         aseg = join(sdir,"aseg.nii.gz")
@@ -281,7 +291,7 @@ elif s2b or s2b_gpu:
         subcortical_index = join("lists","subcorticalIndex.txt")
         EDI = join(sdir,"EDI")
         EDI_allvols = join(EDI,"allvols")
-        do_run = force or not exists(exclusion_bsplusthalami) # we re-run many commands for fault tolerance
+        do_run = force or not exists(exclusion_bsplusthalami)  # we re-run many commands for fault tolerance
         if not do_run:
             writeOutput(stdout, "Already finished freesurfer in {}. Use --force argument to re-compute.".format(sdir))
         else:
@@ -292,7 +302,7 @@ elif s2b or s2b_gpu:
         smart_mkdir(cort_label_dir)
         if force or not exists(join(cort_label_dir,"rh.temporalpole.label")):
             run("mri_annotation2label --subject {} --hemi rh --annotation aparc --outdir {}".format(subject, cort_label_dir), write_output=stdout)
-        if force or not exists(join(cort_label_dir,"lh.temporalpole.label")):    
+        if force or not exists(join(cort_label_dir,"lh.temporalpole.label")):
             run("mri_annotation2label --subject {} --hemi lh --annotation aparc --outdir {}".format(subject, cort_label_dir), write_output=stdout)
 
         smart_mkdir(cort_vol_dir)
@@ -328,7 +338,7 @@ elif s2b or s2b_gpu:
                 run("fslmaths {} -thr 0.2 -bin {}".format(out_vol,out_vol), write_output=stdout)
 
         if do_run:
-            run("fslmaths {} -mul 0 {}".format(FA,bs), write_output=stdout) # For now we fake a bs.nii.gz file
+            run("fslmaths {} -mul 0 {}".format(FA,bs), write_output=stdout)  # For now we fake a bs.nii.gz file
             maskseeds(sdir,join(cort_vol_dir + "_s2fa"),join(cort_vol_dir + "_s2fa_m"),0.05,1,1)
             maskseeds(sdir,join(subcort_vol_dir + "_s2fa"),join(subcort_vol_dir + "_s2fa_m"),0.05,0.4,0.4)
             saveallvoxels(sdir,join(cort_vol_dir + "_s2fa_m"),join(subcort_vol_dir + "_s2fa_m"),allvoxelscortsubcort,force)
@@ -361,6 +371,7 @@ elif s3:
         import time
         from subscripts.utilities import run,smart_remove,smart_mkdir,writeStart,writeFinish,writeOutput,getTimeDuration
         from os.path import exists,join,splitext,abspath,split,basename
+        writeStart(stdout, "s3_connectome_and_edi")
         start_time = time.time()
 
         EDI_allvols = join(sdir,"EDI","allvols")
@@ -400,16 +411,15 @@ elif s3:
         with open((waypoints),"w") as f:
             f.write(b_file + "\n")
 
-        arguments = (" -x {} ".format(a_file)
-            + " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000"
-            + " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination)
-            + " --forcedir --opd"
-            + " -s {}".format(merged)
-            + " -m {}".format(nodif_brain_mask)
-            + " --dir={}".format(pbtk_dir)
-            + " --out={}".format(a_to_b_formatted)
-            + " --omatrix1"
-        )
+        arguments = (" -x {} ".format(a_file) +
+            " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+            " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
+            " --forcedir --opd" +
+            " -s {}".format(merged) +
+            " -m {}".format(nodif_brain_mask) +
+            " --dir={}".format(pbtk_dir) +
+            " --out={}".format(a_to_b_formatted) +
+            " --omatrix1")
         run("probtrackx2" + arguments, write_output=stdout)
         writeOutput(stdout, "Finished s_3_1 subproc: {}, subject {}\nTime: {} (h:m:s)".format(a_to_b, basename(sdir), getTimeDuration(start_time)))
 
@@ -467,13 +477,13 @@ elif s3:
         total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
 
         for a_to_b in consensus_edges:
-            consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b+".nii.gz")
+            consensus = join(pbtk_dir, "twoway_consensus_edges", a_to_b + ".nii.gz")
             if not exists(consensus):
                 writeOutput(stdout,"{} has been thresholded. See {} for details".format(a_to_b, join(pbtk_dir, "zerosl.txt")))
                 continue
             if not exists(total):
                 smart_copy(consensus, total)
-            else:    
+            else:
                 run("fslmaths {0} -add {1} {1}".format(consensus, total), write_output=stdout)
         writeFinish(stdout, "s3_connectome_and_edi")
 
@@ -489,10 +499,11 @@ with open(args.subject_list) as f:
         if not isdir(sdir):
             mkdir(sdir)
         if s1:
-            num_timesteps = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data)).split()[-1]
-            if not isInteger(num_timesteps):
+            timesteps = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data)).split()
+            if not timesteps or not isInteger(timesteps[-1]):
                 print("Failed to read timesteps from {}".format(input_data))
                 continue
+            num_timesteps = timesteps[-1]
             s1_1_future = s1_1_split_timesteps(input_dir, sdir, stdout, args.force)
             s1_2_futures = []
             for i in range(int(num_timesteps)):
@@ -520,7 +531,7 @@ with open(args.subject_list) as f:
                     a, b = edge.strip().split(',', 1)
                     a_to_b = "{}to{}".format(a, b)
                     b_to_a = "{}to{}".format(b, a)
-                    if not a_to_b in oneway_edges and not b_to_a in oneway_edges:
+                    if a_to_b not in oneway_edges and b_to_a not in oneway_edges:
                         s3_1_future_ab = s3_1_probtrackx(sdir, a, b, stdout, args.force)
                         s3_1_future_ba = s3_1_probtrackx(sdir, b, a, stdout, args.force)
                         s3_2_future = s3_2_edi_consensus(sdir, a, b, stdout, args.force, inputs=[s3_1_future_ab, s3_1_future_ba])
