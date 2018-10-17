@@ -39,7 +39,6 @@ def run(command, stdout=None, ignore_errors=False, print_output=True, print_time
             break
         line = new_line
     if process.returncode != 0 and not ignore_errors:
-        printTime()
         if stdout is not None and not new_line.isspace():
             write(stdout, "Error: non zero return code")
             write(stdout, get_time_date())
@@ -118,7 +117,7 @@ def write_finish(path, function_name=sys.argv[0]):
         f.write("\n=====================================\n")
         f.write(get_finish(function_name))
         if is_integer(start_time):
-            f.write("Took {} (h:m:s)\n".format(getTimeDuration(start_time)))
+            f.write("Took {} (h:m:s)\n".format(get_time_duration(start_time)))
         f.write("=====================================\n\n")
 
 def read_checkpoint(sdir, step, checksum):

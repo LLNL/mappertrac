@@ -2,11 +2,12 @@
 import argparse
 import multiprocessing
 import parsl
+import subscripts.config
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
-from libsubmit.providers import LocalProvider,SlurmProvider
-from libsubmit.launchers import SrunLauncher
+from parsl.providers import LocalProvider,SlurmProvider
+from parsl.launchers import SrunLauncher
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,islink
 from os import system,mkdir,remove,environ,makedirs
@@ -43,21 +44,21 @@ def get_executors(_tasks_per_node, _nodes_per_block, _max_blocks, _walltime, _ov
                 provider=LocalProvider(
                 init_blocks=_tasks_per_node,
                 max_blocks=_tasks_per_node)),
-            IPyParallelExecutor(label='batch',
-                provider=SlurmProvider('pbatch',
-                launcher=SrunLauncher(),
-                nodes_per_block=_nodes_per_block,
-                tasks_per_node=_tasks_per_node,
-                init_blocks=1,
-                max_blocks=_max_blocks,
-                walltime=_walltime,
-                overrides=_overrides))
+            # IPyParallelExecutor(label='batch',
+            #     provider=SlurmProvider('pbatch',
+            #     launcher=SrunLauncher(),
+            #     nodes_per_block=_nodes_per_block,
+            #     tasks_per_node=_tasks_per_node,
+            #     init_blocks=1,
+            #     max_blocks=_max_blocks,
+            #     walltime=_walltime,
+            #     overrides=_overrides))
             ]
 
 def get_executor_labels(_nodes_per_block, _max_blocks):
     labels = ['local']
-    for i in range(_nodes_per_block * _max_blocks):
-        labels.append('batch')
+    # for i in range(_nodes_per_block * _max_blocks):
+    #     labels.append('batch')
     return labels
 
 num_cores = int(floor(multiprocessing.cpu_count() / 2))
@@ -95,10 +96,10 @@ nodes_per_block = args.nodes_per_block if args.nodes_per_block is not None else 
 max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
 walltime = args.walltime if args.walltime is not None else walltime
 cores_per_task = int(num_cores / tasks_per_node)
-executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
-executor_labels = get_executor_labels(nodes_per_block, max_blocks)
+subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 
 if __name__ == "__main__":
+    executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
     config = Config(executors=executors)
     config.retries = 2
     parsl.set_stream_logger()
@@ -121,7 +122,7 @@ if __name__ == "__main__":
         stdout = join(log_dir, basename(sdir) + ".stdout")
         smart_mkdir(sdir)
         if read_checkpoint(sdir, args.step_choice, checksum) and not args.force:
-            write_output(stdout, "Already ran subject through step {}. Use --force to re-compute.".format(args.step_choice))
+            write(stdout, "Already ran subject through step {}. Use --force to re-compute.".format(args.step_choice))
             continue
         if s1:
             from subscripts.s1_dti_preproc import create_job
@@ -136,7 +137,7 @@ if __name__ == "__main__":
             from subscripts.s3_probtrackx_edi import create_job
             jobs.append((subject, create_job(sdir, stdout, checksum)))
     for job in jobs:
-        if job is None:
+        if job[1] is None:
             continue
         try:
             job[1].result()
