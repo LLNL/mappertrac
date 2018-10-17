@@ -4,7 +4,7 @@ from shutil import *
 from glob import glob
 from subscripts.utilities import *
 
-def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_threshold_thalamus,force=False):
+def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_threshold_thalamus,force=True):
     
     fsl = environ['FSL_DIR']
 
@@ -40,7 +40,7 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
     smart_remove(tmp)
     
     
-def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force):
+def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force=True):
     
     fsl = environ['FSL_DIR']
 
