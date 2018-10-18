@@ -102,11 +102,11 @@ def s3_3_edi_combine(sdir, consensus_edges, stdout, container, checksum, inputs=
     write_finish(stdout, "s3_probtrackx_edi")
     write_checkpoint(sdir, "s3", checksum)
 
-def create_job(sdir, stdout, container, checksum):
+def create_job(sdir, stdout, edge_list, container, checksum):
     s3_2_futures = []
     oneway_edges = []
     consensus_edges = []
-    with open(args.edge_list) as f:
+    with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():
                 continue

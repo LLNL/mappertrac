@@ -26,7 +26,7 @@ copy("/share/license.txt", os.environ["FREESURFER_HOME"])
 system("cp /share/license.txt $FREESURFER_HOME/license.txt")
 os.environ.pop('DEBUG', None) # DEBUG env triggers freesurfer to produce gigabytes of files
 
-command = "./" + ' '.join(argv[1:])
+command = argv[1:]
 process = Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, env=os.environ, cwd="/share")
 while True:
     line = process.stdout.readline()

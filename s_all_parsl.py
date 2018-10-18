@@ -13,7 +13,7 @@ from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
 from os import system,mkdir,remove,environ,makedirs
 from math import floor
 
-parser = argparse.ArgumentParser(description='Generate connectome data', usage="%(prog)s subject_list output_dir [--force] [--edge_list EDGE_LIST] [s1] [s2a] [s2b] [s3] [s4]\n")
+parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('step_choice', choices=['s1','s2a','s2b','s2b_gpu','s3'], type=str.lower, help='Script to run across subjects')
@@ -26,6 +26,7 @@ parser.add_argument('--max_blocks', help='Override default setting, max blocks t
 parser.add_argument('--walltime', help='Override default setting, max walltime')
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
 parser.add_argument('--container', help='Path to Singularity container image')
+parser.add_argument('--local_only', help='Run only on local machine',action='store_true')
 args = parser.parse_args()
 
 s1 = args.step_choice == 's1'
@@ -40,11 +41,12 @@ s3 = args.step_choice == 's3'
 # Parsl will distribute tasks between both executors.
 
 def get_executors(_tasks_per_node, _nodes_per_block, _max_blocks, _walltime, _overrides):
-    return [IPyParallelExecutor(label='local',
+    executors = [IPyParallelExecutor(label='local',
                 provider=LocalProvider(
                 init_blocks=_tasks_per_node,
-                max_blocks=_tasks_per_node)),
-            IPyParallelExecutor(label='batch',
+                max_blocks=_tasks_per_node))]
+    if not args.local_only:
+        executors.append(IPyParallelExecutor(label='batch',
                 provider=SlurmProvider('pbatch',
                 launcher=SrunLauncher(),
                 nodes_per_block=_nodes_per_block,
@@ -52,13 +54,14 @@ def get_executors(_tasks_per_node, _nodes_per_block, _max_blocks, _walltime, _ov
                 init_blocks=1,
                 max_blocks=_max_blocks,
                 walltime=_walltime,
-                overrides=_overrides))
-            ]
+                overrides=_overrides)))
+    return executors
 
 def get_executor_labels(_nodes_per_block, _max_blocks):
-    labels = ['local','local'] # extra weight to local to compensate for queue time
-    for i in range(_nodes_per_block * _max_blocks):
-        labels.append('batch')
+    labels = ['local']
+    if not args.local_only:
+        for i in range(_nodes_per_block * _max_blocks):
+            labels.append('batch')
     return labels
 
 def get_walltime(_time_per_job, _num_jobs, _tasks_per_node, _nodes_per_block, _max_blocks):
@@ -67,10 +70,9 @@ def get_walltime(_time_per_job, _num_jobs, _tasks_per_node, _nodes_per_block, _m
     return get_time_string(total_secs)
 
 if __name__ == "__main__":
+    container = abspath(args.container)
     odir = abspath(args.output_dir)
     smart_mkdir(odir)
-    jobs = []
-    edges = []
     log_dir = join(odir, args.log_dir)
     smart_mkdir(log_dir)
     subjects = []
@@ -146,6 +148,7 @@ if __name__ == "__main__":
     parsl.set_stream_logger()
     parsl.load(config) 
 
+    jobs = []
     for subject in subjects:
         input_dir = subject['input_dir']
         sname = subject['sname']
@@ -155,16 +158,16 @@ if __name__ == "__main__":
         smart_mkdir(sdir)
         if s1:
             from subscripts.s1_dti_preproc import create_job
-            jobs.append((sname, create_job(input_dir, sdir, stdout, args.container, checksum)))
+            jobs.append((sname, create_job(input_dir, sdir, stdout, container, checksum)))
         elif s2a:
             from subscripts.s2a_bedpostx import create_job
-            jobs.append((sname, create_job(sdir, stdout, args.container, checksum)))
+            jobs.append((sname, create_job(sdir, stdout, container, checksum)))
         elif s2b or s2b_gpu:
             from subscripts.s2b_freesurfer import create_job
-            jobs.append((sname, create_job(sdir, s2b_gpu, cores_per_task, stdout, args.container, checksum, args.force)))
+            jobs.append((sname, create_job(sdir, s2b_gpu, cores_per_task, stdout, container, checksum, args.force)))
         elif s3:
             from subscripts.s3_probtrackx_edi import create_job
-            jobs.append((sname, create_job(sdir, stdout, args.container, checksum)))
+            jobs.append((sname, create_job(sdir, stdout, args.edge_list, container, checksum)))
     for job in jobs:
         if job[1] is None:
             continue
