@@ -101,7 +101,6 @@ if __name__ == "__main__":
         input_dirs = f.readlines()
     input_dirs = [i.strip() for i in input_dirs if i]
     walltime = get_walltime(avg_time_per_task, len(input_dirs), tasks_per_node, nodes_per_block, max_blocks)
-    print(walltime)
 
     # Override from arguments
     tasks_per_node = args.tasks_per_node if args.tasks_per_node is not None else tasks_per_node

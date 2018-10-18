@@ -73,7 +73,7 @@ def get_time_date():
 def get_time_string(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
-    return "{:d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+    return "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
 
 def get_time_seconds(string):
     while (len(string.split(":")) < 3):

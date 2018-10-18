@@ -13,6 +13,7 @@ runinfo/
 parsl_scripts/
 parsl_logs/
 test/
+test.py
 qsub/
 __pycache__
 !.gitignore
