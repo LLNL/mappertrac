@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from subscripts.config import executor_labels
-from subscripts.utilities import run,is_integer
+from subscripts.utilities import run,is_integer,write
 from os.path import join
 from parsl.app.app import python_app
 
@@ -9,7 +9,7 @@ def s1_1_split_timeslices(input_dir, sdir, stdout):
     from subscripts.utilities import run,write_start
     from os.path import join
     from shutil import copyfile
-    write_start(stdout)
+    write_start(stdout, "s1_dti_preproc")
     copyfile(join(input_dir,"bvecs"),join(sdir,"bvecs"))
     copyfile(join(input_dir,"bvals"),join(sdir,"bvals"))
     copyfile(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
@@ -65,7 +65,7 @@ def s1_3_dti_fit(input_dir, sdir, stdout, checksum, inputs=[]):
     copyfile(dti_L1,dti_AD)
     copyfile(dti_FA,FA)
 
-    write_finish(stdout)
+    write_finish(stdout, "s1_dti_preproc")
     write_checkpoint(sdir, "s1", checksum)
 
 def create_job(input_dir, sdir, stdout, checksum):

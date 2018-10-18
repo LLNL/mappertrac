@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-from s_all_parsl import executor_labels
-from subscripts.utilities import run,smart_mkdir,smart_remove,write_output
-from subscripts.maskseeds import maskseeds,saveallvoxels
-from glob import glob
-from os import remove,environ
-from os.path import join,exists,split,splitext,basename
-from shutil import copyfile
+from subscripts.config import executor_labels
+from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
-def s2b_freesurfer(sdir, use_gpu, num_cores, stdout):
+def s2b_freesurfer(sdir, use_gpu, num_cores, stdout, checksum):
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_start,write_finish,write_checkpoint
+    from subscripts.maskseeds import maskseeds,saveallvoxels
+    from os import environ
+    from os.path import exists,join,split,splitext
+    from shutil import copyfile
+    from glob import glob
+    write_start(stdout, "s2b_freesurfer")
     T1 = join(sdir,"T1.nii.gz")
     mri_out = join(sdir,"mri","orig","001.mgz")
     subject = split(sdir)[1]
@@ -43,17 +45,17 @@ def s2b_freesurfer(sdir, use_gpu, num_cores, stdout):
 
     if use_gpu:
         if environ and 'CUDA_5_LIB_DIR' not in environ:
-            write_output(stdout, "Error: Environment variable CUDA_5_LIB_DIR not set. Please install CUDA 5 to use Freesurfer GPU functions.")
+            write(stdout, "Error: Environment variable CUDA_5_LIB_DIR not set. Please install CUDA 5 to use Freesurfer GPU functions.")
             return
         environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
         environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
-        write_output(stdout, "Running Freesurfer with GPU and {} cores".format(num_cores))
+        write(stdout, "Running Freesurfer with GPU and {} cores".format(num_cores))
         run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, num_cores), stdout)
     elif num_cores > 1:
-        write_output(stdout, "Running Freesurfer with {} cores".format(num_cores))
+        write(stdout, "Running Freesurfer with {} cores".format(num_cores))
         run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, num_cores), stdout)
     else:
-        write_output(stdout, "Running Freesurfer with a single core")
+        write(stdout, "Running Freesurfer with a single core")
         run("recon-all -s {} -all -no-isrunning".format(subject), stdout)
     
     run("mri_convert {} {} ".format(join(sdir,"mri","brain.mgz"),T1), stdout)
@@ -71,18 +73,18 @@ def s2b_freesurfer(sdir, use_gpu, num_cores, stdout):
         num = line.split(":")[0].lstrip().rstrip()
         area = line.split(":")[1].lstrip().rstrip()
         area_out = join(subcort_vol_dir,area + ".nii.gz")
-        write_output(stdout, "Processing " + area + ".nii.gz")
+        write(stdout, "Processing " + area + ".nii.gz")
         run("fslmaths {} -uthr {} -thr {} -bin {}".format(aseg,num,num,area_out), stdout)
 
     for volume in glob(join(cort_vol_dir,"*.nii.gz")):
         out_vol = join(cort_vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_s2fa.nii.gz")
-        write_output(stdout, "Processing {} -> {}".format(split(volume)[1], split(out_vol)[1]))
+        write(stdout, "Processing {} -> {}".format(split(volume)[1], split(out_vol)[1]))
         run("flirt -in {} -ref {} -out {}  -applyxfm -init {}".format(volume,FA,out_vol,T12FA), stdout)
         run("fslmaths {} -thr 0.2 -bin {} ".format(out_vol,out_vol), stdout)
 
     for volume in glob(join(subcort_vol_dir,"*.nii.gz")):
         out_vol = join(subcort_vol_dir_out,splitext(splitext(split(volume)[1])[0])[0] + "_s2fa.nii.gz")
-        write_output(stdout, "Processing {} -> {}".format(split(volume)[1], split(out_vol)[1]))
+        write(stdout, "Processing {} -> {}".format(split(volume)[1], split(out_vol)[1]))
         run("flirt -in {} -ref {} -out {}  -applyxfm -init {}".format(volume,FA,out_vol,T12FA), stdout)
         run("fslmaths {} -thr 0.2 -bin {}".format(out_vol,out_vol), stdout)
 
@@ -108,6 +110,8 @@ def s2b_freesurfer(sdir, use_gpu, num_cores, stdout):
     # copyfile(terminationmask,EDI)
     # copyfile(exclusion_bsplusthalami,EDI)
     # copyfile(allvoxelscortsubcort,EDI)
+    write_finish(stdout, "s2b_freesurfer")
+    write_checkpoint(sdir, "s2b", checksum)
 
-def create_job(sdir, stdout, checksum):
-    return s2b_freesurfer(sdir, stdout)
+def create_job(sdir, use_gpu, num_cores, stdout, checksum):
+    return s2b_freesurfer(sdir, use_gpu, num_cores, stdout, checksum)

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-from s_all_parsl import executor_labels
-from subscripts.utilities import run,smart_mkdir,smart_run,exist_all
-from os.path import join,exists,basename
-from shutil import copyfile,rmtree
+from subscripts.config import executor_labels
+from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
-def s2a_bedpostx(sdir, stdout):
+def s2a_bedpostx(sdir, stdout, checksum):
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_start,write_finish,write_checkpoint
+    from os.path import exists,join
+    from shutil import copyfile,rmtree
+    write_start(stdout, "s2a_bedpostx")
     bedpostx = join(sdir,"bedpostx_b1000")
     bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
     th1 = join(bedpostxResults, "merged_th1samples")
@@ -27,6 +29,8 @@ def s2a_bedpostx(sdir, stdout):
     run("bedpostx_gpu " + bedpostx + " -NJOBS 4", stdout)
     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), stdout)
     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), stdout)
+    write_finish(stdout, "s2a_bedpostx")
+    write_checkpoint(sdir, "s2a", checksum)
 
 def create_job(sdir, stdout, checksum):
-    return s2a_bedpostx(sdir, stdout)
+    return s2a_bedpostx(sdir, stdout, checksum)

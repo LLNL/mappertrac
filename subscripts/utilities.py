@@ -70,11 +70,15 @@ def is_integer(value):
 def get_time_date():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")
 
-def get_time_duration(start_seconds):
-    duration = time.time() - int(start_seconds)
-    m, s = divmod(duration, 60)
+def get_time_string(seconds):
+    m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return "{:d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+
+def get_time_seconds(string):
+    while (len(string.split(":")) < 3):
+        string = "00:" + string
+    return sum(secs * int(digit) for secs,digit in zip([3600, 60, 1], string.split(":")))
 
 def get_start(function_name=sys.argv[0]):
     return "Starting {} at {}\n".format(basename(str(function_name)), get_time_date())
@@ -117,7 +121,7 @@ def write_finish(path, function_name=sys.argv[0]):
         f.write("\n=====================================\n")
         f.write(get_finish(function_name))
         if is_integer(start_time):
-            f.write("Took {} (h:m:s)\n".format(get_time_duration(start_time)))
+            f.write("Took {} (h:m:s)\n".format(get_time_string(time.time() - start_time)))
         f.write("=====================================\n\n")
 
 def read_checkpoint(sdir, step, checksum):
