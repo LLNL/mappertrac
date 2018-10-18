@@ -24,8 +24,12 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, stdout=None, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
+def run(command, stdout=None, container=None, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
     start = time.time()
+
+    if container is not None:
+        command = "singularity exec -B .:/share {} python3 /run.py {}".format(container, command)
+
     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""
     while True:
@@ -48,7 +52,7 @@ def run(command, stdout=None, ignore_errors=False, print_output=True, print_time
         if print_time:
             if name_override != "":
                 tokens[0] = name_override
-            print("Running {} took {} seconds".format(tokens[0], round(time.time() - start)))
+            print("Running {} took {} (h:m:s)".format(tokens[0], get_time_string(int(time.time()) - start)))
             if len(tokens) > 1:
                 print("\tArgs: {}".format(' '.join(tokens[1:])))
     return line  # return the last output line
@@ -121,7 +125,7 @@ def write_finish(path, function_name=sys.argv[0]):
         f.write("\n=====================================\n")
         f.write(get_finish(function_name))
         if is_integer(start_time):
-            f.write("Took {} (h:m:s)\n".format(get_time_string(time.time() - start_time)))
+            f.write("Took {} (h:m:s)\n".format(get_time_string(int(time.time()) - int(start_time))))
         f.write("=====================================\n\n")
 
 def read_checkpoint(sdir, step, checksum):

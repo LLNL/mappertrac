@@ -4,7 +4,7 @@ from shutil import *
 from glob import glob
 from subscripts.utilities import *
 
-def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_threshold_thalamus,force=True):
+def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_threshold_thalamus,container,force=True):
     
     fsl = environ['FSL_DIR']
 
@@ -21,8 +21,8 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
     tmp = join(root_dir, "tmp.nii.gz")
         
     # Now create two transformed volumes with threshold 1 and 2
-    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold,tmp))
-    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus,tmp_thalamus))
+    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold,tmp), container=container)
+    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus,tmp_thalamus), container=container)
     
     for seed in glob(join(input_dir,"*s2fa.nii.gz")):
 
@@ -30,9 +30,9 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
     
         if force or not exists(join(output_dir,split(seed)[1])):           
             if region == "thalamus":
-                run("fslmaths {} -mas {} {}".format(seed, tmp_thalamus, join(output_dir,split(seed)[1])))
+                run("fslmaths {} -mas {} {}".format(seed, tmp_thalamus, join(output_dir,split(seed)[1])), container=container)
             else:
-                run("fslmaths {} -mas {} {}".format(seed, tmp, join(output_dir,split(seed)[1])))
+                run("fslmaths {} -mas {} {}".format(seed, tmp, join(output_dir,split(seed)[1])), container=container)
            
         
         
@@ -40,7 +40,7 @@ def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_th
     smart_remove(tmp)
     
     
-def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force=True):
+def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,container,force=True):
     
     fsl = environ['FSL_DIR']
 
@@ -56,16 +56,16 @@ def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,force=True):
     #exit(0)
 
     if force or not exists(join(root_dir,"cort.nii.gz")):
-        run("find_the_biggest {} {}".format(all_vols,join(root_dir,"cort.nii.gz")))
+        run("find_the_biggest {} {}".format(all_vols,join(root_dir,"cort.nii.gz")), container=container)
         
     all_vols = ""
     for vol in glob(join(subcortical_dir,"*_s2fa.nii.gz")):
         all_vols += " " + vol
     
     if force or not exists(join(root_dir,"subcort.nii.gz")):
-        run("find_the_biggest {} {}".format(all_vols,join(root_dir,"subcort.nii.gz")))
+        run("find_the_biggest {} {}".format(all_vols,join(root_dir,"subcort.nii.gz")), container=container)
     
     if force or not exists(output_name):
-        run("fslmaths {} -add {} {} ".format(join(root_dir,"cort.nii.gz"),join(root_dir,"subcort.nii.gz"),output_name))
-        run("fslmaths {} -bin {}".format(output_name,output_name))
+        run("fslmaths {} -add {} {} ".format(join(root_dir,"cort.nii.gz"),join(root_dir,"subcort.nii.gz"),output_name), container=container)
+        run("fslmaths {} -bin {}".format(output_name,output_name), container=container)
     

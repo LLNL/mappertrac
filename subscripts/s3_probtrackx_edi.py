@@ -4,7 +4,7 @@ from subscripts.utilities import write_start
 from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
-def s3_1_probtrackx(sdir, a, b, stdout):
+def s3_1_probtrackx(sdir, a, b, stdout, container):
     from subscripts.utilities import run,smart_remove,smart_mkdir,write
     from os.path import join,exists
     EDI_allvols = join(sdir,"EDI","allvols")
@@ -29,10 +29,10 @@ def s3_1_probtrackx(sdir, a, b, stdout):
     smart_remove(a_to_b_file)
     smart_mkdir(pbtk_dir)
     write(stdout, "Running subproc: {}".format(a_to_b))
-    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), stdout)
-    run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), stdout)
-    run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), stdout)
-    run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), stdout)
+    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), stdout, container)
+    run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), stdout, container)
+    run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), stdout, container)
+    run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), stdout, container)
     with open((waypoints),"w") as f:
         f.write(b_file + "\n")
     arguments = (" -x {} ".format(a_file) +
@@ -44,10 +44,10 @@ def s3_1_probtrackx(sdir, a, b, stdout):
         " --dir={}".format(pbtk_dir) +
         " --out={}".format(a_to_b_formatted) +
         " --omatrix1")
-    run("probtrackx2" + arguments, stdout)
+    run("probtrackx2" + arguments, stdout, container)
 
 @python_app(executors=executor_labels)
-def s3_2_edi_consensus(sdir, a, b, stdout, inputs=[]):
+def s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[]):
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float
     from os.path import join,exists
     pbtk_dir = join(sdir,"EDI","PBTKresults")
@@ -56,12 +56,12 @@ def s3_2_edi_consensus(sdir, a, b, stdout, inputs=[]):
     b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
     smart_mkdir(join(pbtk_dir,"twoway_consensus_edges"))
     consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b)
-    amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), print_output=False, working_dir=pbtk_dir).strip()
+    amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), stdout, container, print_output=False, working_dir=pbtk_dir).strip()
     if not is_float(amax):
         write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
         return
     amax = int(float(amax))
-    bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), print_output=False, working_dir=pbtk_dir).strip()
+    bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), stdout, container, print_output=False, working_dir=pbtk_dir).strip()
     if not is_float(bmax):
         write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
         return
@@ -69,9 +69,9 @@ def s3_2_edi_consensus(sdir, a, b, stdout, inputs=[]):
     if amax > 0 and bmax > 0:
         tmp1 = join(pbtk_dir, "{}to{}_tmp1.nii.gz".format(a, b))
         tmp2 = join(pbtk_dir, "{}to{}_tmp2.nii.gz".format(b, a))
-        run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), stdout, working_dir=pbtk_dir)
-        run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), stdout, working_dir=pbtk_dir)
-        run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), stdout, working_dir=pbtk_dir)
+        run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), stdout, container, working_dir=pbtk_dir)
+        run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), stdout, container, working_dir=pbtk_dir)
+        run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), stdout, container, working_dir=pbtk_dir)
         smart_remove(tmp1)
         smart_remove(tmp2)
     else:
@@ -81,7 +81,7 @@ def s3_2_edi_consensus(sdir, a, b, stdout, inputs=[]):
             log.write("{} is thresholded to {}\n".format(b, bmax))
 
 @python_app(executors=executor_labels)
-def s3_3_edi_combine(sdir, consensus_edges, stdout, inputs=[]):
+def s3_3_edi_combine(sdir, consensus_edges, stdout, container, checksum, inputs=[]):
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,write_finish,write_checkpoint
     from os.path import join,exists
     from shutil import copyfile
@@ -98,11 +98,11 @@ def s3_3_edi_combine(sdir, consensus_edges, stdout, inputs=[]):
         if not exists(total):
             copyfile(consensus, total)
         else:
-            run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout)
+            run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
     write_finish(stdout, "s3_probtrackx_edi")
     write_checkpoint(sdir, "s3", checksum)
 
-def create_job(sdir, stdout, checksum):
+def create_job(sdir, stdout, container, checksum):
     s3_2_futures = []
     oneway_edges = []
     consensus_edges = []
@@ -116,11 +116,11 @@ def create_job(sdir, stdout, checksum):
             b_to_a = "{}to{}".format(b, a)
             if a_to_b not in oneway_edges and b_to_a not in oneway_edges:
                 write_start(stdout, "s3_probtrackx_edi")
-                s3_1_future_ab = s3_1_probtrackx(sdir, a, b, stdout)
-                s3_1_future_ba = s3_1_probtrackx(sdir, b, a, stdout)
-                s3_2_future = s3_2_edi_consensus(sdir, a, b, stdout, inputs=[s3_1_future_ab, s3_1_future_ba])
+                s3_1_future_ab = s3_1_probtrackx(sdir, a, b, stdout, container)
+                s3_1_future_ba = s3_1_probtrackx(sdir, b, a, stdout, container)
+                s3_2_future = s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[s3_1_future_ab, s3_1_future_ba])
                 s3_2_futures.append(s3_2_future)
                 oneway_edges.append(a_to_b)
                 oneway_edges.append(b_to_a)
                 consensus_edges.append(a_to_b)
-    return s3_3_edi_combine(sdir, consensus_edges, checksum, stdout, inputs=s3_2_futures)
+    return s3_3_edi_combine(sdir, consensus_edges, stdout, container, checksum, inputs=s3_2_futures)
