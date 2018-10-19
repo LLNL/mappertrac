@@ -15,32 +15,8 @@ def s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force
     mri_out = join(sdir,"mri","orig","001.mgz")
     subject = split(sdir)[1]
     environ['SUBJECTS_DIR'] = split(sdir)[0]
-    FA = join(sdir,"FA.nii.gz")
-    aseg = join(sdir,"aseg.nii.gz")
-    bs = join(sdir,"bs.nii.gz")
-    FA2T1 = join(sdir,"FA2T1.mat")
-    T12FA = join(sdir,"T12FA.mat")
-    cort_label_dir = join(sdir,"label_cortical")
-    cort_vol_dir = join(sdir,"volumes_cortical")
-    cort_vol_dir_out = cort_vol_dir + "_s2fa"
-    subcort_vol_dir = join(sdir,"volumes_subcortical")
-    subcort_vol_dir_out = subcort_vol_dir + "_s2fa"
-    terminationmask = join(sdir,"terminationmask.nii.gz")
-    allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
-    intersection = join(sdir,"intersection.nii.gz")
-    exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
-    subcortical_index = join("lists","subcorticalIndex.txt")
-    EDI = join(sdir,"EDI")
-    EDI_allvols = join(EDI,"allvols")
     smart_mkdir(join(sdir,"mri"))
     smart_mkdir(join(sdir,"mri","orig"))
-    smart_mkdir(cort_label_dir)
-    smart_mkdir(cort_vol_dir)
-    smart_mkdir(subcort_vol_dir)
-    smart_mkdir(cort_vol_dir_out)
-    smart_mkdir(subcort_vol_dir_out)
-    smart_mkdir(EDI)
-    smart_mkdir(EDI_allvols)
     run("mri_convert {} {}".format(T1,mri_out), stdout, container)
 
     if use_gpu:
@@ -64,8 +40,36 @@ def s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[]):
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_finish,write_checkpoint
     from subscripts.maskseeds import maskseeds,saveallvoxels
     from os.path import exists,join,split,splitext
+    from os import environ
     from shutil import copy
     from glob import glob
+    T1 = join(sdir,"T1.nii.gz")
+    subject = split(sdir)[1]
+    environ['SUBJECTS_DIR'] = split(sdir)[0]
+    FA = join(sdir,"FA.nii.gz")
+    aseg = join(sdir,"aseg.nii.gz")
+    bs = join(sdir,"bs.nii.gz")
+    FA2T1 = join(sdir,"FA2T1.mat")
+    T12FA = join(sdir,"T12FA.mat")
+    cort_label_dir = join(sdir,"label_cortical")
+    cort_vol_dir = join(sdir,"volumes_cortical")
+    cort_vol_dir_out = cort_vol_dir + "_s2fa"
+    subcort_vol_dir = join(sdir,"volumes_subcortical")
+    subcort_vol_dir_out = subcort_vol_dir + "_s2fa"
+    terminationmask = join(sdir,"terminationmask.nii.gz")
+    allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
+    intersection = join(sdir,"intersection.nii.gz")
+    exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
+    subcortical_index = join("lists","subcorticalIndex.txt")
+    EDI = join(sdir,"EDI")
+    EDI_allvols = join(EDI,"allvols")
+    smart_mkdir(cort_label_dir)
+    smart_mkdir(cort_vol_dir)
+    smart_mkdir(subcort_vol_dir)
+    smart_mkdir(cort_vol_dir_out)
+    smart_mkdir(subcort_vol_dir_out)
+    smart_mkdir(EDI)
+    smart_mkdir(EDI_allvols)
     run("mri_convert {} {} ".format(join(sdir,"mri","brain.mgz"),T1), stdout, container)
     run("flirt -in {} -ref {} -omat {}".format(FA,T1,FA2T1), stdout, container)
     run("convert_xfm -omat {} -inverse {}".format(T12FA,FA2T1), stdout, container)

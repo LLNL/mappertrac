@@ -70,7 +70,7 @@ def get_walltime(_time_per_job, _num_jobs, _tasks_per_node, _nodes_per_block, _m
     return get_time_string(total_secs)
 
 if __name__ == "__main__":
-    container = abspath(args.container)
+    container = abspath(args.container) if args.container else None
     odir = abspath(args.output_dir)
     smart_mkdir(odir)
     log_dir = join(odir, args.log_dir)
@@ -114,9 +114,9 @@ if __name__ == "__main__":
         avg_time_per_job = "00:45:00"
         slurm_override += "\nmodule load cuda/8.0;"
     elif s2b:
-        tasks_per_node = 1
+        tasks_per_node = 6
         nodes_per_block = 8
-        max_blocks = 2
+        max_blocks = 3
         avg_time_per_job = "08:00:00"
         if islink(join(odir,"fsaverage")):
             run("unlink {}".format(join(odir,"fsaverage")))
