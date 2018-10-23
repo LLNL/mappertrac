@@ -65,8 +65,9 @@ def get_executor_labels(_nodes_per_block, _max_blocks):
     return labels
 
 def get_walltime(_time_per_job, _num_jobs, _tasks_per_node, _nodes_per_block, _max_blocks):
-    total_secs = (_num_jobs * get_time_seconds(_time_per_job)) / (_tasks_per_node * _nodes_per_block * _max_blocks)
-    total_secs = max(3600, min(total_secs, 86399)) # clamp between 1 and 24 hours
+    job_secs = get_time_seconds(_time_per_job)
+    total_secs = (_num_jobs * job_secs) / (_tasks_per_node * _nodes_per_block * _max_blocks)
+    total_secs = max(job_secs, min(total_secs, 86399)) # clamp between 1 and 24 hours
     return get_time_string(total_secs)
 
 if __name__ == "__main__":
@@ -75,6 +76,46 @@ if __name__ == "__main__":
     smart_mkdir(odir)
     log_dir = join(odir, args.log_dir)
     smart_mkdir(log_dir)
+
+    # Setup defaults for step choice
+    num_cores = int(floor(multiprocessing.cpu_count() / 2))
+    tasks_per_node = nodes_per_block = max_blocks = avg_time_per_job = None
+    dependencies = []
+    slurm_override = "#SBATCH -A {}".format(args.bank)
+    if s1:
+        tasks_per_node = num_cores
+        nodes_per_block = 4
+        max_blocks = 1
+        avg_time_per_job = "00:05:00"
+    elif s2a:
+        tasks_per_node = 1
+        nodes_per_block = 3
+        max_blocks = 3
+        avg_time_per_job = "00:45:00"
+        slurm_override += "\nmodule load cuda/8.0;"
+        dependencies = ['s1']
+    elif s2b:
+        tasks_per_node = 6
+        nodes_per_block = 8
+        max_blocks = 2
+        avg_time_per_job = "08:00:00"
+        if islink(join(odir,"fsaverage")):
+            run("unlink {}".format(join(odir,"fsaverage")))
+        dependencies = ['s1']
+    elif s2b_gpu:
+        tasks_per_node = 1
+        nodes_per_block = 4
+        max_blocks = 2
+        avg_time_per_job = "03:00:00"
+        dependencies = ['s1']
+    elif s3:
+        tasks_per_node = num_cores
+        nodes_per_block = 8
+        max_blocks = 3
+        avg_time_per_job = "01:30:00"
+        dependencies = ['s2a','s2b']
+
+    # Validate subject inputs
     subjects = []
     with open(args.subject_list, 'r') as f:
         input_dirs = f.readlines()
@@ -95,41 +136,13 @@ if __name__ == "__main__":
         if read_checkpoint(sdir, args.step_choice, checksum) and not args.force:
             print("Skipping subject {}. Already ran with step {}. Use --force to re-compute.".format(sname, args.step_choice))
             continue
+        if not read_checkpoints(sdir, dependencies, checksum):
+            print("Skipping subject {}. Step {} is missing dependencies - must have completed steps {}".format(sname, args.step_choice, dependencies))
+            continue
+
         subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
         print("Running subject {} with step {}".format(sname, args.step_choice))
-
     num_jobs = len(subjects)
-    num_cores = int(floor(multiprocessing.cpu_count() / 2))
-    tasks_per_node = nodes_per_block = max_blocks = avg_time_per_job = None
-    slurm_override = "#SBATCH -A {}".format(args.bank)
-    if s1:
-        tasks_per_node = num_cores
-        nodes_per_block = 4
-        max_blocks = 1
-        avg_time_per_job = "00:05:00"
-    elif s2a:
-        tasks_per_node = 1
-        nodes_per_block = 2
-        max_blocks = 3
-        avg_time_per_job = "00:45:00"
-        slurm_override += "\nmodule load cuda/8.0;"
-    elif s2b:
-        tasks_per_node = 6
-        nodes_per_block = 8
-        max_blocks = 3
-        avg_time_per_job = "08:00:00"
-        if islink(join(odir,"fsaverage")):
-            run("unlink {}".format(join(odir,"fsaverage")))
-    elif s2b_gpu:
-        tasks_per_node = 1
-        nodes_per_block = 4
-        max_blocks = 2
-        avg_time_per_job = "03:00:00"
-    elif s3:
-        tasks_per_node = num_cores
-        nodes_per_block = 4
-        max_blocks = 1
-        avg_time_per_job = "00:30:00"
     walltime = get_walltime(avg_time_per_job, num_jobs, tasks_per_node, nodes_per_block, max_blocks)
 
     # Override from arguments
@@ -171,10 +184,10 @@ if __name__ == "__main__":
     for job in jobs:
         if job[1] is None:
             continue
+        sname = job[0]
         try:
             job[1].result()
             print("Finished processing subject {} with step {}".format(sname, args.step_choice))
         except:
-            sname = job[0]
             stdout = join(log_dir, sname + ".stdout")
             print("Error: failed to process subject {}. See details in {}".format(sname, stdout))

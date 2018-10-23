@@ -7,6 +7,7 @@ from parsl.app.app import python_app
 def s3_1_probtrackx(sdir, a, b, stdout, container):
     from subscripts.utilities import run,smart_remove,smart_mkdir,write
     from os.path import join,exists
+    from shutil import copyfile
     EDI_allvols = join(sdir,"EDI","allvols")
     a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
     b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
@@ -14,9 +15,10 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
     a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-    waypoints = join(sdir,"tmp","tmp_waypoint_{}.txt".format(a_to_b))
-    exclusion = join(sdir,"tmp","tmp_exclusion_{}.nii.gz".format(a_to_b))
-    termination = join(sdir,"tmp","tmp_termination_{}.nii.gz".format(a_to_b))
+    tmp = join(sdir, "tmp_" + a_to_b)
+    waypoints = join(tmp,"tmp_waypoint.txt".format(a_to_b))
+    exclusion = join(tmp,"tmp_exclusion.nii.gz".format(a_to_b))
+    termination = join(tmp,"tmp_termination.nii.gz".format(a_to_b))
     bs = join(sdir,"bs.nii.gz")
     allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
     terminationmask = join(sdir,"terminationmask.nii.gz")
@@ -27,6 +29,7 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
         write(stdout, "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
         return
     smart_remove(a_to_b_file)
+    smart_mkdir(tmp)
     smart_mkdir(pbtk_dir)
     write(stdout, "Running subproc: {}".format(a_to_b))
     run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), stdout, container)
@@ -41,10 +44,11 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
         " --forcedir --opd" +
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +
-        " --dir={}".format(pbtk_dir) +
+        " --dir={}".format(tmp) +
         " --out={}".format(a_to_b_formatted) +
         " --omatrix1")
     run("probtrackx2" + arguments, stdout, container)
+    copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
 
 @python_app(executors=executor_labels)
 def s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[]):
@@ -69,9 +73,9 @@ def s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[]):
     if amax > 0 and bmax > 0:
         tmp1 = join(pbtk_dir, "{}to{}_tmp1.nii.gz".format(a, b))
         tmp2 = join(pbtk_dir, "{}to{}_tmp2.nii.gz".format(b, a))
-        run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), stdout, container, working_dir=pbtk_dir)
-        run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), stdout, container, working_dir=pbtk_dir)
-        run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), stdout, container, working_dir=pbtk_dir)
+        run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), stdout, container)
+        run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), stdout, container)
+        run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), stdout, container)
         smart_remove(tmp1)
         smart_remove(tmp2)
     else:
@@ -106,6 +110,7 @@ def create_job(sdir, stdout, edge_list, container, checksum):
     s3_2_futures = []
     oneway_edges = []
     consensus_edges = []
+    write_start(stdout, "s3_probtrackx_edi")
     with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():
@@ -115,7 +120,6 @@ def create_job(sdir, stdout, edge_list, container, checksum):
             a_to_b = "{}to{}".format(a, b)
             b_to_a = "{}to{}".format(b, a)
             if a_to_b not in oneway_edges and b_to_a not in oneway_edges:
-                write_start(stdout, "s3_probtrackx_edi")
                 s3_1_future_ab = s3_1_probtrackx(sdir, a, b, stdout, container)
                 s3_1_future_ba = s3_1_probtrackx(sdir, b, a, stdout, container)
                 s3_2_future = s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[s3_1_future_ab, s3_1_future_ba])

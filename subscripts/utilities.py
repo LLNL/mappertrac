@@ -37,7 +37,7 @@ def run(command, stdout=None, container=None, ignore_errors=False, print_output=
         new_line = str(new_line, 'utf-8')[:-1]
         if print_output and new_line:
             print(new_line)
-        if stdout is not None:
+        if stdout is not None and not new_line.isspace():
             write(stdout, new_line)
         if new_line == '' and process.poll() is not None:
             break
@@ -129,15 +129,23 @@ def write_finish(path, function_name=sys.argv[0]):
         f.write("=====================================\n\n")
 
 def read_checkpoint(sdir, step, checksum):
+    return read_checkpoints(sdir, [step], checksum)
+
+def read_checkpoints(sdir, steps, checksum):
     odir, subject = split(sdir)
     checkpoints = join(odir, "checkpoints.txt")
     if exists(checkpoints):
         with open(checkpoints, 'r') as f:
             for line in f.readlines():
                 chunks = line.strip().split(',')
+                line_subject = chunks[0].strip()
+                line_step = chunks[1].strip()
+                line_checksum = chunks[2].strip()
                 if len(chunks) < 4:
                     continue
-                if chunks[0].strip() == subject and chunks[1].strip() == step and chunks[2].strip() == checksum:
+                if line_subject == subject and line_step in steps and line_checksum == checksum:
+                    steps.remove(line_step)
+                if not steps:
                     return True
     return False
 
