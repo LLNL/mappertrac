@@ -15,7 +15,7 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
     a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-    tmp = join(sdir, "tmp_" + a_to_b)
+    tmp = join(sdir, "tmp", a_to_b)
     waypoints = join(tmp,"tmp_waypoint.txt".format(a_to_b))
     exclusion = join(tmp,"tmp_exclusion.nii.gz".format(a_to_b))
     termination = join(tmp,"tmp_termination.nii.gz".format(a_to_b))
@@ -29,6 +29,7 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
         write(stdout, "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
         return
     smart_remove(a_to_b_file)
+    smart_remove(tmp)
     smart_mkdir(tmp)
     smart_mkdir(pbtk_dir)
     write(stdout, "Running subproc: {}".format(a_to_b))
@@ -45,10 +46,10 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +
         " --dir={}".format(tmp) +
-        " --out={}".format(a_to_b_formatted) +
-        " --omatrix1")
+        " --out={}".format(a_to_b_formatted))
     run("probtrackx2" + arguments, stdout, container)
     copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
+    smart_remove(tmp)
 
 @python_app(executors=executor_labels)
 def s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[]):
@@ -103,6 +104,7 @@ def s3_3_edi_combine(sdir, consensus_edges, stdout, container, checksum, inputs=
             copyfile(consensus, total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
+    run("chmod -R 777 {}".format(sdir), stdout, container)
     write_finish(stdout, "s3_probtrackx_edi")
     write_checkpoint(sdir, "s3", checksum)
 

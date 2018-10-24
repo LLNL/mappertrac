@@ -109,9 +109,9 @@ if __name__ == "__main__":
         avg_time_per_job = "03:00:00"
         dependencies = ['s1']
     elif s3:
-        tasks_per_node = num_cores
+        tasks_per_node = 12 # keep lower than num_cores to avoid memory shortage
         nodes_per_block = 8
-        max_blocks = 3
+        max_blocks = 2
         avg_time_per_job = "01:30:00"
         dependencies = ['s2a','s2b']
 
@@ -151,8 +151,8 @@ if __name__ == "__main__":
     max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
     walltime = args.walltime if args.walltime is not None else walltime
     cores_per_task = max(int(num_cores / tasks_per_node), 1)
-    print("Running {} jobs. {} tasks per node, {} nodes per block, and {} max blocks). Max walltime is {}".format(
-        num_jobs, tasks_per_node * nodes_per_block * max_blocks, tasks_per_node, nodes_per_block * max_blocks, walltime))
+    print("Running {} jobs, {} at a time. Max walltime is {}".format(
+        num_jobs, tasks_per_node * nodes_per_block * max_blocks, walltime))
 
     subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
     executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)

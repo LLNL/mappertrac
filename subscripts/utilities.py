@@ -13,9 +13,12 @@ from subprocess import Popen,PIPE
 def smart_mkdir(path):
     if not isdir(path):
         makedirs(path)
+        run("chmod 777 {}".format(path))
 
 def smart_remove(path):
-    if exists(path):
+    if isdir(path):
+        shutil.rmtree(path)
+    elif exists(path):
         remove(path)
 
 def exist_all(paths):
