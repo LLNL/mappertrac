@@ -46,7 +46,9 @@ def s3_1_probtrackx(sdir, a, b, stdout, container):
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +
         " --dir={}".format(tmp) +
-        " --out={}".format(a_to_b_formatted))
+        " --out={}".format(a_to_b_formatted) +
+        " --omatrix1" # output seed-to-seed sparse connectivity matrix
+        )
     run("probtrackx2" + arguments, stdout, container)
     copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
     smart_remove(tmp)
@@ -108,25 +110,28 @@ def s3_3_edi_combine(sdir, consensus_edges, stdout, container, checksum, inputs=
     write_finish(stdout, "s3_probtrackx_edi")
     write_checkpoint(sdir, "s3", checksum)
 
-def create_job(sdir, stdout, edge_list, container, checksum):
+def create_job(sdir, stdout, probtrackx_edge_list, edi_edge_list, container, checksum):
     s3_2_futures = []
-    oneway_edges = []
+    processed_edges = []
+    edi_edges = []
     consensus_edges = []
     write_start(stdout, "s3_probtrackx_edi")
-    with open(edge_list) as f:
+    with open(edi_edge_list) as f:
+        edi_edges = f.readlines()
+    with open(probtrackx_edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():
                 continue
-            edge = edge.replace("_s2fa", "")
-            a, b = edge.strip().split(',', 1)
+            a, b = edge.replace("_s2fa", "").strip().split(',', 1)
             a_to_b = "{}to{}".format(a, b)
             b_to_a = "{}to{}".format(b, a)
-            if a_to_b not in oneway_edges and b_to_a not in oneway_edges:
+            if a_to_b not in processed_edges and b_to_a not in processed_edges:
                 s3_1_future_ab = s3_1_probtrackx(sdir, a, b, stdout, container)
                 s3_1_future_ba = s3_1_probtrackx(sdir, b, a, stdout, container)
-                s3_2_future = s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[s3_1_future_ab, s3_1_future_ba])
-                s3_2_futures.append(s3_2_future)
-                oneway_edges.append(a_to_b)
-                oneway_edges.append(b_to_a)
-                consensus_edges.append(a_to_b)
+                if edge in edi_edges:
+                    s3_2_future = s3_2_edi_consensus(sdir, a, b, stdout, container, inputs=[s3_1_future_ab, s3_1_future_ba])
+                    s3_2_futures.append(s3_2_future)
+                    consensus_edges.append(a_to_b)
+                processed_edges.append(a_to_b)
+                processed_edges.append(b_to_a)
     return s3_3_edi_combine(sdir, consensus_edges, stdout, container, checksum, inputs=s3_2_futures)
