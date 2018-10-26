@@ -74,6 +74,9 @@ def is_integer(value):
     except ValueError:
         return False
 
+def str2bool(string):
+    return string.lower() in ("yes", "true", "t", "1")
+
 def get_time_date():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")
 

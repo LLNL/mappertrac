@@ -121,6 +121,6 @@ def s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[]):
     write_finish(stdout, "s2b_freesurfer")
     write_checkpoint(sdir, "s2b", checksum)
 
-def create_job(sdir, use_gpu, num_cores, stdout, container, checksum, force):
+def create_job(sdir, num_cores, use_gpu, stdout, container, checksum, force):
     s2b_1_future = s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force)
     return s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[s2b_1_future])
