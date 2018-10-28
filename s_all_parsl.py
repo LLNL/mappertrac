@@ -59,8 +59,7 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('step_choice', choices=['s1','s2a','s2b','s3','s4'], type=str.lower, help='Script to run across subjects')
 parser.add_argument('--force', help='Force re-compute if output already exists',action='store_true')
-parser.add_argument('--probtrackx_edge_list', help='Edges processed by probtrackx, in s3_ediPreproc', default=join("lists","listEdgesEDIAll.txt"))
-parser.add_argument('--edi_edge_list', help='Edges used for EDI map, in s3_ediPreproc', default=join("lists","listEdgesEDI.txt"))
+parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx or s4_edi', default=join("lists","listEdgesEDI.txt"))
 parser.add_argument('--log_dir', help='Directory containing subject-specific logs, relative to output dir', default=join("parsl_logs"))
 parser.add_argument('--tasks_per_node', help='Override default setting, number of tasks per node', type=int)
 parser.add_argument('--nodes_per_block', help='Override default setting, number of nodes per block', type=int)
@@ -100,7 +99,7 @@ if s1:
     max_blocks = 1
     job_time = "00:05:00"
 elif s2a:
-    if args.use_gpu is None:
+    if use_gpu is None:
         use_gpu = True
     if use_gpu:
         tasks_per_node = 1
@@ -115,7 +114,7 @@ elif s2a:
         job_time = "10:00:00"
     dependencies = ['s1']
 elif s2b:
-    if args.use_gpu is None:
+    if use_gpu is None:
         use_gpu = True
     if use_gpu:
         tasks_per_node = 1
@@ -135,7 +134,7 @@ elif s3:
         tasks_per_node = 1
         nodes_per_block = 4
         max_blocks = 2
-        job_time = "04:00:00" # for default list of 6000 edges
+        job_time = "04:00:00" # for default list of 900 edges
         slurm_override += "\nmodule load cuda/8.0;"
     else:
         tasks_per_node = 12
@@ -147,7 +146,7 @@ elif s4:
     tasks_per_node = num_cores
     nodes_per_block = 10
     max_blocks = 2
-    job_time = "02:00:00" # for default list of 900 edges
+    job_time = "00:30:00" # for default list of 900 edges
     dependencies = ['s3']
 
 # Validate subject inputs
@@ -192,7 +191,7 @@ print("Running {} jobs, {} at a time. Max walltime is {}".format(
 subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
 config = Config(executors=executors)
-config.retries = 2
+config.retries = 3
 parsl.set_stream_logger()
 parsl.load(config) 
 
@@ -209,16 +208,16 @@ for subject in subjects:
         jobs.append((sname, create_job(input_dir, sdir, stdout, container, checksum)))
     elif s2a:
         from subscripts.s2a_bedpostx import create_job
-        jobs.append((sname, create_job(sdir, stdout, container, checksum)))
+        jobs.append((sname, create_job(sdir, use_gpu, stdout, container, checksum)))
     elif s2b:
         from subscripts.s2b_freesurfer import create_job
         jobs.append((sname, create_job(sdir, cores_per_task, use_gpu, stdout, container, checksum, args.force)))
     elif s3:
         from subscripts.s3_probtrackx import create_job
-        jobs.append((sname, create_job(sdir, args.probtrackx_edge_list, use_gpu, stdout, container, checksum)))
+        jobs.append((sname, create_job(sdir, args.edge_list, use_gpu, stdout, container, checksum)))
     elif s4:
         from subscripts.s4_edi import create_job
-        jobs.append((sname, create_job(sdir, args.edi_edge_list, stdout, container, checksum)))
+        jobs.append((sname, create_job(sdir, args.edge_list, stdout, container, checksum)))
 for job in jobs:
     if job[1] is None:
         continue

@@ -75,6 +75,8 @@ def is_integer(value):
         return False
 
 def str2bool(string):
+    if string is None:
+        return string
     return string.lower() in ("yes", "true", "t", "1")
 
 def get_time_date():
