@@ -144,9 +144,9 @@ elif s3:
     dependencies = ['s2a','s2b']
 elif s4:
     tasks_per_node = num_cores
-    nodes_per_block = 10
+    nodes_per_block = 8
     max_blocks = 2
-    job_time = "00:30:00" # for default list of 900 edges
+    job_time = "00:15:00" # for default list of 900 edges
     dependencies = ['s3']
 
 # Validate subject inputs
@@ -185,7 +185,7 @@ nodes_per_block = args.nodes_per_block if args.nodes_per_block is not None else 
 max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
 walltime = args.walltime if args.walltime is not None else walltime
 cores_per_task = max(int(num_cores / tasks_per_node), 1)
-print("Running {} jobs, {} at a time. Max walltime is {}".format(
+print("Running {} subject. {} simultaenous tasks. Max walltime is {}".format(
     num_jobs, tasks_per_node * nodes_per_block * max_blocks, walltime))
 
 subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)

@@ -17,9 +17,9 @@ def s3_1_probtrackx(sdir, a, b, use_gpu, stdout, container):
     connectome_inputs = join(pbtk_dir, "connectome")
     a_to_b_file = join(pbtk_dir,a_to_b_formatted)
     tmp = join(sdir, "tmp", a_to_b)
-    waypoints = join(tmp,"tmp_waypoint.txt".format(a_to_b))
-    exclusion = join(tmp,"tmp_exclusion.nii.gz".format(a_to_b))
-    termination = join(tmp,"tmp_termination.nii.gz".format(a_to_b))
+    waypoints = join(tmp,"waypoint.txt")
+    exclusion = join(tmp,"exclusion.nii.gz")
+    termination = join(tmp,"termination.nii.gz")
     bs = join(sdir,"bs.nii.gz")
     allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
     terminationmask = join(sdir,"terminationmask.nii.gz")
@@ -49,8 +49,7 @@ def s3_1_probtrackx(sdir, a, b, use_gpu, stdout, container):
         " -m {}".format(nodif_brain_mask) +
         " --dir={}".format(tmp) +
         " --out={}".format(a_to_b_formatted) +
-        " --omatrix1" + # output seed-to-seed sparse connectivity matrix
-        " --targetmasks=seeds.txt" # haven't tested, see http://sburns.org/2014/05/03/cortical-tractography-recipe.html
+        " --omatrix1" # output seed-to-seed sparse connectivity matrix
         )
     if use_gpu:
         run("probtrackx2_gpu" + arguments, stdout, container)
@@ -58,16 +57,17 @@ def s3_1_probtrackx(sdir, a, b, use_gpu, stdout, container):
         run("probtrackx2" + arguments, stdout, container)
     if exists(join(tmp, "fdt_matrix1.dot")):
         copyfile(join(tmp, "fdt_matrix1.dot"), join(connectome_inputs, a + "_to_" + b))
-    if exists(join(tmp, "seeds.txt")):
-        copyfile(join(tmp, "seeds.txt"), join(pbtk_dir, "seeds_" + a_to_b + ".txt"))
+    # if exists(join(tmp, "seeds.txt")):
+        # copyfile(join(tmp, "seeds.txt"), join(pbtk_dir, "seeds_" + a_to_b + ".txt"))
     copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
-    smart_remove(tmp)
+    # smart_remove(tmp)
 
 @python_app(executors=executor_labels)
 def s3_2_connectome(sdir, stdout, checksum, inputs=[]):
     from subscripts.utilities import write,write_finish,write_checkpoint,is_float,is_integer,smart_remove
     from os import listdir
     from os.path import isfile, join
+    write_checkpoint(sdir, "s3_1", checksum)
     seed_coords = {} # id : [seeds]
     counts = {} # x,y : count
     connectome_inputs = join(sdir,"EDI","PBTKresults","connectome")
@@ -122,6 +122,9 @@ def s3_2_connectome(sdir, stdout, checksum, inputs=[]):
 def create_job(sdir, edge_list, use_gpu, stdout, container, checksum):
     s3_1_futures = []
     processed_edges = []
+    if read_checkpoint(sdir, "s3_1", checksum) and not force:
+        write(stdout, "Already ran step 3_1 on {}. Use --force to re-compute.".format(basename(sdir)))
+        return s3_2_connectome(sdir, stdout, checksum, inputs=s3_1_futures)
     write_start(stdout, "s3_probtrackx")
     if use_gpu:
         write(stdout, "Running Probtrackx with GPU")

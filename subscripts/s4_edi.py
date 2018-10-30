@@ -59,7 +59,8 @@ def s4_2_edi_combine(sdir, processed_edges, stdout, container, checksum, inputs=
             copyfile(consensus, total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
-    run("chmod -R 777 {}".format(sdir), stdout, container)
+    run("chgrp -R tbidata {}".format(sdir), stdout)
+    run("chmod -R 770 {}".format(sdir), stdout)
     write_finish(stdout, "s4_edi")
     write_checkpoint(sdir, "s4", checksum)
 
