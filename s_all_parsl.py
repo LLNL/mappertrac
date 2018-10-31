@@ -50,14 +50,14 @@ def get_walltime(_job_time, _num_jobs, _tasks_per_node, _nodes_per_block, _max_b
 
 def valid_args(args):
     if str2bool(args.use_gpu) and args.step_choice in ['s1','s4']:
-        print("Error: step choices s1 and s4 do not support GPU")
+        print("Error: step choices s1, s2, and s5 do not support GPU")
         return False
     return True
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
-parser.add_argument('step_choice', choices=['s1','s2a','s2b','s3','s4'], type=str.lower, help='Script to run across subjects')
+parser.add_argument('step_choice', choices=['s1','s2a','s2b','s3','s4','s5'], type=str.lower, help='Script to run across subjects')
 parser.add_argument('--force', help='Force re-compute if output already exists',action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx or s4_edi', default=join("lists","listEdgesEDI.txt"))
 parser.add_argument('--log_dir', help='Directory containing subject-specific logs, relative to output dir', default=join("parsl_logs"))
@@ -69,6 +69,7 @@ parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp
 parser.add_argument('--container', help='Path to Singularity container image')
 parser.add_argument('--local_only', help='Run only on local machine',action='store_true')
 parser.add_argument('--use_gpu', help='Use CUDA accelerated binaries, if supported')
+parser.add_argument('--group', help='Unix group to assign files in step s5', default='tbidata')
 args = parser.parse_args()
 
 if not valid_args(args):
@@ -79,6 +80,7 @@ s2a = args.step_choice == 's2a'
 s2b = args.step_choice == 's2b'
 s3 = args.step_choice == 's3'
 s4 = args.step_choice == 's4'
+s5 = args.step_choice == 's5'
 
 container = abspath(args.container) if args.container else None
 odir = abspath(args.output_dir)
@@ -109,7 +111,7 @@ elif s2a:
         slurm_override += "\nmodule load cuda/8.0;"
     else:
         tasks_per_node = 12
-        nodes_per_block = 10
+        nodes_per_block = 8
         max_blocks = 2
         job_time = "10:00:00"
     dependencies = ['s1']
@@ -134,20 +136,26 @@ elif s3:
         tasks_per_node = 1
         nodes_per_block = 4
         max_blocks = 2
-        job_time = "04:00:00" # for default list of 900 edges
+        job_time = "04:00:00" 
         slurm_override += "\nmodule load cuda/8.0;"
     else:
         tasks_per_node = 12
-        nodes_per_block = 10
+        nodes_per_block = 8
         max_blocks = 2
-        job_time = "08:00:00"
+        job_time = "08:00:00" # for default list of 900 edges
     dependencies = ['s2a','s2b']
 elif s4:
     tasks_per_node = num_cores
     nodes_per_block = 8
     max_blocks = 2
-    job_time = "00:15:00" # for default list of 900 edges
+    job_time = "00:15:00"
     dependencies = ['s3']
+elif s5:
+    tasks_per_node = num_cores
+    nodes_per_block = 1
+    max_blocks = 1
+    job_time = "01:00:00"
+    dependencies = ['s5']
 
 # Validate subject inputs
 subjects = []
@@ -191,7 +199,7 @@ print("Running {} subject. {} simultaenous tasks. Max walltime is {}".format(
 subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
 config = Config(executors=executors)
-config.retries = 3
+config.retries = 5
 parsl.set_stream_logger()
 parsl.load(config) 
 
@@ -218,6 +226,9 @@ for subject in subjects:
     elif s4:
         from subscripts.s4_edi import create_job
         jobs.append((sname, create_job(sdir, args.edge_list, stdout, container, checksum)))
+    elif s5:
+        from subscripts.s5_edi import create_job
+        jobs.append((sname, create_job(sdir, args.group, stdout, checksum)))
 for job in jobs:
     if job[1] is None:
         continue
