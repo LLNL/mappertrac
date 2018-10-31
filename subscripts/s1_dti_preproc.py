@@ -31,7 +31,7 @@ def s1_2_timeslice_process(sdir, timeslice, stdout, container, inputs=[]):
 
 @python_app(executors=executor_labels)
 def s1_3_dti_fit(input_dir, sdir, stdout, container, checksum, inputs=[]):
-    from subscripts.utilities import run,smart_remove,write_finish,write_checkpoint
+    from subscripts.utilities import run,smart_remove,write_finish
     from os.path import join,exists
     from shutil import copyfile
     from glob import glob
@@ -66,7 +66,6 @@ def s1_3_dti_fit(input_dir, sdir, stdout, container, checksum, inputs=[]):
     copyfile(dti_FA,FA)
 
     write_finish(stdout, "s1_dti_preproc")
-    write_checkpoint(sdir, "s1", checksum)
 
 def create_job(input_dir, sdir, stdout, container, checksum):
     input_data = join(input_dir, "hardi.nii.gz")

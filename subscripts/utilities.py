@@ -136,32 +136,6 @@ def write_finish(path, function_name=sys.argv[0]):
             f.write("Took {} (h:m:s)\n".format(get_time_string(int(time.time()) - int(start_time))))
         f.write("=====================================\n\n")
 
-def read_checkpoint(sdir, step, checksum):
-    return read_checkpoints(sdir, [step], checksum)
-
-def read_checkpoints(sdir, steps, checksum):
-    odir, subject = split(sdir)
-    checkpoints = join(odir, "checkpoints.txt")
-    if exists(checkpoints):
-        with open(checkpoints, 'r') as f:
-            for line in f.readlines():
-                chunks = line.strip().split(',')
-                line_subject = chunks[0].strip()
-                line_step = chunks[1].strip()
-                line_checksum = chunks[2].strip()
-                if len(chunks) < 4:
-                    continue
-                if line_subject == subject and line_step in steps and line_checksum == checksum:
-                    steps.remove(line_step)
-                if not steps:
-                    return True
-    return False
-
-def write_checkpoint(sdir, step, checksum):
-    odir, subject = split(sdir)
-    with open(join(odir, "checkpoints.txt"), 'a') as f:
-        f.write("{}, {}, {}, {}\n".format(subject, step, checksum, get_time_date()))
-
 def generate_checksum(input_dir):
     buf_size = 65536  # read file in 64kb chunks
     md5 = hashlib.md5()

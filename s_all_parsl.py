@@ -8,6 +8,7 @@ from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from parsl.providers import LocalProvider,SlurmProvider
 from parsl.launchers import SrunLauncher
+from parsl.utils import get_all_checkpoints
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
 from os import system,mkdir,remove,environ,makedirs
@@ -50,7 +51,7 @@ def get_walltime(_job_time, _num_jobs, _tasks_per_node, _nodes_per_block, _max_b
 
 def valid_args(args):
     if str2bool(args.use_gpu) and args.step_choice in ['s1','s4']:
-        print("Error: step choices s1, s2, and s5 do not support GPU")
+        print("Error: step choices s1, s4, and s5 do not support GPU")
         return False
     return True
 
@@ -174,14 +175,6 @@ for input_dir in input_dirs:
         print("Skipping subject {}. Missing input files - must have bvecs, bvals, hardi.nii.gz, and anat.nii.gz.".format(sname))
         continue
     checksum = generate_checksum(input_dir)
-    sdir = join(odir, sname)
-    if read_checkpoint(sdir, args.step_choice, checksum) and not args.force:
-        print("Skipping subject {}. Already ran with step {}. Use --force to re-compute.".format(sname, args.step_choice))
-        continue
-    if not read_checkpoints(sdir, dependencies, checksum):
-        print("Skipping subject {}. Step {} is missing dependencies - must have completed steps {}".format(sname, args.step_choice, dependencies))
-        continue
-
     subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
     print("Running subject {} with step {}".format(sname, args.step_choice))
 num_jobs = len(subjects)
@@ -200,6 +193,8 @@ subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blo
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
 config = Config(executors=executors)
 config.retries = 5
+config.checkpoint_mode = 'task_exit'
+config.checkpoint_files = get_all_checkpoints()
 parsl.set_stream_logger()
 parsl.load(config) 
 
@@ -227,7 +222,7 @@ for subject in subjects:
         from subscripts.s4_edi import create_job
         jobs.append((sname, create_job(sdir, args.edge_list, stdout, container, checksum)))
     elif s5:
-        from subscripts.s5_edi import create_job
+        from subscripts.s5_chmod import create_job
         jobs.append((sname, create_job(sdir, args.group, stdout, checksum)))
 for job in jobs:
     if job[1] is None:

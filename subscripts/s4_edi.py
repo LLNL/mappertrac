@@ -42,7 +42,7 @@ def s4_1_edi_consensus(sdir, a, b, stdout, container, inputs=[]):
 
 @python_app(executors=executor_labels)
 def s4_2_edi_combine(sdir, processed_edges, stdout, container, checksum, inputs=[]):
-    from subscripts.utilities import run,smart_remove,smart_mkdir,write,write_finish,write_checkpoint
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,write_finish
     from os.path import join,exists
     from shutil import copyfile
     pbtk_dir = join(sdir,"EDI","PBTKresults")
@@ -60,7 +60,6 @@ def s4_2_edi_combine(sdir, processed_edges, stdout, container, checksum, inputs=
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
     write_finish(stdout, "s4_edi")
-    write_checkpoint(sdir, "s4", checksum)
 
 def create_job(sdir, edge_list, stdout, container, checksum):
     s4_1_futures = []

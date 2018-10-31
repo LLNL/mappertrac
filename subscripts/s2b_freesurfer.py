@@ -4,12 +4,9 @@ from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
 def s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force):
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_start,write_checkpoint,read_checkpoint
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_start
     from os import environ
     from os.path import exists,join,split,basename
-    if read_checkpoint(sdir, "s2b_1_recon_all", checksum) and not force:
-        write(stdout, "Already ran recon-all on {}. Use --force to re-compute.".format(basename(sdir)))
-        return
     write_start(stdout, "s2b_freesurfer")
     T1 = join(sdir,"T1.nii.gz")
     mri_out = join(sdir,"mri","orig","001.mgz")
@@ -33,11 +30,10 @@ def s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force
     else:
         write(stdout, "Running Freesurfer with a single core")
         run("recon-all -s {} -all -no-isrunning".format(subject), stdout, container)
-    write_checkpoint(sdir, "s2b_1_recon_all", checksum)
 
 @python_app(executors=executor_labels)
 def s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[]):
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_finish,write_checkpoint
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_finish
     from subscripts.maskseeds import maskseeds,saveallvoxels
     from os.path import exists,join,split,splitext
     from os import environ
@@ -119,7 +115,6 @@ def s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[]):
     for file in glob(join(sdir,"volumes_subcortical_s2fa","*.nii.gz")):
         copy(file,EDI_allvols)
     write_finish(stdout, "s2b_freesurfer")
-    write_checkpoint(sdir, "s2b", checksum)
 
 def create_job(sdir, num_cores, use_gpu, stdout, container, checksum, force):
     s2b_1_future = s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force)
