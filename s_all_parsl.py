@@ -156,7 +156,7 @@ elif s5:
     nodes_per_block = 1
     max_blocks = 1
     job_time = "01:00:00"
-    dependencies = ['s5']
+    dependencies = ['s4']
 
 # Validate subject inputs
 subjects = []
