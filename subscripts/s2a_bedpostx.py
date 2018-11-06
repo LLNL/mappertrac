@@ -3,11 +3,13 @@ from subscripts.config import executor_labels
 from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
-def s2a_bedpostx(sdir, use_gpu, stdout, container, checksum):
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_start,write_finish
+def s2a_bedpostx(sdir, cores_per_task, stdout, container, checksum, use_gpu):
+    import time
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish
     from os.path import exists,join
     from shutil import copyfile,rmtree
-    write_start(stdout, "s2a_bedpostx")
+    record_start(sdir, stdout, 's2a')
+    start_time = time.time()
     bedpostx = join(sdir,"bedpostx_b1000")
     bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
     th1 = join(bedpostxResults, "merged_th1samples")
@@ -34,7 +36,8 @@ def s2a_bedpostx(sdir, use_gpu, stdout, container, checksum):
         run("bedpostx {}".format(bedpostx), stdout, container)
     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), stdout, container)
     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), stdout, container)
-    write_finish(stdout, "s2a_bedpostx")
+    record_apptime(sdir, start_time, 's2a')
+    record_finish(sdir, stdout, cores_per_task, 's2a')
 
-def create_job(sdir, use_gpu, stdout, container, checksum):
-    return s2a_bedpostx(sdir, use_gpu, stdout, container, checksum)
+def create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu):
+    return s2a_bedpostx(sdir, cores_per_task, stdout, container, checksum, use_gpu)

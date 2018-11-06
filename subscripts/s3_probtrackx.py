@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 from os.path import join,exists
 from subscripts.config import executor_labels
-from subscripts.utilities import write_start,write,smart_remove
+from subscripts.utilities import write,smart_remove,record_start
 from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
 def s3_1_probtrackx(sdir, a, b, use_gpu, stdout, container):
-    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float
+    import time
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_start,record_apptime
     from os.path import join,exists
     from shutil import copyfile
+    start_time = time.time()
     EDI_allvols = join(sdir,"EDI","allvols")
     a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
     b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
@@ -72,11 +74,14 @@ def s3_1_probtrackx(sdir, a, b, use_gpu, stdout, container):
     if a == "lh.paracentral": # keep for debugging
         return
     smart_remove(tmp)
+    record_apptime(sdir, start_time, 's3')
 
 @python_app(executors=executor_labels)
-def s3_2_combine(sdir, stdout, checksum, inputs=[]):
-    from subscripts.utilities import write_finish
+def s3_2_combine(sdir, cores_per_task, stdout, checksum, inputs=[]):
+    import time
+    from subscripts.utilities import record_apptime,record_finish
     from os.path import join,exists
+    start_time = time.time()
     connectome = join(sdir, "connectome_oneway.dot")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
     smart_remove(connectome_twoway)
@@ -99,14 +104,15 @@ def s3_2_combine(sdir, stdout, checksum, inputs=[]):
         for a_to_b in processed_edges:
             f.write("{} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b]))
 
-    write_finish(stdout, "s3_probtrackx")
+    record_apptime(sdir, start_time, 's3')
+    record_finish(sdir, stdout, cores_per_task, 's3')
 
-def create_job(sdir, edge_list, use_gpu, stdout, container, checksum):
+def create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu, args.edge_list):
     s3_1_futures = []
     processed_edges = []
     smart_remove(join(sdir, "connectome.dot"))
     smart_remove(join(sdir, "tmp"))
-    write_start(stdout, "s3_probtrackx")
+    record_start(sdir, stdout, 's3')
     if use_gpu:
         write(stdout, "Running Probtrackx with GPU")
     else:
@@ -123,4 +129,4 @@ def create_job(sdir, edge_list, use_gpu, stdout, container, checksum):
                 s3_1_futures.append(s3_1_probtrackx(sdir, b, a, use_gpu, stdout, container))
                 processed_edges.append(a_to_b)
                 processed_edges.append(b_to_a)
-    return s3_2_combine(sdir, stdout, checksum, inputs=s3_1_futures)
+    return s3_2_combine(sdir, cores_per_task, stdout, checksum, inputs=s3_1_futures)

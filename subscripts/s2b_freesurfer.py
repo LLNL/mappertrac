@@ -3,11 +3,13 @@ from subscripts.config import executor_labels
 from parsl.app.app import python_app
 
 @python_app(executors=executor_labels)
-def s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force):
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_start
+def s2b_1_recon_all(sdir, stdout, container, checksum, use_gpu):
+    import time
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_start
     from os import environ
     from os.path import exists,join,split,basename
-    write_start(stdout, "s2b_freesurfer")
+    record_start(sdir, stdout, 's2b')
+    start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
     mri_out = join(sdir,"mri","orig","001.mgz")
     subject = split(sdir)[1]
@@ -30,15 +32,18 @@ def s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force
     else:
         write(stdout, "Running Freesurfer with a single core")
         run("recon-all -s {} -all -no-isrunning".format(subject), stdout, container)
+    record_apptime(sdir, start_time, 's2b')
 
 @python_app(executors=executor_labels)
-def s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[]):
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,write_finish
+def s2b_2_process_vols(sdir, cores_per_task, stdout, container, checksum, inputs=[]):
+    import time
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_finish
     from subscripts.maskseeds import maskseeds,saveallvoxels
     from os.path import exists,join,split,splitext
     from os import environ
     from shutil import copy
     from glob import glob
+    start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
     subject = split(sdir)[1]
     environ['SUBJECTS_DIR'] = split(sdir)[0]
@@ -114,8 +119,9 @@ def s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[]):
         copy(file,EDI_allvols)
     for file in glob(join(sdir,"volumes_subcortical_s2fa","*.nii.gz")):
         copy(file,EDI_allvols)
-    write_finish(stdout, "s2b_freesurfer")
+    record_apptime(sdir, start_time, 's2b')
+    record_finish(sdir, stdout, cores_per_task, 's2b')
 
-def create_job(sdir, num_cores, use_gpu, stdout, container, checksum, force):
-    s2b_1_future = s2b_1_recon_all(sdir, use_gpu, num_cores, stdout, container, checksum, force)
-    return s2b_2_process_vols(sdir, stdout, container, checksum, inputs=[s2b_1_future])
+def create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu):
+    s2b_1_future = s2b_1_recon_all(sdir, stdout, container, checksum, use_gpu)
+    return s2b_2_process_vols(sdir, cores_per_task, stdout, container, checksum, inputs=[s2b_1_future])

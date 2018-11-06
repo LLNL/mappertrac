@@ -50,7 +50,7 @@ def get_walltime(_job_time, _num_jobs, _tasks_per_node, _nodes_per_block, _max_b
     return get_time_string(total_secs)
 
 def valid_args(args):
-    if str2bool(args.use_gpu) and args.step_choice in ['s1','s4']:
+    if args.enable_gpu and args.step_choice in ['s1','s4','s5']:
         print("Error: step choices s1, s4, and s5 do not support GPU")
         return False
     return True
@@ -59,18 +59,20 @@ parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('step_choice', choices=['s1','s2a','s2b','s3','s4','s5'], type=str.lower, help='Script to run across subjects')
-parser.add_argument('--force', help='Force re-compute if output already exists',action='store_true')
+parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx or s4_edi', default=join("lists","listEdgesEDI.txt"))
 parser.add_argument('--log_dir', help='Directory containing subject-specific logs, relative to output dir', default=join("parsl_logs"))
 parser.add_argument('--tasks_per_node', help='Override default setting, number of tasks per node', type=int)
 parser.add_argument('--nodes_per_block', help='Override default setting, number of nodes per block', type=int)
 parser.add_argument('--max_blocks', help='Override default setting, max blocks to request', type=int)
 parser.add_argument('--walltime', help='Override default setting, max walltime')
+parser_gpu = parser.add_mutually_exclusive_group()
+parser_gpu.add_argument('--enable_gpu', help='Override default setting, enable CUDA accelerated binaries', action='store_true')
+parser_gpu.add_argument('--disable_gpu', help='Override default setting, disable CUDA accelerated binaries', action='store_true')
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
-parser.add_argument('--container', help='Path to Singularity container image')
-parser.add_argument('--local_only', help='Run only on local machine',action='store_true')
-parser.add_argument('--use_gpu', help='Use CUDA accelerated binaries, if supported')
 parser.add_argument('--group', help='Unix group to assign files in step s5', default='tbidata')
+parser.add_argument('--local_only', help='Run only on local machine', action='store_true')
+parser.add_argument('--container', help='Path to Singularity container image')
 args = parser.parse_args()
 
 if not valid_args(args):
@@ -90,7 +92,7 @@ log_dir = join(odir, args.log_dir)
 smart_mkdir(log_dir)
 
 # Setup defaults for step choice
-use_gpu = str2bool(args.use_gpu)
+use_gpu = False
 num_cores = int(floor(multiprocessing.cpu_count() / 2))
 tasks_per_node = nodes_per_block = max_blocks = None
 job_time = None # average time per subject per node
@@ -102,7 +104,7 @@ if s1:
     max_blocks = 1
     job_time = "00:05:00"
 elif s2a:
-    if use_gpu is None:
+    if not args.disable_gpu:
         use_gpu = True
     if use_gpu:
         tasks_per_node = 1
@@ -117,7 +119,7 @@ elif s2a:
         job_time = "10:00:00"
     dependencies = ['s1']
 elif s2b:
-    if use_gpu is None:
+    if args.enable_gpu:
         use_gpu = True
     if use_gpu:
         tasks_per_node = 1
@@ -133,6 +135,8 @@ elif s2b:
         run("unlink {}".format(join(odir,"fsaverage")))
     dependencies = ['s1']
 elif s3:
+    if args.enable_gpu:
+        use_gpu = True
     if use_gpu:
         tasks_per_node = 1
         nodes_per_block = 4
@@ -143,7 +147,7 @@ elif s3:
         tasks_per_node = 12
         nodes_per_block = 8
         max_blocks = 2
-        job_time = "08:00:00" # for default list of 900 edges
+        job_time = "06:00:00" # for default list of 900 edges
     dependencies = ['s2a','s2b']
 elif s4:
     tasks_per_node = num_cores
@@ -155,7 +159,7 @@ elif s5:
     tasks_per_node = num_cores
     nodes_per_block = 1
     max_blocks = 1
-    job_time = "01:00:00"
+    job_time = "00:30:00"
     dependencies = ['s4']
 
 # Validate subject inputs
@@ -186,15 +190,16 @@ nodes_per_block = args.nodes_per_block if args.nodes_per_block is not None else 
 max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
 walltime = args.walltime if args.walltime is not None else walltime
 cores_per_task = max(int(num_cores / tasks_per_node), 1)
-print("Running {} subject. {} simultaenous tasks. Max walltime is {}".format(
-    num_jobs, tasks_per_node * nodes_per_block * max_blocks, walltime))
+print("Running {} subjects. {} cores per task. {} simultaenous tasks. Max walltime is {}".format(
+    num_jobs, cores_per_task, tasks_per_node * nodes_per_block * max_blocks, walltime))
 
 subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)
 config = Config(executors=executors)
 config.retries = 5
 config.checkpoint_mode = 'task_exit'
-config.checkpoint_files = get_all_checkpoints()
+if not args.force:
+    config.checkpoint_files = get_all_checkpoints()
 parsl.set_stream_logger()
 parsl.load(config) 
 
@@ -208,22 +213,22 @@ for subject in subjects:
     smart_mkdir(sdir)
     if s1:
         from subscripts.s1_dti_preproc import create_job
-        jobs.append((sname, create_job(input_dir, sdir, stdout, container, checksum)))
+        jobs.append((sname, create_job(input_dir, sdir, cores_per_task, stdout, container, checksum)))
     elif s2a:
         from subscripts.s2a_bedpostx import create_job
-        jobs.append((sname, create_job(sdir, use_gpu, stdout, container, checksum)))
+        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu)))
     elif s2b:
         from subscripts.s2b_freesurfer import create_job
-        jobs.append((sname, create_job(sdir, cores_per_task, use_gpu, stdout, container, checksum, args.force)))
+        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu)))
     elif s3:
         from subscripts.s3_probtrackx import create_job
-        jobs.append((sname, create_job(sdir, args.edge_list, use_gpu, stdout, container, checksum)))
+        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu, args.edge_list)))
     elif s4:
         from subscripts.s4_edi import create_job
-        jobs.append((sname, create_job(sdir, args.edge_list, stdout, container, checksum)))
+        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, args.edge_list)))
     elif s5:
         from subscripts.s5_chmod import create_job
-        jobs.append((sname, create_job(sdir, args.group, stdout, checksum)))
+        jobs.append((sname, create_job(sdir, cores_per_task, stdout, checksum, args.group)))
 for job in jobs:
     if job[1] is None:
         continue

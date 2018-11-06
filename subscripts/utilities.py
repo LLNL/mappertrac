@@ -92,14 +92,11 @@ def get_time_seconds(string):
         string = "00:" + string
     return sum(secs * int(digit) for secs,digit in zip([3600, 60, 1], string.split(":")))
 
-def get_start(function_name=sys.argv[0]):
+def get_start(function_name):
     return "Starting {} at {}\n".format(basename(str(function_name)), get_time_date())
 
-def get_finish(function_name=sys.argv[0]):
+def get_finish(function_name):
     return "Finished {} at {}\n".format(basename(str(function_name)), get_time_date())
-
-def print_time():
-    print(get_time_date())
 
 def print_start():
     print(get_start())
@@ -110,30 +107,37 @@ def print_finish(start_time):
 
 def write(path, output):
     with open(path, 'a') as f:
-        f.write(output + "\n")
+        f.write(str(output) + "\n")
 
-def write_start(path, function_name=sys.argv[0]):
-    with open(path, 'a') as f:
+def record_start(sdir, stdout, function_name):
+    timing_log = join(sdir,'tmp',function_name + "_timing.txt")
+    smart_remove(timing_log)
+    smart_mkdir(join(sdir,'tmp'))
+    with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_start(function_name))
         f.write("=====================================\n\n")
-        f.write("record_time,{}\n".format(int(time.time())))
 
-def write_finish(path, function_name=sys.argv[0]):
-    start_time = ""
-    with open(path, 'r') as f:
+def record_apptime(sdir, start_time, function_name, *args):
+    timing_log = join(sdir,'tmp',function_name + "_timing.txt")
+    line = str(time.time() - start_time)
+    for arg in args:
+        line += ' ' + str(arg)
+    write(timing_log, line)
+
+def record_finish(sdir, stdout, cores_per_task, function_name):
+    timing_log = join(sdir,'tmp',function_name + "_timing.txt")
+    total_time = 0
+    with open(timing_log, 'r') as f:
         for line in f.readlines():
-            line = line.strip()
-            if line.startswith("record_time,"):
-                chunks = line.split(',',1)
-                if len(chunks) > 1:
-                    start_time = chunks[1]
-
-    with open(path, 'a') as f:
+            chunks = [x for x in line.strip().split(' ', 1) if x]
+            if len(chunks) < 1 or not is_float(chunks[0]):
+                continue
+            total_time += float(chunks[0])
+    with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_finish(function_name))
-        if is_integer(start_time):
-            f.write("Took {} (h:m:s)\n".format(get_time_string(int(time.time()) - int(start_time))))
+        f.write("Core time: {} (h:m:s)\n".format(get_time_string(total_time * cores_per_task)))
         f.write("=====================================\n\n")
 
 def generate_checksum(input_dir):
