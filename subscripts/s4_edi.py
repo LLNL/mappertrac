@@ -50,7 +50,7 @@ def s4_1_edi_consensus(params, a, b, inputs=[]):
 @python_app(executors=executor_labels, cache=True)
 def s4_2_edi_combine(params, processed_edges, inputs=[]):
     import time
-    from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish,update_permissions
     from os.path import join,exists
     from shutil import copyfile
     sdir = params['sdir']
@@ -73,6 +73,7 @@ def s4_2_edi_combine(params, processed_edges, inputs=[]):
             copyfile(consensus, total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
+    update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
 

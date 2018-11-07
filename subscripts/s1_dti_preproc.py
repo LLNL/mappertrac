@@ -45,7 +45,7 @@ def s1_2_timeslice_process(params, timeslice, inputs=[]):
 @python_app(executors=executor_labels, cache=True)
 def s1_3_dti_fit(params, inputs=[]):
     import time
-    from subscripts.utilities import run,smart_remove,record_apptime,record_finish
+    from subscripts.utilities import run,smart_remove,record_apptime,record_finish,update_permissions
     from os.path import join,exists
     from shutil import copyfile
     from glob import glob

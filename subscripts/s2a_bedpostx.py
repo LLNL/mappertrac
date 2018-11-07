@@ -5,7 +5,7 @@ from parsl.app.app import python_app
 @python_app(executors=executor_labels, cache=True)
 def s2a_bedpostx(params):
     import time
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish,update_permissions
     from os.path import exists,join
     from shutil import copyfile,rmtree
     sdir = params['sdir']
@@ -42,6 +42,7 @@ def s2a_bedpostx(params):
         run("bedpostx {}".format(bedpostx), stdout, container)
     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), stdout, container)
     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), stdout, container)
+    update_permissions(params)
     record_apptime(params, start_time, 1)
     record_finish(params)
 

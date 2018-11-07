@@ -91,12 +91,12 @@ smart_mkdir(odir)
 
 # Setup defaults for step choice
 use_gpu = False
-num_cores = int(floor(multiprocessing.cpu_count() / 2))
+cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
 tasks_per_node = nodes_per_block = max_blocks = None
 job_time = None # average time per subject per node
 slurm_override = "#SBATCH -A {}".format(args.bank)
 if s1:
-    tasks_per_node = num_cores
+    tasks_per_node = cores_per_node
     nodes_per_block = 4
     max_blocks = 1
     job_time = "00:05:00"
@@ -106,7 +106,7 @@ elif s2a:
     if use_gpu:
         tasks_per_node = 1
         nodes_per_block = 4
-        max_blocks = 2
+        max_blocks = 1
         job_time = "00:45:00"
         slurm_override += "\nmodule load cuda/8.0;"
     else:
@@ -120,12 +120,12 @@ elif s2b:
     if use_gpu:
         tasks_per_node = 1
         nodes_per_block = 4
-        max_blocks = 2
+        max_blocks = 1
         job_time = "03:00:00"
     else:
         tasks_per_node = 6
-        nodes_per_block = 8
-        max_blocks = 2
+        nodes_per_block = 4
+        max_blocks = 1
         job_time = "08:00:00"
     if islink(join(odir,"fsaverage")):
         run("unlink {}".format(join(odir,"fsaverage")))
@@ -144,9 +144,9 @@ elif s3:
         max_blocks = 2
         job_time = "06:00:00" # for default list of 900 edges
 elif s4:
-    tasks_per_node = num_cores
-    nodes_per_block = 8
-    max_blocks = 2
+    tasks_per_node = cores_per_node
+    nodes_per_block = 4
+    max_blocks = 1
     job_time = "00:15:00"
 
 # Validate subject inputs
@@ -176,9 +176,9 @@ tasks_per_node = args.tasks_per_node if args.tasks_per_node is not None else tas
 nodes_per_block = args.nodes_per_block if args.nodes_per_block is not None else nodes_per_block
 max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
 walltime = args.walltime if args.walltime is not None else walltime
-cores_per_task = max(int(num_cores / tasks_per_node), 1)
-print("Running {} subjects. {} cores per task. {} simultaenous tasks. Max walltime is {}".format(
-    num_jobs, cores_per_task, tasks_per_node * nodes_per_block * max_blocks, walltime))
+cores_per_task = max(int(cores_per_node / tasks_per_node), 1)
+print("Running {} subjects. Using {} cores, {} per task. Max walltime is {}".format(
+    num_jobs, cores_per_node * nodes_per_block * max_blocks, cores_per_task, , walltime))
 
 subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)

@@ -84,7 +84,7 @@ def s3_1_probtrackx(params, a, b):
 @python_app(executors=executor_labels, cache=True)
 def s3_2_combine(params, inputs=[]):
     import time
-    from subscripts.utilities import record_apptime,record_finish
+    from subscripts.utilities import record_apptime,record_finish,update_permissions
     from os.path import join,exists
     sdir = params['sdir']
     stdout = params['stdout']
@@ -112,7 +112,7 @@ def s3_2_combine(params, inputs=[]):
     with open(connectome_twoway,'a') as f:
         for a_to_b in processed_edges:
             f.write("{} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b]))
-
+    update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
 

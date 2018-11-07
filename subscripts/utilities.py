@@ -158,10 +158,10 @@ def update_permissions(params):
     sdir = params['sdir']
     group = params['group']
     stdout = params['stdout']
-    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(path), stdout)
-    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(path, group), stdout)
-    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(path), stdout)
-    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(path, group), stdout)
+    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(sdir), stdout)
+    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group), stdout)
+    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(sdir), stdout)
+    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group), stdout)
 
 def generate_checksum(input_dir):
     buf_size = 65536  # read file in 64kb chunks

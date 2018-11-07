@@ -9,3 +9,5 @@ rm -rf runinfo
 rm -rf parsl_scripts
 rm -rf cmd_parsl.auto.*
 rm -rf slurm-*.out
+rm -rf *.stdout
+rm -rf .*.swp

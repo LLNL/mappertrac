@@ -43,7 +43,7 @@ def s2b_1_recon_all(params):
 @python_app(executors=executor_labels, cache=True)
 def s2b_2_process_vols(params, inputs=[]):
     import time
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_finish
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_finish,update_permissions
     from subscripts.maskseeds import maskseeds,saveallvoxels
     from os.path import exists,join,split,splitext
     from os import environ
@@ -130,6 +130,7 @@ def s2b_2_process_vols(params, inputs=[]):
         copy(file,EDI_allvols)
     for file in glob(join(sdir,"volumes_subcortical_s2fa","*.nii.gz")):
         copy(file,EDI_allvols)
+    update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
 
