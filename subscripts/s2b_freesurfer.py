@@ -2,13 +2,19 @@
 from subscripts.config import executor_labels
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels)
-def s2b_1_recon_all(sdir, stdout, container, checksum, use_gpu):
+@python_app(executors=executor_labels, cache=True)
+def s2b_1_recon_all(params):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_start
     from os import environ
     from os.path import exists,join,split,basename
-    record_start(sdir, stdout, 's2b')
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    cores_per_task = params['cores_per_task']
+    use_gpu = params['use_gpu']
+    group = params['group']
+    record_start(params)
     start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
     mri_out = join(sdir,"mri","orig","001.mgz")
@@ -24,18 +30,18 @@ def s2b_1_recon_all(sdir, stdout, container, checksum, use_gpu):
             return
         environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
         environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
-        write(stdout, "Running Freesurfer with GPU and {} cores".format(num_cores))
-        run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, num_cores), stdout, container)
-    elif num_cores > 1:
-        write(stdout, "Running Freesurfer with {} cores".format(num_cores))
-        run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, num_cores), stdout, container)
+        write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
+        run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task), stdout, container)
+    elif cores_per_task > 1:
+        write(stdout, "Running Freesurfer with {} cores".format(cores_per_task))
+        run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task), stdout, container)
     else:
         write(stdout, "Running Freesurfer with a single core")
         run("recon-all -s {} -all -no-isrunning".format(subject), stdout, container)
-    record_apptime(sdir, start_time, 's2b')
+    record_apptime(params, start_time, 1)
 
-@python_app(executors=executor_labels)
-def s2b_2_process_vols(sdir, cores_per_task, stdout, container, checksum, inputs=[]):
+@python_app(executors=executor_labels, cache=True)
+def s2b_2_process_vols(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_finish
     from subscripts.maskseeds import maskseeds,saveallvoxels
@@ -43,6 +49,11 @@ def s2b_2_process_vols(sdir, cores_per_task, stdout, container, checksum, inputs
     from os import environ
     from shutil import copy
     from glob import glob
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    cores_per_task = params['cores_per_task']
+    group = params['group']
     start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
     subject = split(sdir)[1]
@@ -119,9 +130,9 @@ def s2b_2_process_vols(sdir, cores_per_task, stdout, container, checksum, inputs
         copy(file,EDI_allvols)
     for file in glob(join(sdir,"volumes_subcortical_s2fa","*.nii.gz")):
         copy(file,EDI_allvols)
-    record_apptime(sdir, start_time, 's2b')
-    record_finish(sdir, stdout, cores_per_task, 's2b')
+    record_apptime(params, start_time, 2)
+    record_finish(params)
 
-def create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu):
-    s2b_1_future = s2b_1_recon_all(sdir, stdout, container, checksum, use_gpu)
-    return s2b_2_process_vols(sdir, cores_per_task, stdout, container, checksum, inputs=[s2b_1_future])
+def create_job(params):
+    s2b_1_future = s2b_1_recon_all(params)
+    return s2b_2_process_vols(params, inputs=[s2b_1_future])

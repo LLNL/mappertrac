@@ -3,11 +3,15 @@ from subscripts.config import executor_labels
 from subscripts.utilities import record_start
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels)
-def s4_1_edi_consensus(sdir, stdout, container, a, b, inputs=[]):
+@python_app(executors=executor_labels, cache=True)
+def s4_1_edi_consensus(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_apptime
     from os.path import join,exists
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    group = params['group']
     start_time = time.time()
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     a_to_b = "{}to{}".format(a, b)
@@ -41,14 +45,19 @@ def s4_1_edi_consensus(sdir, stdout, container, a, b, inputs=[]):
             log.write("For edge {}:\n".format(a_to_b))
             log.write("{} is thresholded to {}\n".format(a, amax))
             log.write("{} is thresholded to {}\n".format(b, bmax))
-    record_apptime(sdir, start_time, 's4')
+    record_apptime(params, start_time, 1)
 
-@python_app(executors=executor_labels)
-def s4_2_edi_combine(sdir, cores_per_task, stdout, container, checksum, processed_edges, inputs=[]):
+@python_app(executors=executor_labels, cache=True)
+def s4_2_edi_combine(params, processed_edges, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish
     from os.path import join,exists
     from shutil import copyfile
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    cores_per_task = params['cores_per_task']
+    group = params['group']
     start_time = time.time()
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     edi_maps = join(sdir,"EDI","EDImaps")
@@ -64,13 +73,16 @@ def s4_2_edi_combine(sdir, cores_per_task, stdout, container, checksum, processe
             copyfile(consensus, total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
-    record_apptime(sdir, start_time, 's4')
-    record_finish(sdir, stdout, cores_per_task, 's4')
+    record_apptime(params, start_time, 2)
+    record_finish(params)
 
-def create_job(sdir, cores_per_task, stdout, container, checksum, args.edge_list):
+def create_job(params):
+    sdir = params['sdir']
+    stdout = params['stdout']
+    edge_list = params['edge_list']
     s4_1_futures = []
     processed_edges = []
-    record_start(sdir, stdout, 's4')
+    record_start(params)
     with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():
@@ -79,6 +91,6 @@ def create_job(sdir, cores_per_task, stdout, container, checksum, args.edge_list
             a_to_b = "{}to{}".format(a, b)
             b_to_a = "{}to{}".format(b, a)
             if a_to_b not in processed_edges and b_to_a not in processed_edges:
-                s4_1_futures.append(s4_1_edi_consensus(sdir, stdout, container, a, b))
+                s4_1_futures.append(s4_1_edi_consensus(params, a, b))
                 processed_edges.append(a_to_b)
-    return s4_2_edi_combine(sdir, cores_per_task, stdout, container, checksum, processed_edges, inputs=s4_1_futures)
+    return s4_2_edi_combine(params, processed_edges, inputs=s4_1_futures)

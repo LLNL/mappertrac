@@ -5,6 +5,7 @@ import subprocess
 import sys
 import shutil
 import hashlib
+import grp
 from glob import glob
 from os.path import exists,join,split,splitext,abspath,basename,isdir
 from os import system,environ,makedirs,remove
@@ -13,7 +14,6 @@ from subprocess import Popen,PIPE
 def smart_mkdir(path):
     if not isdir(path):
         makedirs(path)
-        run("chmod 777 {}".format(path))
 
 def smart_remove(path):
     if isdir(path):
@@ -109,36 +109,59 @@ def write(path, output):
     with open(path, 'a') as f:
         f.write(str(output) + "\n")
 
-def record_start(sdir, stdout, function_name):
-    timing_log = join(sdir,'tmp',function_name + "_timing.txt")
-    smart_remove(timing_log)
-    smart_mkdir(join(sdir,'tmp'))
+def record_start(params):
+    step_choice = params['step_choice']
+    stdout = params['stdout']
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
-        f.write(get_start(function_name))
+        f.write(get_start(step_choice))
         f.write("=====================================\n\n")
 
-def record_apptime(sdir, start_time, function_name, *args):
-    timing_log = join(sdir,'tmp',function_name + "_timing.txt")
-    line = str(time.time() - start_time)
+def record_apptime(params, start_time, substep, *args):
+    sdir = params['sdir']
+    timing_log = params['timing_log']
+    apptime = time.time() - start_time
+    line = "{} {}".format(apptime, substep)
     for arg in args:
         line += ' ' + str(arg)
     write(timing_log, line)
 
-def record_finish(sdir, stdout, cores_per_task, function_name):
-    timing_log = join(sdir,'tmp',function_name + "_timing.txt")
+def record_finish(params):
+    step_choice = params['step_choice']
+    timing_log = params['timing_log']
+    stdout = params['stdout']
+    cores_per_task = params['cores_per_task']
     total_time = 0
+    max_times = {}
     with open(timing_log, 'r') as f:
         for line in f.readlines():
-            chunks = [x for x in line.strip().split(' ', 1) if x]
-            if len(chunks) < 1 or not is_float(chunks[0]):
+            chunks = [x for x in line.strip().split(' ', 2) if x]
+            if len(chunks) < 2:
                 continue
-            total_time += float(chunks[0])
+            apptime = float(chunks[0])
+            substep = int(chunks[1])
+            total_time += apptime
+            if substep not in max_times:
+                max_times[substep] = apptime
+            else:
+                max_times[substep] = max(apptime, max_times[substep])
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
-        f.write(get_finish(function_name))
+        f.write(get_finish(step_choice))
         f.write("Core time: {} (h:m:s)\n".format(get_time_string(total_time * cores_per_task)))
+        f.write("Ideal max walltime: {} (h:m:s)\n".format(get_time_string(sum(list(max_times.values())))))
         f.write("=====================================\n\n")
+    run("chmod 770 {}".format(timing_log))
+    run("chmod 770 {}".format(stdout))
+
+def update_permissions(params):
+    sdir = params['sdir']
+    group = params['group']
+    stdout = params['stdout']
+    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(path), stdout)
+    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(path, group), stdout)
+    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(path), stdout)
+    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(path, group), stdout)
 
 def generate_checksum(input_dir):
     buf_size = 65536  # read file in 64kb chunks
@@ -152,6 +175,17 @@ def generate_checksum(input_dir):
             md5.update(data)
         f.close()
     return md5.hexdigest()
+
+def get_valid_filepath(template):
+    path, ext = splitext(template)
+    idx = 0
+    valid_path = path + "_{:02d}".format(idx) + ext
+    while exists(valid_path) and idx < 100:
+        idx += 1
+        valid_path = path + "_{:02d}".format(idx) + ext
+    if idx >= 100:
+        raise Exception("Could not find valid filepath for template {}".format(template))
+    return valid_path, idx
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
     with open(path,'w') as f:

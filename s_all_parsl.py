@@ -50,18 +50,17 @@ def get_walltime(_job_time, _num_jobs, _tasks_per_node, _nodes_per_block, _max_b
     return get_time_string(total_secs)
 
 def valid_args(args):
-    if args.enable_gpu and args.step_choice in ['s1','s4','s5']:
-        print("Error: step choices s1, s4, and s5 do not support GPU")
+    if args.enable_gpu and args.step_choice in ['s1','s4']:
+        print("Error: step choices s1 and s4 do not support GPU")
         return False
     return True
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
-parser.add_argument('step_choice', choices=['s1','s2a','s2b','s3','s4','s5'], type=str.lower, help='Script to run across subjects')
+parser.add_argument('step_choice', choices=['s1','s2a','s2b','s3','s4'], type=str.lower, help='Script to run across subjects')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx or s4_edi', default=join("lists","listEdgesEDI.txt"))
-parser.add_argument('--log_dir', help='Directory containing subject-specific logs, relative to output dir', default=join("parsl_logs"))
 parser.add_argument('--tasks_per_node', help='Override default setting, number of tasks per node', type=int)
 parser.add_argument('--nodes_per_block', help='Override default setting, number of nodes per block', type=int)
 parser.add_argument('--max_blocks', help='Override default setting, max blocks to request', type=int)
@@ -83,20 +82,18 @@ s2a = args.step_choice == 's2a'
 s2b = args.step_choice == 's2b'
 s3 = args.step_choice == 's3'
 s4 = args.step_choice == 's4'
-s5 = args.step_choice == 's5'
 
 container = abspath(args.container) if args.container else None
 odir = abspath(args.output_dir)
 smart_mkdir(odir)
-log_dir = join(odir, args.log_dir)
-smart_mkdir(log_dir)
+# log_dir = join(odir, args.log_dir)
+# smart_mkdir(log_dir)
 
 # Setup defaults for step choice
 use_gpu = False
 num_cores = int(floor(multiprocessing.cpu_count() / 2))
 tasks_per_node = nodes_per_block = max_blocks = None
 job_time = None # average time per subject per node
-dependencies = []
 slurm_override = "#SBATCH -A {}".format(args.bank)
 if s1:
     tasks_per_node = num_cores
@@ -117,7 +114,6 @@ elif s2a:
         nodes_per_block = 8
         max_blocks = 2
         job_time = "10:00:00"
-    dependencies = ['s1']
 elif s2b:
     if args.enable_gpu:
         use_gpu = True
@@ -133,7 +129,6 @@ elif s2b:
         job_time = "08:00:00"
     if islink(join(odir,"fsaverage")):
         run("unlink {}".format(join(odir,"fsaverage")))
-    dependencies = ['s1']
 elif s3:
     if args.enable_gpu:
         use_gpu = True
@@ -148,19 +143,11 @@ elif s3:
         nodes_per_block = 8
         max_blocks = 2
         job_time = "06:00:00" # for default list of 900 edges
-    dependencies = ['s2a','s2b']
 elif s4:
     tasks_per_node = num_cores
     nodes_per_block = 8
     max_blocks = 2
     job_time = "00:15:00"
-    dependencies = ['s3']
-elif s5:
-    tasks_per_node = num_cores
-    nodes_per_block = 1
-    max_blocks = 1
-    job_time = "00:30:00"
-    dependencies = ['s4']
 
 # Validate subject inputs
 subjects = []
@@ -209,26 +196,36 @@ for subject in subjects:
     sname = subject['sname']
     checksum = subject['checksum']
     sdir = join(odir, sname)
-    stdout = join(log_dir, sname + ".stdout")
+    log_dir = join(sdir,'log')
+    stdout, idx = get_valid_filepath(join(log_dir, args.step_choice + ".stdout"))
+    timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(args.step_choice, idx))
+    params = {
+        'input_dir': input_dir,
+        'sdir': sdir,
+        'cores_per_task': cores_per_task,
+        'container': container,
+        'checksum': checksum,
+        'use_gpu': use_gpu,
+        'stdout': stdout,
+        'edge_list': args.edge_list,
+        'group': args.group,
+        'timing_log': timing_log,
+        'step_choice': args.step_choice,
+    }
+    smart_remove(timing_log)
+    smart_mkdir(log_dir)
     smart_mkdir(sdir)
     if s1:
         from subscripts.s1_dti_preproc import create_job
-        jobs.append((sname, create_job(input_dir, sdir, cores_per_task, stdout, container, checksum)))
     elif s2a:
         from subscripts.s2a_bedpostx import create_job
-        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu)))
     elif s2b:
         from subscripts.s2b_freesurfer import create_job
-        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu)))
     elif s3:
         from subscripts.s3_probtrackx import create_job
-        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu, args.edge_list)))
     elif s4:
         from subscripts.s4_edi import create_job
-        jobs.append((sname, create_job(sdir, cores_per_task, stdout, container, checksum, args.edge_list)))
-    elif s5:
-        from subscripts.s5_chmod import create_job
-        jobs.append((sname, create_job(sdir, cores_per_task, stdout, checksum, args.group)))
+    jobs.append((sname, create_job(params)))
 for job in jobs:
     if job[1] is None:
         continue
@@ -237,5 +234,4 @@ for job in jobs:
         job[1].result()
         print("Finished processing subject {} with step {}".format(sname, args.step_choice))
     except:
-        stdout = join(log_dir, sname + ".stdout")
-        print("Error: failed to process subject {}. See details in {}".format(sname, stdout))
+        print("Error: failed to process subject {}".format(sname))

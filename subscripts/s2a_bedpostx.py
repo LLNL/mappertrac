@@ -2,13 +2,19 @@
 from subscripts.config import executor_labels
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels)
-def s2a_bedpostx(sdir, cores_per_task, stdout, container, checksum, use_gpu):
+@python_app(executors=executor_labels, cache=True)
+def s2a_bedpostx(params):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish
     from os.path import exists,join
     from shutil import copyfile,rmtree
-    record_start(sdir, stdout, 's2a')
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    cores_per_task = params['cores_per_task']
+    use_gpu = params['use_gpu']
+    group = params['group']
+    record_start(params)
     start_time = time.time()
     bedpostx = join(sdir,"bedpostx_b1000")
     bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
@@ -21,8 +27,8 @@ def s2a_bedpostx(sdir, cores_per_task, stdout, container, checksum, use_gpu):
     brain_mask = join(bedpostxResults, "nodif_brain_mask")
     if exists(bedpostxResults):
         rmtree(bedpostxResults)
-    smart_mkdir(bedpostx)
-    smart_mkdir(bedpostxResults)
+    smart_mkdir(bedpostx, group)
+    smart_mkdir(bedpostxResults, group)
     copyfile(join(sdir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"))
     copyfile(join(sdir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"))
     copyfile(join(sdir,"bvals"),join(bedpostx,"bvals"))
@@ -36,8 +42,8 @@ def s2a_bedpostx(sdir, cores_per_task, stdout, container, checksum, use_gpu):
         run("bedpostx {}".format(bedpostx), stdout, container)
     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), stdout, container)
     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), stdout, container)
-    record_apptime(sdir, start_time, 's2a')
-    record_finish(sdir, stdout, cores_per_task, 's2a')
+    record_apptime(params, start_time, 1)
+    record_finish(params)
 
-def create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu):
-    return s2a_bedpostx(sdir, cores_per_task, stdout, container, checksum, use_gpu)
+def create_job(params):
+    return s2a_bedpostx(params)
