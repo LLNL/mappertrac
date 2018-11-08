@@ -85,9 +85,11 @@ s4 = args.step_choice == 's4'
 
 container = abspath(args.container) if args.container else None
 odir = abspath(args.output_dir)
+global_timing_log = join(odir, 'global_log', 'timing.csv')
 smart_mkdir(odir)
-# log_dir = join(odir, args.log_dir)
-# smart_mkdir(log_dir)
+smart_mkdir(join(odir, 'global_log'))
+if not exists(global_timing_log):
+    write(global_timing_log, "subject,step_choice,ideal_walltime,actual_walltime,total_core_time,cores_per_task,use_gpu")
 
 # Setup defaults for step choice
 use_gpu = False
@@ -188,7 +190,7 @@ config.checkpoint_mode = 'task_exit'
 if not args.force:
     config.checkpoint_files = get_all_checkpoints()
 parsl.set_stream_logger()
-parsl.load(config) 
+parsl.load(config)
 
 jobs = []
 for subject in subjects:
@@ -211,6 +213,7 @@ for subject in subjects:
         'group': args.group,
         'timing_log': timing_log,
         'step_choice': args.step_choice,
+        'global_timing_log': global_timing_log,
     }
     smart_remove(timing_log)
     smart_mkdir(log_dir)

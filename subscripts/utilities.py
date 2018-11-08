@@ -111,50 +111,67 @@ def write(path, output):
 
 def record_start(params):
     step_choice = params['step_choice']
+    timing_log = params['timing_log']
     stdout = params['stdout']
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_start(step_choice))
         f.write("=====================================\n\n")
+    write(timing_log, "{} start".format(time.time()))
 
-def record_apptime(params, start_time, substep, *args):
-    sdir = params['sdir']
+def record_apptime(params, app_start_time, substep, *args):
     timing_log = params['timing_log']
-    apptime = time.time() - start_time
+    apptime = time.time() - app_start_time
     line = "{} {}".format(apptime, substep)
     for arg in args:
         line += ' ' + str(arg)
     write(timing_log, line)
 
 def record_finish(params):
+    sdir = params['sdir']
     step_choice = params['step_choice']
     timing_log = params['timing_log']
     stdout = params['stdout']
     cores_per_task = params['cores_per_task']
-    total_time = 0
-    max_times = {}
+    use_gpu = params['use_gpu']
+    global_timing_log = params['global_timing_log']
+    sname = basename(sdir)
+    task_start_time = 0
+    task_total_time = 0
+    max_apptimes = {}
     with open(timing_log, 'r') as f:
         for line in f.readlines():
-            chunks = [x for x in line.strip().split(' ', 2) if x]
+            chunks = [x.strip() for x in line.strip().split(' ', 2) if x]
             if len(chunks) < 2:
+                continue
+            if chunks[1] == 'start':
+                task_start_time = float(chunks[0])
                 continue
             apptime = float(chunks[0])
             substep = int(chunks[1])
-            total_time += apptime
-            if substep not in max_times:
-                max_times[substep] = apptime
+            task_total_time += apptime
+            if substep not in max_apptimes:
+                max_apptimes[substep] = apptime
             else:
-                max_times[substep] = max(apptime, max_times[substep])
+                max_apptimes[substep] = max(apptime, max_apptimes[substep])
+    ideal_walltime = get_time_string(sum(list(max_apptimes.values())))
+    actual_walltime = get_time_string(time.time() - task_start_time)
+    total_core_time = get_time_string(task_total_time * cores_per_task)
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_finish(step_choice))
-        f.write("Core time: {} (h:m:s)\n".format(get_time_string(total_time * cores_per_task)))
-        f.write("Ideal max walltime: {} (h:m:s)\n".format(get_time_string(sum(list(max_times.values())))))
+        f.write("Ideal walltime: {} (h:m:s)\n".format(ideal_walltime))
+        f.write("Actual walltime: {} (h:m:s)\n".format(actual_walltime))
+        f.write("Total core time: {} (h:m:s)\n".format(total_core_time))
+        f.write("{} parallel cores per task\n".format(cores_per_task))
+        f.write("Used GPU: {}\n".format(use_gpu))
         f.write("=====================================\n\n")
+    write(global_timing_log, "{},{},{},{},{},{},{}".format(sname, step_choice, ideal_walltime, actual_walltime, total_core_time, cores_per_task, use_gpu))
     run("chmod 770 {}".format(timing_log))
     run("chmod 770 {}".format(stdout))
 
 def update_permissions(params):
+    start_time = time.time()
     sdir = params['sdir']
     group = params['group']
     stdout = params['stdout']
@@ -162,6 +179,7 @@ def update_permissions(params):
     run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group), stdout)
     run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(sdir), stdout)
     run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group), stdout)
+    write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time)))
 
 def generate_checksum(input_dir):
     buf_size = 65536  # read file in 64kb chunks
