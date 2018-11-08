@@ -11,7 +11,6 @@ def s4_1_edi_consensus(params, a, b, inputs=[]):
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
-    group = params['group']
     start_time = time.time()
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     a_to_b = "{}to{}".format(a, b)
@@ -45,7 +44,7 @@ def s4_1_edi_consensus(params, a, b, inputs=[]):
             log.write("For edge {}:\n".format(a_to_b))
             log.write("{} is thresholded to {}\n".format(a, amax))
             log.write("{} is thresholded to {}\n".format(b, bmax))
-    record_apptime(params, start_time, 1)
+    record_apptime(params, start_time, 1, a, b)
 
 @python_app(executors=executor_labels, cache=True)
 def s4_2_edi_combine(params, processed_edges, inputs=[]):
@@ -56,8 +55,6 @@ def s4_2_edi_combine(params, processed_edges, inputs=[]):
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
-    cores_per_task = params['cores_per_task']
-    group = params['group']
     start_time = time.time()
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     edi_maps = join(sdir,"EDI","EDImaps")
@@ -78,8 +75,6 @@ def s4_2_edi_combine(params, processed_edges, inputs=[]):
     record_finish(params)
 
 def create_job(params):
-    sdir = params['sdir']
-    stdout = params['stdout']
     edge_list = params['edge_list']
     s4_1_futures = []
     processed_edges = []

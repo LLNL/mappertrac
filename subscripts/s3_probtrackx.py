@@ -7,14 +7,13 @@ from parsl.app.app import python_app
 @python_app(executors=executor_labels, cache=True)
 def s3_1_probtrackx(params, a, b):
     import time
-    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_start,record_apptime
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
     from os.path import join,exists
     from shutil import copyfile
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
-    group = params['group']
     start_time = time.time()
     EDI_allvols = join(sdir,"EDI","allvols")
     a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
@@ -35,6 +34,7 @@ def s3_1_probtrackx(params, a, b):
     merged = join(bedpostxResults,"merged")
     nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
     fdt_matrix1 = join(tmp, "fdt_matrix1.dot")
+    waytotal = join(tmp, "waytotal")
     connectome = join(sdir, "connectome_oneway.dot")
     if not exists(a_file) or not exists(b_file):
         write(stdout, "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
@@ -65,21 +65,25 @@ def s3_1_probtrackx(params, a, b):
         run("probtrackx2_gpu" + arguments, stdout, container)
     else:
         run("probtrackx2" + arguments, stdout, container)
-    if exists(fdt_matrix1):
-        track_count = 0.0
+    if exists(fdt_matrix1) and exists(waytotal):
+        waytotal_count = 0
+        with open(waytotal, 'r') as f:
+            count = f.read().strip()
+            if is_integer(count):
+                waytotal_count = int(count)
+        matrix1_count = 0.0
         with open(fdt_matrix1, 'r') as f:
             for line in f.readlines():
                 if not line:
                     continue
                 chunks = [x for x in line.strip().split(' ') if x]
                 if len(chunks) == 3 and is_float(chunks[2]):
-                    track_count += float(chunks[2])
-        write(connectome, "{} {} {}".format(a, b, track_count))
+                    matrix1_count += float(chunks[2])
+        write(connectome, "{} {} {} {}".format(a, b, waytotal_count, matrix1_count))
     copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
-    if a == "lh.paracentral": # keep for debugging
-        return
-    smart_remove(tmp)
-    record_apptime(params, start_time, 1)
+    if not a == "lh.paracentral": # keep for debugging
+        smart_remove(tmp)
+    record_apptime(params, start_time, 1, a, b)
 
 @python_app(executors=executor_labels, cache=True)
 def s3_2_combine(params, inputs=[]):
@@ -87,9 +91,6 @@ def s3_2_combine(params, inputs=[]):
     from subscripts.utilities import record_apptime,record_finish,update_permissions
     from os.path import join,exists
     sdir = params['sdir']
-    stdout = params['stdout']
-    container = params['container']
-    cores_per_task = params['cores_per_task']
     start_time = time.time()
     connectome = join(sdir, "connectome_oneway.dot")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
@@ -116,9 +117,11 @@ def s3_2_combine(params, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
-def create_job(sdir, cores_per_task, stdout, container, checksum, use_gpu, args.edge_list):
+def create_job(params):
     sdir = params['sdir']
     stdout = params['stdout']
+    use_gpu = params['use_gpu']
+    edge_list = params['edge_list']
     s3_1_futures = []
     processed_edges = []
     smart_remove(join(sdir, "connectome.dot"))

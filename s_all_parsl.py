@@ -123,7 +123,7 @@ elif s2b:
         max_blocks = 1
         job_time = "03:00:00"
     else:
-        tasks_per_node = 6
+        tasks_per_node = 3
         nodes_per_block = 4
         max_blocks = 1
         job_time = "08:00:00"
@@ -178,7 +178,7 @@ max_blocks = args.max_blocks if args.max_blocks is not None else max_blocks
 walltime = args.walltime if args.walltime is not None else walltime
 cores_per_task = max(int(cores_per_node / tasks_per_node), 1)
 print("Running {} subjects. Using {} cores, {} per task. Max walltime is {}".format(
-    num_jobs, cores_per_node * nodes_per_block * max_blocks, cores_per_task, , walltime))
+    num_jobs, cores_per_node * nodes_per_block * max_blocks, cores_per_task, walltime))
 
 subscripts.config.executor_labels = get_executor_labels(nodes_per_block, max_blocks)
 executors = get_executors(tasks_per_node, nodes_per_block, max_blocks, walltime, slurm_override)

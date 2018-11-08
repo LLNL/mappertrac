@@ -27,8 +27,8 @@ def s2a_bedpostx(params):
     brain_mask = join(bedpostxResults, "nodif_brain_mask")
     if exists(bedpostxResults):
         rmtree(bedpostxResults)
-    smart_mkdir(bedpostx, group)
-    smart_mkdir(bedpostxResults, group)
+    smart_mkdir(bedpostx)
+    smart_mkdir(bedpostxResults)
     copyfile(join(sdir,"data_eddy.nii.gz"),join(bedpostx,"data.nii.gz"))
     copyfile(join(sdir,"data_bet_mask.nii.gz"),join(bedpostx,"nodif_brain_mask.nii.gz"))
     copyfile(join(sdir,"bvals"),join(bedpostx,"bvals"))
