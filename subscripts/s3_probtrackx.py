@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 from os.path import join,exists
-from subscripts.config import executor_labels
-from subscripts.utilities import write,smart_remove,record_start
+from subscripts.config import one_core_executor_labels
+from subscripts.utilities import write,smart_remove
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels, cache=True)
-def s3_1_probtrackx(params, a, b):
+@python_app(executors=one_core_executor_labels, cache=True)
+def s3_1_start(params, inputs=[]):
+    from subscripts.utilities import record_start
+    record_start(params)
+
+@python_app(executors=['two_core'], cache=True)
+def s3_2_probtrackx(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
     from os.path import join,exists
@@ -85,8 +90,8 @@ def s3_1_probtrackx(params, a, b):
         smart_remove(tmp)
     record_apptime(params, start_time, 1, a, b)
 
-@python_app(executors=executor_labels, cache=True)
-def s3_2_combine(params, inputs=[]):
+@python_app(executors=one_core_executor_labels, cache=True)
+def s3_3_combine(params, inputs=[]):
     import time
     from subscripts.utilities import record_apptime,record_finish,update_permissions
     from os.path import join,exists
@@ -117,16 +122,16 @@ def s3_2_combine(params, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
-def create_job(params):
+def run_s3(params, inputs):
     sdir = params['sdir']
     stdout = params['stdout']
     use_gpu = params['use_gpu']
     edge_list = params['edge_list']
-    s3_1_futures = []
+    s3_1_future = s3_1_start(params, inputs=inputs)
+    s3_2_futures = []
     processed_edges = []
     smart_remove(join(sdir, "connectome.dot"))
     smart_remove(join(sdir, "tmp"))
-    record_start(params)
     if use_gpu:
         write(stdout, "Running Probtrackx with GPU")
     else:
@@ -139,8 +144,8 @@ def create_job(params):
             a_to_b = "{}to{}".format(a, b)
             b_to_a = "{}to{}".format(b, a)
             if a_to_b not in processed_edges and b_to_a not in processed_edges:
-                s3_1_futures.append(s3_1_probtrackx(params, a, b))
-                s3_1_futures.append(s3_1_probtrackx(params, b, a))
+                s3_2_futures.append(s3_2_probtrackx(params, a, b, inputs=[s3_1_future]))
+                s3_2_futures.append(s3_2_probtrackx(params, b, a, inputs=[s3_1_future]))
                 processed_edges.append(a_to_b)
                 processed_edges.append(b_to_a)
-    return s3_2_combine(params, inputs=s3_1_futures)
+    return s3_3_combine(params, inputs=s3_2_futures)

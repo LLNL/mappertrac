@@ -74,6 +74,9 @@ def is_integer(value):
     except ValueError:
         return False
 
+def clamp(value, lo, hi):
+    return max(lo, min(value, hi))
+
 def str2bool(string):
     if string is None:
         return string
@@ -110,12 +113,12 @@ def write(path, output):
         f.write(str(output) + "\n")
 
 def record_start(params):
-    step_choice = params['step_choice']
+    step = params['step']
     timing_log = params['timing_log']
     stdout = params['stdout']
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
-        f.write(get_start(step_choice))
+        f.write(get_start(step))
         f.write("=====================================\n\n")
     write(timing_log, "{} start".format(time.time()))
 
@@ -129,7 +132,7 @@ def record_apptime(params, app_start_time, substep, *args):
 
 def record_finish(params):
     sdir = params['sdir']
-    step_choice = params['step_choice']
+    step = params['step']
     timing_log = params['timing_log']
     stdout = params['stdout']
     cores_per_task = params['cores_per_task']
@@ -159,14 +162,14 @@ def record_finish(params):
     total_core_time = get_time_string(task_total_time * cores_per_task)
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
-        f.write(get_finish(step_choice))
+        f.write(get_finish(step))
         f.write("Ideal walltime: {} (h:m:s)\n".format(ideal_walltime))
         f.write("Actual walltime: {} (h:m:s)\n".format(actual_walltime))
         f.write("Total core time: {} (h:m:s)\n".format(total_core_time))
         f.write("{} parallel cores per task\n".format(cores_per_task))
         f.write("Used GPU: {}\n".format(use_gpu))
         f.write("=====================================\n\n")
-    write(global_timing_log, "{},{},{},{},{},{},{}".format(sname, step_choice, ideal_walltime, actual_walltime, total_core_time, cores_per_task, use_gpu))
+    write(global_timing_log, "{},{},{},{},{},{},{}".format(sname, step, ideal_walltime, actual_walltime, total_core_time, cores_per_task, use_gpu))
     run("chmod 770 {}".format(timing_log))
     run("chmod 770 {}".format(stdout))
 

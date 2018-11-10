@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-from subscripts.config import executor_labels
-from subscripts.utilities import record_start
+from subscripts.config import one_core_executor_labels
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels, cache=True)
-def s4_1_edi_consensus(params, a, b, inputs=[]):
+@python_app(executors=one_core_executor_labels, cache=True)
+def s4_1_start(params, inputs=[]):
+    from subscripts.utilities import record_start
+    record_start(params)
+
+@python_app(executors=one_core_executor_labels, cache=True)
+def s4_2_edi_consensus(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_apptime
     from os.path import join,exists
@@ -46,8 +50,8 @@ def s4_1_edi_consensus(params, a, b, inputs=[]):
             log.write("{} is thresholded to {}\n".format(b, bmax))
     record_apptime(params, start_time, 1, a, b)
 
-@python_app(executors=executor_labels, cache=True)
-def s4_2_edi_combine(params, processed_edges, inputs=[]):
+@python_app(executors=one_core_executor_labels, cache=True)
+def s4_3_edi_combine(params, processed_edges, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish,update_permissions
     from os.path import join,exists
@@ -74,9 +78,10 @@ def s4_2_edi_combine(params, processed_edges, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
-def create_job(params):
+def run_s4(params, inputs):
     edge_list = params['edge_list']
-    s4_1_futures = []
+    s4_1_future = s4_1_start(params, inputs=inputs)
+    s4_2_futures = []
     processed_edges = []
     record_start(params)
     with open(edge_list) as f:
@@ -87,6 +92,6 @@ def create_job(params):
             a_to_b = "{}to{}".format(a, b)
             b_to_a = "{}to{}".format(b, a)
             if a_to_b not in processed_edges and b_to_a not in processed_edges:
-                s4_1_futures.append(s4_1_edi_consensus(params, a, b))
+                s4_2_futures.append(s4_2_edi_consensus(params, a, b, inputs=[s4_1_future]))
                 processed_edges.append(a_to_b)
-    return s4_2_edi_combine(params, processed_edges, inputs=s4_1_futures)
+    return s4_3_edi_combine(params, processed_edges, inputs=s4_2_futures)

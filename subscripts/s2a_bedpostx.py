@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-from subscripts.config import executor_labels
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels, cache=True)
-def s2a_bedpostx(params):
+@python_app(executors=['all_core'], cache=True)
+def s2a_bedpostx(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish,update_permissions
     from os.path import exists,join
@@ -46,5 +45,5 @@ def s2a_bedpostx(params):
     record_apptime(params, start_time, 1)
     record_finish(params)
 
-def create_job(params):
-    return s2a_bedpostx(params)
+def run_s2a(params, inputs=[]):
+    return s2a_bedpostx(params, inputs=inputs)

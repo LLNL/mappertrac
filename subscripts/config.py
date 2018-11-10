@@ -1,2 +1,2 @@
 #!/usr/bin/env python3
-executor_labels = ['batch']
+one_core_executor_labels = ['one_core_head']

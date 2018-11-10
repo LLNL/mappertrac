@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-from subscripts.config import executor_labels
+from subscripts.config import one_core_executor_labels
 from subscripts.utilities import run,is_integer,write
 from os.path import join
 from parsl.app.app import python_app
 
-@python_app(executors=executor_labels, cache=True)
-def s1_1_split_timeslices(params):
+@python_app(executors=one_core_executor_labels, cache=True)
+def s1_1_split_timeslices(params, inputs=[]):
     import time
     from subscripts.utilities import run,record_apptime,record_start
     from os.path import join
@@ -26,7 +26,7 @@ def s1_1_split_timeslices(params):
     run("fslsplit {} {}_tmp".format(input_data, output_prefix), stdout, container)
     record_apptime(params, start_time, 1)
 
-@python_app(executors=executor_labels, cache=True)
+@python_app(executors=one_core_executor_labels, cache=True)
 def s1_2_timeslice_process(params, timeslice, inputs=[]):
     import time
     from subscripts.utilities import run,record_apptime
@@ -42,7 +42,7 @@ def s1_2_timeslice_process(params, timeslice, inputs=[]):
     run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(slice_data, output_prefix), stdout, container)
     record_apptime(params, start_time, 2)
 
-@python_app(executors=executor_labels, cache=True)
+@python_app(executors=one_core_executor_labels, cache=True)
 def s1_3_dti_fit(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,record_apptime,record_finish,update_permissions
@@ -87,7 +87,7 @@ def s1_3_dti_fit(params, inputs=[]):
     record_apptime(params, start_time, 3)
     record_finish(params)
 
-def create_job(params):
+def run_s1(params, inputs):
     input_dir = params['input_dir']
     stdout = params['stdout']
     container = params['container']
@@ -97,7 +97,7 @@ def create_job(params):
         write(stdout, "Failed to read timeslices from {}".format(input_data))
         return
     num_timeslices = timeslices[-1]
-    s1_1_future = s1_1_split_timeslices(params)
+    s1_1_future = s1_1_split_timeslices(params, inputs=inputs)
     s1_2_futures = []
     for i in range(int(num_timeslices)):
         s1_2_future = s1_2_timeslice_process(params, i, inputs=[s1_1_future])
