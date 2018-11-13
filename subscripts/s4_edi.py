@@ -83,7 +83,6 @@ def run_s4(params, inputs):
     s4_1_future = s4_1_start(params, inputs=inputs)
     s4_2_futures = []
     processed_edges = []
-    record_start(params)
     with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():

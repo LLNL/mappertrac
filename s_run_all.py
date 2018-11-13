@@ -12,7 +12,7 @@ from parsl.utils import get_all_checkpoints
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
 from os import system,mkdir,remove,environ,makedirs
-from math import floor
+from math import floor, ceil
 from subscripts.s1_dti_preproc import run_s1
 from subscripts.s2a_bedpostx import run_s2a
 from subscripts.s2b_freesurfer import run_s2b
@@ -24,31 +24,26 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('--steps', type=str.lower, help='Steps to run across subjects', default="s1 s2a s2b s3 s4")
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a")
+parser.add_argument('--max_nodes', help='Max number of nodes to request. If not set, will prompt for user input.')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","listEdgesEDI.txt"))
+parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2_job_time', help='Average time to finish s2a and s2b on a single subject with a single node', default="08:00:00")
 parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="06:00:00")
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
 parser.add_argument('--local_only', help='Run only on local machine', action='store_true')
 parser.add_argument('--container', help='Path to Singularity container image')
-parser.add_argument('--walltime', help='Override default setting, max walltime')
-parser.add_argument('--all_core_nodes', help='Override default setting. Number of nodes using all cores on each task. For steps s2a_bedpostx and s2b_freesurfer.')
-parser.add_argument('--two_core_nodes', help='Override default setting. Number of nodes with two cores per task. For step s3_probtrackx.')
-parser.add_argument('--one_core_nodes', help='Override default setting. Number of nodes with one core per task.')
+parser.add_argument('--walltime', help='Override walltime setting, max walltime')
+parser.add_argument('--one_core_nodes', help='Override max_nodes setting. Number of nodes with one core per task. For steps s1_dti_preproc and s4_edi.')
+parser.add_argument('--two_core_nodes', help='Override max_nodes setting. Number of nodes with two cores per task. For step s3_probtrackx.')
+parser.add_argument('--all_core_nodes', help='Override max_nodes setting. Number of nodes using all cores on each task. For steps s2a_bedpostx and s2b_freesurfer.')
 args = parser.parse_args()
 
 steps = [x.strip() for x in args.steps.split(' ') if x]
 gpu_steps = [x.strip() for x in args.gpu_steps.split(' ') if x]
 
-container = abspath(args.container) if args.container else None
-odir = abspath(args.output_dir)
-global_timing_log = join(odir, 'global_log', 'timing.csv')
-smart_mkdir(odir)
-smart_mkdir(join(odir, 'global_log'))
-if not exists(global_timing_log):
-    write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,cores_per_task,use_gpu")
-
+# Make sure input files exist for each subject, then generate checksum
 subjects = []
 with open(args.subject_list, 'r') as f:
     input_dirs = f.readlines()
@@ -69,17 +64,68 @@ for input_dir in input_dirs:
     print("Running subject {} with steps {}".format(sname, steps))
 num_jobs = len(subjects)
 
-all_core_nodes = clamp(num_jobs, 1, 8)
-two_core_nodes = clamp(num_jobs, 2, 8)
-one_core_nodes = clamp(num_jobs / 2, 2, 8)
-# Override from arguments
-all_core_nodes = args.all_core_nodes if args.all_core_nodes is not None else all_core_nodes
-two_core_nodes = args.two_core_nodes if args.two_core_nodes is not None else two_core_nodes
-one_core_nodes = args.one_core_nodes if args.one_core_nodes is not None else one_core_nodes
+# Weight core allocations, to determine recommended nodes and allocate nodes of each type
+one_core_weight = 0.1 if running_step(steps, 's1', 's4') else 0
+two_core_weight = 0.4 if running_step(steps, 's3') else 0
+all_core_weight = 0.5 if running_step(steps, 's2a', 's2b') else 0
+total_weight = one_core_weight + two_core_weight + all_core_weight
 
+# Minimum 1 node of each type, if required by any steps
+one_core_min = 1 if running_step(steps, 's1', 's4') else 0
+two_core_min = 1 if running_step(steps, 's3') else 0
+all_core_min = 1 if running_step(steps, 's2a', 's2b') else 0
+total_min_nodes = one_core_min + two_core_min + all_core_min
+
+if args.max_nodes is not None:
+    max_nodes = int(args.max_nodes)
+else:
+    recommended_nodes = max(int(ceil(3 * total_weight * num_jobs)), total_min_nodes)
+    question = "How many nodes to request? [Recommended: {}] ".format(recommended_nodes)
+    while 1:
+        sys.stdout.write(question)
+        choice = input().lower()
+        if choice == '':
+            max_nodes = recommended_nodes
+            break
+        elif is_integer(choice):
+            if int(choice) < total_min_nodes:
+                sys.stdout.write("Job requires at least {} nodes\n".format(total_min_nodes))
+            else:
+                max_nodes = int(choice)
+                break
+        else:
+            sys.stdout.write("Please respond with an integer value\n")
+
+if max_nodes < total_min_nodes:
+    raise Exception("Job requires at least {} nodes".format(total_min_nodes))
+
+# Calculate number of nodes of each type
+one_core_nodes = max(int(floor(one_core_weight * max_nodes)), one_core_min)
+two_core_nodes = max(int(floor(two_core_weight * max_nodes)), two_core_min)
+all_core_nodes = max(max_nodes - two_core_nodes - one_core_nodes, all_core_min)
+
+# Override number of nodes using command line arguments
+one_core_nodes = int(args.one_core_nodes) if args.one_core_nodes is not None else one_core_nodes
+two_core_nodes = int(args.two_core_nodes) if args.two_core_nodes is not None else two_core_nodes
+all_core_nodes = int(args.all_core_nodes) if args.all_core_nodes is not None else all_core_nodes
+if args.local_only:
+    one_core_nodes = 0
+    two_core_nodes = 0
+    all_core_nodes = 0
+
+print("Running with {} max nodes".format(one_core_nodes + two_core_nodes + all_core_nodes))
+
+s1_job_time = get_time_seconds(args.s1_job_time)
 s2_job_time = get_time_seconds(args.s2_job_time)
 s3_job_time = get_time_seconds(args.s3_job_time)
-job_time = (num_jobs * s2_job_time) / all_core_nodes + (num_jobs * s3_job_time) / two_core_nodes
+job_time = 0
+if one_core_nodes > 0:
+    job_time += (num_jobs * s1_job_time) / one_core_nodes
+if all_core_nodes > 0:
+    job_time += (num_jobs * s2_job_time) / all_core_nodes
+if two_core_nodes > 0:
+    job_time += (num_jobs * s3_job_time) / two_core_nodes
+
 walltime = get_time_string(clamp(job_time, 28800, 86399)) # clamp between 8 and 24 hours
 walltime = args.walltime if args.walltime is not None else walltime
 
@@ -88,39 +134,40 @@ cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
 
 overrides = "#SBATCH -A {}".format(args.bank)
 
-executors = [
-IPyParallelExecutor(label='one_core_head',
-                provider=LocalProvider(
-                init_blocks=cores_per_node,
-                max_blocks=cores_per_node)),
-IPyParallelExecutor(label='all_core',
-                provider=SlurmProvider('pbatch',
-                launcher=SrunLauncher(),
-                nodes_per_block=all_core_nodes,
-                tasks_per_node=1,
-                init_blocks=1,
-                max_blocks=1,
-                walltime=walltime,
-                overrides=overrides + "\nmodule load cuda/8.0;")),
-IPyParallelExecutor(label='two_core',
-                provider=SlurmProvider('pbatch',
-                launcher=SrunLauncher(),
-                nodes_per_block=two_core_nodes,
-                tasks_per_node=int(cores_per_node / 2),
-                init_blocks=1,
-                max_blocks=1,
-                walltime=walltime,
-                overrides=overrides)),
-IPyParallelExecutor(label='one_core',
-                provider=SlurmProvider('pbatch',
-                launcher=SrunLauncher(),
-                nodes_per_block=one_core_nodes,
-                tasks_per_node=cores_per_node,
-                init_blocks=1,
-                max_blocks=1,
-                walltime=walltime,
-                overrides=overrides)),
-]
+executors = [IPyParallelExecutor(label='one_core_head',
+             provider=LocalProvider(
+             init_blocks=cores_per_node,
+             max_blocks=cores_per_node))]
+if one_core_nodes > 0:
+    executors.append(IPyParallelExecutor(label='one_core',
+                     provider=SlurmProvider('pbatch',
+                     launcher=SrunLauncher(),
+                     nodes_per_block=one_core_nodes,
+                     tasks_per_node=cores_per_node,
+                     init_blocks=1,
+                     max_blocks=1,
+                     walltime=walltime,
+                     overrides=overrides)))
+if all_core_nodes > 0:
+    executors.append(IPyParallelExecutor(label='all_core',
+                     provider=SlurmProvider('pbatch',
+                     launcher=SrunLauncher(),
+                     nodes_per_block=all_core_nodes,
+                     tasks_per_node=1,
+                     init_blocks=1,
+                     max_blocks=1,
+                     walltime=walltime,
+                     overrides=overrides + "\nmodule load cuda/8.0;")))
+if two_core_nodes > 0:
+    executors.append(IPyParallelExecutor(label='two_core',
+                     provider=SlurmProvider('pbatch',
+                     launcher=SrunLauncher(),
+                     nodes_per_block=two_core_nodes,
+                     tasks_per_node=int(cores_per_node / 2),
+                     init_blocks=1,
+                     max_blocks=1,
+                     walltime=walltime,
+                     overrides=overrides)))
 
 print("Running {} subjects. Using {} all-core nodes, {} two-core nodes, and {} one-core nodes. Max walltime is {}".format(
     num_jobs, all_core_nodes, two_core_nodes, one_core_nodes, walltime))
@@ -165,6 +212,14 @@ if len(steps) > 1:
             if prereq not in steps:
                 raise Exception("Step {} requires steps {} as well".format(step, prereqs[step]))
 
+container = abspath(args.container) if args.container else None
+odir = abspath(args.output_dir)
+global_timing_log = join(odir, 'global_log', 'timing.csv')
+smart_mkdir(odir)
+smart_mkdir(join(odir, 'global_log'))
+if not exists(global_timing_log):
+    write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,cores_per_task,use_gpu")
+
 all_jobs = []
 for subject in subjects:
     input_dir = subject['input_dir']
@@ -172,15 +227,7 @@ for subject in subjects:
     checksum = subject['checksum']
     sdir = join(odir, sname)
     log_dir = join(sdir,'log')
-    params = {
-        'input_dir': input_dir,
-        'sdir': sdir,
-        'container': container,
-        'checksum': checksum,
-        'edge_list': args.edge_list,
-        'group': args.group,
-        'global_timing_log': global_timing_log,
-    }
+    
     smart_mkdir(log_dir)
     smart_mkdir(sdir)
 
@@ -191,14 +238,26 @@ for subject in subjects:
         stdout, idx = get_valid_filepath(join(log_dir, step + ".stdout"))
         timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(step, idx))
         smart_remove(timing_log)
-        params['cores_per_task'] = cores_per_task[step]
-        params['use_gpu'] = step in gpu_steps
-        params['stdout'] = stdout
-        params['timing_log'] = timing_log
-        params['step'] = step
+        params = {
+            'input_dir': input_dir,
+            'sdir': sdir,
+            'container': container,
+            'checksum': checksum,
+            'edge_list': args.edge_list,
+            'group': args.group,
+            'global_timing_log': global_timing_log,
+            'cores_per_task': cores_per_task[step],
+            'use_gpu': step in gpu_steps,
+            'stdout': stdout,
+            'timing_log': timing_log,
+            'step': step,
+        }
         # Use jobs from previous steps as inputs for current step
         if len(steps) > 1:
             inputs = [subject_jobs[prereq] for prereq in prereqs[step]]
+            write(stdout, "Running step {} with inputs {}".format(step, prereqs[step]))
+        else:
+            write(stdout, "Running step {} alone".format(step))
         job = step_functions[step](params, inputs)
         subject_jobs[step] = job
         all_jobs.append((sname, job))

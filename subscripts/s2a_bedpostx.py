@@ -34,7 +34,7 @@ def s2a_bedpostx(params, inputs=[]):
     copyfile(join(sdir,"bvecs"),join(bedpostx,"bvecs"))
 
     if use_gpu:
-        write(stdout, "Running Bedpostx without GPU")
+        write(stdout, "Running Bedpostx with GPU")
         run("bedpostx_gpu {} -NJOBS 4".format(bedpostx), stdout, container)
     else:
         write(stdout, "Running Bedpostx without GPU")

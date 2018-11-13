@@ -7,7 +7,12 @@ from parsl.app.app import python_app
 @python_app(executors=one_core_executor_labels, cache=True)
 def s3_1_start(params, inputs=[]):
     from subscripts.utilities import record_start
+    use_gpu = params['use_gpu']
     record_start(params)
+    if use_gpu:
+        write(stdout, "Running Probtrackx with GPU")
+    else:
+        write(stdout, "Running Probtrackx without GPU")
 
 @python_app(executors=['two_core'], cache=True)
 def s3_2_probtrackx(params, a, b, inputs=[]):
@@ -125,17 +130,12 @@ def s3_3_combine(params, inputs=[]):
 def run_s3(params, inputs):
     sdir = params['sdir']
     stdout = params['stdout']
-    use_gpu = params['use_gpu']
     edge_list = params['edge_list']
     s3_1_future = s3_1_start(params, inputs=inputs)
     s3_2_futures = []
     processed_edges = []
     smart_remove(join(sdir, "connectome.dot"))
     smart_remove(join(sdir, "tmp"))
-    if use_gpu:
-        write(stdout, "Running Probtrackx with GPU")
-    else:
-        write(stdout, "Running Probtrackx without GPU")
     with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():

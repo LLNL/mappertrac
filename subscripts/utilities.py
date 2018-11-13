@@ -208,6 +208,14 @@ def get_valid_filepath(template):
         raise Exception("Could not find valid filepath for template {}".format(template))
     return valid_path, idx
 
+def running_step(steps, *argv):
+    """If running multiple steps, return whether at least one of the *argv steps is one of them."""
+    if len(steps) > 1:
+        for step in argv:
+            if step in steps:
+                return True
+    return False
+
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
     with open(path,'w') as f:
         files = glob(join(vol_dir,"*_s2fa.nii.gz"))  # Assemble all files
