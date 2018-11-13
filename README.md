@@ -1,6 +1,6 @@
 # TRACK TBI
 
-### Running Scripts
+### Setup
 Requires a local install of: 
 * Python 3.5+
 * FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
@@ -22,6 +22,13 @@ Support for Singlarity containers, version 2.6.0 (https://www.sylabs.io/guides/2
 2. Place a Freesurfer license in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
 3. Install Singularity 2.6.0 (https://github.com/sylabs/singularity/releases/tag/2.6.0)
 4. From the repo directory, run "./container/build.sh"
+
+### Running Tractography Script
+
+1. Make sure you are running on a multi-node system using SLURM job scheduling.
+2. Create a subject list, by writing the path to each subject input directory as a line in a text file. Each directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
+3. Choose an output directory. Make sure there exists enough disk space (>5 GB per subject). The results for all subjects will be written here.
+4. From the repo directory, run "./s_all_parsl.py <subject_list> <output_dir>"
 
 ### File Overview
 
@@ -53,7 +60,7 @@ TracktographyScripts/
 |  +- Singularity               # Singularity build recipe
 |
 +- license.txt                  # Not included, required to use Freesurfer in container
-|                                 Download at https://surfer.nmr.mgh.harvard.edu/fswiki/License
+|
 +- lists/
 |  +- listEdgesEDI.txt          # List of default edges to compute with Probtrackx (930 edges)
 |  +- listEdgesEDIAll.txt       # List of all possible edges (6643 edges)

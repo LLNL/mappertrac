@@ -112,6 +112,8 @@ if args.local_only:
     one_core_nodes = 0
     two_core_nodes = 0
     all_core_nodes = 0
+    if running_step(steps, 's2a', 's2b', 's3'):
+        raise Exception("Steps s2a, s2b, and s3 cannot by run with just the local node.")
 
 print("Running with {} max nodes".format(one_core_nodes + two_core_nodes + all_core_nodes))
 
