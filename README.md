@@ -23,7 +23,7 @@ Support for Singlarity containers, version 2.6.0 (https://www.sylabs.io/guides/2
 3. Install Singularity 2.6.0 (https://github.com/sylabs/singularity/releases/tag/2.6.0)
 4. From the repo directory, run "./container/build.sh"
 
-### Running Tractography Script
+### Running the Tractography Script
 
 1. Make sure you are running on a multi-node system using SLURM job scheduling.
 2. Create a subject list, by writing the path to each subject input directory as a line in a text file. Each directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.

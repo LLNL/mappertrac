@@ -8,6 +8,7 @@ from parsl.app.app import python_app
 def s3_1_start(params, inputs=[]):
     from subscripts.utilities import record_start
     use_gpu = params['use_gpu']
+    stdout = params['stdout']
     record_start(params)
     if use_gpu:
         write(stdout, "Running Probtrackx with GPU")

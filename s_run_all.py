@@ -262,14 +262,16 @@ for subject in subjects:
             write(stdout, "Running step {} alone".format(step))
         job = step_functions[step](params, inputs)
         subject_jobs[step] = job
-        all_jobs.append((sname, job))
+        all_jobs.append((params, job))
         
 for job in all_jobs:
     if job[1] is None:
         continue
-    sname = job[0]
+    params = job[0]
+    sname = basename(params['input_dir'])
+    step = params['step']
     try:
         job[1].result()
-        print("Finished processing subject {}".format(sname))
+        print("Finished processing step {} on subject {}".format(step, sname))
     except:
-        print("Error: failed to process subject {}".format(sname))
+        print("Error: failed to process step {} on subject {}".format(step, sname))
