@@ -34,7 +34,9 @@ parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
 parser.add_argument('--local_only', help='Run only on local machine', action='store_true')
 parser.add_argument('--container', help='Path to Singularity container image')
-parser.add_argument('--walltime', help='Override walltime setting, max walltime')
+parser.add_argument('--one_core_walltime', help='Override walltime for one-core executor. For steps s1_dti_preproc and s4_edi.')
+parser.add_argument('--two_core_walltime', help='Override walltime for two-core executor. For step s3_probtrackx.')
+parser.add_argument('--all_core_walltime', help='Override walltime for all-core executor. For steps s2a_bedpostx and s2b_freesurfer.')
 parser.add_argument('--one_core_nodes', help='Override max_nodes setting. Number of nodes with one core per task. For steps s1_dti_preproc and s4_edi.')
 parser.add_argument('--two_core_nodes', help='Override max_nodes setting. Number of nodes with two cores per task. For step s3_probtrackx.')
 parser.add_argument('--all_core_nodes', help='Override max_nodes setting. Number of nodes using all cores on each task. For steps s2a_bedpostx and s2b_freesurfer.')
@@ -120,16 +122,6 @@ print("Running with {} max nodes".format(one_core_nodes + two_core_nodes + all_c
 s1_job_time = get_time_seconds(args.s1_job_time)
 s2_job_time = get_time_seconds(args.s2_job_time)
 s3_job_time = get_time_seconds(args.s3_job_time)
-job_time = 0
-if one_core_nodes > 0:
-    job_time += (num_jobs * s1_job_time) / one_core_nodes
-if all_core_nodes > 0:
-    job_time += (num_jobs * s2_job_time) / all_core_nodes
-if two_core_nodes > 0:
-    job_time += (num_jobs * s3_job_time) / two_core_nodes
-
-walltime = get_time_string(clamp(job_time, 28800, 86399)) # clamp between 8 and 24 hours
-walltime = args.walltime if args.walltime is not None else walltime
 
 # We assume 2 vCPUs per core
 cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
@@ -141,6 +133,8 @@ executors = [IPyParallelExecutor(label='one_core_head',
              init_blocks=cores_per_node,
              max_blocks=cores_per_node))]
 if one_core_nodes > 0:
+    one_core_walltime = get_time_string(clamp((num_jobs * s1_job_time) / one_core_nodes, 3600, 86399)) # clamp between 1 and 24 hours
+    one_core_walltime = args.one_core_walltime if args.one_core_walltime is not None else one_core_walltime
     executors.append(IPyParallelExecutor(label='one_core',
                      provider=SlurmProvider('pbatch',
                      launcher=SrunLauncher(),
@@ -148,9 +142,11 @@ if one_core_nodes > 0:
                      tasks_per_node=cores_per_node,
                      init_blocks=1,
                      max_blocks=1,
-                     walltime=walltime,
+                     walltime=one_core_walltime,
                      overrides=overrides)))
 if all_core_nodes > 0:
+    all_core_walltime = get_time_string(clamp((num_jobs * s2_job_time) / all_core_nodes, 21600, 86399)) # clamp between 6 and 24 hours
+    all_core_walltime = args.all_core_walltime if args.all_core_walltime is not None else all_core_walltime
     executors.append(IPyParallelExecutor(label='all_core',
                      provider=SlurmProvider('pbatch',
                      launcher=SrunLauncher(),
@@ -158,9 +154,11 @@ if all_core_nodes > 0:
                      tasks_per_node=1,
                      init_blocks=1,
                      max_blocks=1,
-                     walltime=walltime,
+                     walltime=all_core_walltime,
                      overrides=overrides + "\nmodule load cuda/8.0;")))
 if two_core_nodes > 0:
+    two_core_walltime = get_time_string(clamp((num_jobs * s3_job_time) / two_core_nodes, 7200, 86399)) # clamp between 2 and 24 hours
+    two_core_walltime = args.two_core_walltime if args.two_core_walltime is not None else two_core_walltime
     executors.append(IPyParallelExecutor(label='two_core',
                      provider=SlurmProvider('pbatch',
                      launcher=SrunLauncher(),
@@ -168,11 +166,11 @@ if two_core_nodes > 0:
                      tasks_per_node=int(cores_per_node / 2),
                      init_blocks=1,
                      max_blocks=1,
-                     walltime=walltime,
+                     walltime=two_core_walltime,
                      overrides=overrides)))
 
-print("Running {} subjects. Using {} all-core nodes, {} two-core nodes, and {} one-core nodes. Max walltime is {}".format(
-    num_jobs, all_core_nodes, two_core_nodes, one_core_nodes, walltime))
+print("Running {} subjects. Using {} all-core nodes, {} two-core nodes, and {} one-core nodes.".format(
+    num_jobs, all_core_nodes, two_core_nodes, one_core_nodes))
 
 subscripts.config.one_core_executor_labels = ['one_core_head'] + ['one_core'] * one_core_nodes
 
