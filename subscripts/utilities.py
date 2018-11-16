@@ -27,16 +27,18 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, params, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
     start = time.time()
-    sdir = params['sdir']
-    stdout = params['stdout']
-    container = params['container']
+    sdir = params['sdir'] if params else None
+    stdout = params['stdout'] if params else None
+    container = params['container'] if params else None
+    use_gpu = params['use_gpu'] if params else None
 
     if container is not None:
         # Change all paths to be relative to sdir (hideous, but works without changing other code)
-        command = command.replace(join(sdir,""), "")
-        command = "singularity exec -B {}:/share {} python3 /run.py {}".format(sdir, container, command)
+        command = command.replace(sdir, "/share")
+        command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", sdir, container, command)
+        write(stdout, command)
 
     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""
@@ -183,10 +185,10 @@ def update_permissions(params):
     sdir = params['sdir']
     group = params['group']
     stdout = params['stdout']
-    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(sdir), stdout)
-    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group), stdout)
-    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(sdir), stdout)
-    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group), stdout)
+    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(sdir))
+    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
+    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(sdir))
+    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
     write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time)))
 
 def generate_checksum(input_dir):
@@ -214,11 +216,10 @@ def get_valid_filepath(template):
     return valid_path, idx
 
 def running_step(steps, *argv):
-    """If running multiple steps, return whether at least one of the *argv steps is one of them."""
-    if len(steps) > 1:
-        for step in argv:
-            if step in steps:
-                return True
+    """Return whether at least one of the *argv steps is one of them."""
+    for step in argv:
+        if step in steps:
+            return True
     return False
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):

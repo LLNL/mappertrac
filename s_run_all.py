@@ -102,8 +102,8 @@ if max_nodes < total_min_nodes:
     raise Exception("Job requires at least {} nodes".format(total_min_nodes))
 
 # Calculate number of nodes of each type
-one_core_nodes = max(int(floor(one_core_weight * max_nodes)), one_core_min)
-two_core_nodes = max(int(floor(two_core_weight * max_nodes)), two_core_min)
+one_core_nodes = max(int(floor((one_core_weight / total_weight) * max_nodes)), one_core_min)
+two_core_nodes = max(int(floor((two_core_weight / total_weight) * max_nodes)), two_core_min)
 all_core_nodes = max(max_nodes - two_core_nodes - one_core_nodes, all_core_min)
 
 # Override number of nodes using command line arguments

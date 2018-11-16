@@ -2,7 +2,6 @@ Bootstrap: docker
 From: ubuntu:16.04
 
 %files
-    run.py
     license.txt
 
 %post
@@ -112,6 +111,3 @@ From: ubuntu:16.04
     export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
-
-%runscript
-    /run.py
