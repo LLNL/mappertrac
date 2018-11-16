@@ -19,11 +19,6 @@ if len(argv) < 2:
 
     exit(0)
 
-if not exists("/share/license.txt"):
-    print("Freesurfer license (license.txt) not found in current directory")
-    exit(0)
-copy("/share/license.txt", os.environ["FREESURFER_HOME"])
-system("cp /share/license.txt $FREESURFER_HOME/license.txt")
 os.environ.pop('DEBUG', None) # DEBUG env triggers freesurfer to produce gigabytes of files
 
 command = argv[1:]
