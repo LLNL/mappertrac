@@ -27,11 +27,16 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, stdout=None, container=None, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
+def run(command, params, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
     start = time.time()
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
 
     if container is not None:
-        command = "singularity exec -B .:/share {} python3 /run.py {}".format(container, command)
+        # Change all paths to be relative to sdir (hideous, but works without changing other code)
+        command = command.replace(join(sdir,""), "")
+        command = "singularity exec -B {}:/share {} python3 /run.py {}".format(sdir, container, command)
 
     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""

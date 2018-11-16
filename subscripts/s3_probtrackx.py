@@ -56,10 +56,10 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     smart_mkdir(pbtk_dir)
     smart_mkdir(connectome_inputs)
     write(stdout, "Running subproc: {}".format(a_to_b))
-    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), stdout, container)
-    run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), stdout, container)
-    run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), stdout, container)
-    run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), stdout, container)
+    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
+    run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
+    run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
+    run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
     with open(waypoints,"w") as f:
         f.write(b_file + "\n")
     arguments = (" -x {} ".format(a_file) +
@@ -73,9 +73,9 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         " --omatrix1" # output seed-to-seed sparse connectivity matrix
         )
     if use_gpu:
-        run("probtrackx2_gpu" + arguments, stdout, container)
+        run("probtrackx2_gpu" + arguments, params)
     else:
-        run("probtrackx2" + arguments, stdout, container)
+        run("probtrackx2" + arguments, params)
     if exists(fdt_matrix1) and exists(waytotal):
         waytotal_count = 0
         with open(waytotal, 'r') as f:

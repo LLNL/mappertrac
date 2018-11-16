@@ -16,6 +16,7 @@ From: ubuntu:16.04
 
     mkdir /share
     apt-get -y update
+    apt-get install -y apt-transport-https
     apt-get install -y software-properties-common
     add-apt-repository -y universe
     apt-get -y update

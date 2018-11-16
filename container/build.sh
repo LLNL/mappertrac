@@ -4,6 +4,6 @@ if [ ! -f license.txt ]; then
     exit 1
 fi
 sudo rm -rf container/image.simg
-sudo cp container/internal/*.py .
+sudo cp container/internal/run.py .
 sudo singularity build container/image.simg container/Singularity
-sudo rm -rf run.py fslinstaller.py
+sudo rm -rf run.py

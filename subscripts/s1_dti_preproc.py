@@ -16,14 +16,15 @@ def s1_1_split_timeslices(params, inputs=[]):
     container = params['container']
     record_start(params)
     start_time = time.time()
+    input_hardi = join(sdir, "hardi.nii.gz")
     copyfile(join(input_dir,"bvecs"),join(sdir,"bvecs"))
     copyfile(join(input_dir,"bvals"),join(sdir,"bvals"))
     copyfile(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
-    input_data = join(input_dir, "hardi.nii.gz")
+    copyfile(join(input_dir, "hardi.nii.gz"),input_hardi)
     output_prefix = join(sdir,"data_eddy")
     output_data = join(sdir,"data_eddy.nii.gz")
-    run("fslroi {} {}_ref 0 1".format(input_data, output_prefix), stdout, container)
-    run("fslsplit {} {}_tmp".format(input_data, output_prefix), stdout, container)
+    run("fslroi {} {}_ref 0 1".format(input_hardi, output_prefix), params)
+    run("fslsplit {} {}_tmp".format(input_hardi, output_prefix), params)
     record_apptime(params, start_time, 1)
 
 @python_app(executors=one_core_executor_labels, cache=True)
@@ -39,7 +40,7 @@ def s1_2_timeslice_process(params, timeslice, inputs=[]):
     if not exists(slice_data):
         return
     output_prefix = join(sdir,"data_eddy")
-    run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(slice_data, output_prefix), stdout, container)
+    run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1 >> {1}.ecclog".format(slice_data, output_prefix), params)
     record_apptime(params, start_time, 2)
 
 @python_app(executors=one_core_executor_labels, cache=True)
@@ -72,15 +73,15 @@ def s1_3_dti_fit(params, inputs=[]):
     dti_FA = dti_params + "_FA.nii.gz"
     FA = join(sdir,"FA.nii.gz")
 
-    run("fslmerge -t {} {}".format(output_data, " ".join(timeslices)), stdout, container)
+    run("fslmerge -t {} {}".format(output_data, " ".join(timeslices)), params)
     for i in timeslices:
         smart_remove(i)
     for j in glob("{}_ref*".format(output_prefix)):
         smart_remove(j)
-    run("bet {} {} -m -f 0.3".format(output_data,bet), stdout, container)
-    run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(output_data,dti_params,bet_mask,bvecs,bvals), stdout, container)
-    run("fslmaths {} -add {} -add {} -div 3 {}".format(dti_L1,dti_L2,dti_L3,dti_MD), stdout, container)
-    run("fslmaths {} -add {} -div 2 {}".format(dti_L2,dti_L3,dti_RD), stdout, container)
+    run("bet {} {} -m -f 0.3".format(output_data,bet), params)
+    run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(output_data,dti_params,bet_mask,bvecs,bvals), params)
+    run("fslmaths {} -add {} -add {} -div 3 {}".format(dti_L1,dti_L2,dti_L3,dti_MD), params)
+    run("fslmaths {} -add {} -div 2 {}".format(dti_L2,dti_L3,dti_RD), params)
     copyfile(dti_L1,dti_AD)
     copyfile(dti_FA,FA)
     update_permissions(params)
@@ -92,7 +93,7 @@ def run_s1(params, inputs):
     stdout = params['stdout']
     container = params['container']
     input_data = join(input_dir, "hardi.nii.gz")
-    timeslices = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data), stdout, container).split()
+    timeslices = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data), params).split()
     if not timeslices or not is_integer(timeslices[-1]):
         write(stdout, "Failed to read timeslices from {}".format(input_data))
         return

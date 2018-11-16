@@ -38,9 +38,9 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     if amax > 0 and bmax > 0:
         tmp1 = join(pbtk_dir, "{}to{}_tmp1.nii.gz".format(a, b))
         tmp2 = join(pbtk_dir, "{}to{}_tmp2.nii.gz".format(b, a))
-        run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), stdout, container)
-        run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), stdout, container)
-        run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), stdout, container)
+        run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
+        run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
+        run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
         smart_remove(tmp1)
         smart_remove(tmp2)
     else:
@@ -73,7 +73,7 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
         if not exists(total):
             copyfile(consensus, total)
         else:
-            run("fslmaths {0} -add {1} {1}".format(consensus, total), stdout, container)
+            run("fslmaths {0} -add {1} {1}".format(consensus, total), params)
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)

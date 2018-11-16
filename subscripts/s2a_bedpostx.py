@@ -35,12 +35,12 @@ def s2a_bedpostx(params, inputs=[]):
 
     if use_gpu:
         write(stdout, "Running Bedpostx with GPU")
-        run("bedpostx_gpu {} -NJOBS 4".format(bedpostx), stdout, container)
+        run("bedpostx_gpu {} -NJOBS 4".format(bedpostx), params)
     else:
         write(stdout, "Running Bedpostx without GPU")
-        run("bedpostx {}".format(bedpostx), stdout, container)
-    run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), stdout, container)
-    run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), stdout, container)
+        run("bedpostx {}".format(bedpostx), params)
+    run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), params)
+    run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), params)
     update_permissions(params)
     record_apptime(params, start_time, 1)
     record_finish(params)
