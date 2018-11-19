@@ -86,6 +86,10 @@ def s1_3_dti_fit(params, inputs=[]):
     run("fslmaths {} -add {} -div 2 {}".format(dti_L2,dti_L3,dti_RD), params)
     copyfile(dti_L1,dti_AD)
     copyfile(dti_FA,FA)
+    for i in glob("{}_tmp????.*".format(output_prefix)):
+        smart_remove(i)
+    for j in glob("{}_ref*".format(output_prefix)):
+        smart_remove(j)
     update_permissions(params)
     record_apptime(params, start_time, 3)
     record_finish(params)

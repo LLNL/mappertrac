@@ -219,6 +219,8 @@ smart_mkdir(odir)
 smart_mkdir(join(odir, 'global_log'))
 if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,cores_per_task,use_gpu")
+if islink(join(odir,"fsaverage")):
+    run("unlink {}".format(join(odir,"fsaverage")))
 
 all_jobs = []
 for subject in subjects:

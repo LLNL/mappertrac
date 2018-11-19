@@ -23,18 +23,24 @@ def s2b_1_recon_all(params, inputs=[]):
     smart_mkdir(join(sdir,"mri","orig"))
     run("mri_convert {} {}".format(T1,mri_out), params)
 
+    freesurfer_sh = join(sdir, "freesurfer.sh")
+    if container:
+        odir = split(sdir)[0]
+        subject = subject.replace(odir, "/share")
+        write(freesurfer_sh, "export SUBJECTS_DIR=/share")
+
     if use_gpu:
         write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
-        command = "export CUDA_LIB_DIR=$CUDA_5_LIB_DIR;" +
-                  "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH;" +
-                  "recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task)
-        run(command, params)
+        write(freesurfer_sh, "export CUDA_LIB_DIR=$CUDA_5_LIB_DIR\n" +
+                  "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
+                  "recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task))
     elif cores_per_task > 1:
         write(stdout, "Running Freesurfer with {} cores".format(cores_per_task))
-        run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task), params)
+        write(freesurfer_sh, "recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task))
     else:
         write(stdout, "Running Freesurfer with a single core")
-        run("recon-all -s {} -all -no-isrunning".format(subject), params)
+        write(freesurfer_sh, "recon-all -s {} -all -no-isrunning".format(subject))
+    run("sh " + freesurfer_sh, params)
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['all_core'], cache=True)

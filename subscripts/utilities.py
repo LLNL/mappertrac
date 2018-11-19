@@ -27,20 +27,21 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, name_override="", working_dir=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False):
     start = time.time()
-    sdir = params['sdir'] if params else None
     stdout = params['stdout'] if params else None
     container = params['container'] if params else None
     use_gpu = params['use_gpu'] if params else None
+    sdir = params['sdir'] if params else None
 
     if container is not None:
+        odir = split(sdir)[0]
         # Change all paths to be relative to sdir (hideous, but works without changing other code)
-        command = command.replace(sdir, "/share")
-        command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", sdir, container, command)
+        command = command.replace(odir, "/share")
+        command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", odir, container, command)
         write(stdout, command)
 
-    process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
+    process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ)
     line = ""
     while True:
         new_line = process.stdout.readline()
@@ -60,8 +61,6 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
     else:
         tokens = command.split(' ')
         if print_time:
-            if name_override != "":
-                tokens[0] = name_override
             print("Running {} took {} (h:m:s)".format(tokens[0], get_time_string(int(time.time()) - start)))
             if len(tokens) > 1:
                 print("\tArgs: {}".format(' '.join(tokens[1:])))

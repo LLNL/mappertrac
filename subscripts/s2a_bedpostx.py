@@ -5,7 +5,7 @@ from parsl.app.app import python_app
 def s2a_bedpostx(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish,update_permissions
-    from os.path import exists,join
+    from os.path import exists,join,split
     from shutil import copyfile,rmtree
     sdir = params['sdir']
     stdout = params['stdout']
@@ -33,15 +33,20 @@ def s2a_bedpostx(params, inputs=[]):
     copyfile(join(sdir,"bvals"),join(bedpostx,"bvals"))
     copyfile(join(sdir,"bvecs"),join(bedpostx,"bvecs"))
 
+    bedpostx_sh = join(sdir, "bedpostx.sh")
+    if container:
+        odir = split(sdir)[0]
+        bedpostx = bedpostx.replace(odir, "/share")
+
     if use_gpu:
         write(stdout, "Running Bedpostx with GPU")
-        command = "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR;" +
-                  "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH;" +
-                  "bedpostx_gpu {} -NJOBS 4".format(bedpostx)
-        run(command, params)
+        write(bedpostx_sh, "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n" +
+                           "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
+                           "bedpostx_gpu {} -NJOBS 4".format(bedpostx))
     else:
         write(stdout, "Running Bedpostx without GPU")
-        run("bedpostx {}".format(bedpostx), params)
+        write(bedpostx_sh, "bedpostx {}".format(bedpostx))
+    run("sh " + bedpostx_sh, params)
     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), params)
     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), params)
     update_permissions(params)
