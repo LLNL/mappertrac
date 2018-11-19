@@ -24,13 +24,11 @@ def s2b_1_recon_all(params, inputs=[]):
     run("mri_convert {} {}".format(T1,mri_out), params)
 
     if use_gpu:
-        if environ and 'CUDA_5_LIB_DIR' not in environ:
-            write(stdout, "Error: Environment variable CUDA_5_LIB_DIR not set. Please install CUDA 5 to use Freesurfer GPU functions.")
-            return
-        environ['CUDA_LIB_DIR'] = environ['CUDA_5_LIB_DIR']
-        environ['LD_LIBRARY_PATH'] = "{}:{}".format(environ['CUDA_LIB_DIR'],environ['LD_LIBRARY_PATH'])
         write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
-        run("recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task), params)
+        command = "export CUDA_LIB_DIR=$CUDA_5_LIB_DIR;" +
+                  "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH;" +
+                  "recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task)
+        run(command, params)
     elif cores_per_task > 1:
         write(stdout, "Running Freesurfer with {} cores".format(cores_per_task))
         run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task), params)

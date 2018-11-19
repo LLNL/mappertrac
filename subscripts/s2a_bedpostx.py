@@ -35,7 +35,10 @@ def s2a_bedpostx(params, inputs=[]):
 
     if use_gpu:
         write(stdout, "Running Bedpostx with GPU")
-        run("bedpostx_gpu {} -NJOBS 4".format(bedpostx), params)
+        command = "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR;" +
+                  "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH;" +
+                  "bedpostx_gpu {} -NJOBS 4".format(bedpostx)
+        run(command, params)
     else:
         write(stdout, "Running Bedpostx without GPU")
         run("bedpostx {}".format(bedpostx), params)
