@@ -36,7 +36,7 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
 
     if container is not None:
         odir = split(sdir)[0]
-        # Change all paths to be relative to sdir (hideous, but works without changing other code)
+        # Change all paths to be relative to the output dir (hideous, but works without changing other code)
         command = command.replace(odir, "/share")
         command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", odir, container, command)
         write(stdout, command)

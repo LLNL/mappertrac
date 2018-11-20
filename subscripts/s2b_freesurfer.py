@@ -17,8 +17,6 @@ def s2b_1_recon_all(params, inputs=[]):
     start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
     mri_out = join(sdir,"mri","orig","001.mgz")
-    subject = split(sdir)[1]
-    environ['SUBJECTS_DIR'] = split(sdir)[0]
     smart_mkdir(join(sdir,"mri"))
     smart_mkdir(join(sdir,"mri","orig"))
     run("mri_convert {} {}".format(T1,mri_out), params)
@@ -28,6 +26,9 @@ def s2b_1_recon_all(params, inputs=[]):
         odir = split(sdir)[0]
         subject = subject.replace(odir, "/share")
         write(freesurfer_sh, "export SUBJECTS_DIR=/share")
+    else:
+        environ['SUBJECTS_DIR'] = split(sdir)[0]
+        subject = split(sdir)[1]
 
     if use_gpu:
         write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
@@ -60,7 +61,6 @@ def s2b_2_process_vols(params, inputs=[]):
     start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
     subject = split(sdir)[1]
-    environ['SUBJECTS_DIR'] = split(sdir)[0]
     FA = join(sdir,"FA.nii.gz")
     aseg = join(sdir,"aseg.nii.gz")
     bs = join(sdir,"bs.nii.gz")
@@ -85,6 +85,10 @@ def s2b_2_process_vols(params, inputs=[]):
     smart_mkdir(subcort_vol_dir_out)
     smart_mkdir(EDI)
     smart_mkdir(EDI_allvols)
+    if container:
+        environ['SUBJECTS_DIR'] = "/share"
+    else:
+        environ['SUBJECTS_DIR'] = split(sdir)[0]
     run("mri_convert {} {} ".format(join(sdir,"mri","brain.mgz"),T1), params)
     run("flirt -in {} -ref {} -omat {}".format(FA,T1,FA2T1), params)
     run("convert_xfm -omat {} -inverse {}".format(T12FA,FA2T1), params)
@@ -116,9 +120,9 @@ def s2b_2_process_vols(params, inputs=[]):
         run("fslmaths {} -thr 0.2 -bin {}".format(out_vol,out_vol), params)
 
     run("fslmaths {} -mul 0 {}".format(FA,bs), params)  # For now we fake a bs.nii.gz file
-    maskseeds(sdir,join(cort_vol_dir + "_s2fa"),join(cort_vol_dir + "_s2fa_m"),0.05,1,1,container)
-    maskseeds(sdir,join(subcort_vol_dir + "_s2fa"),join(subcort_vol_dir + "_s2fa_m"),0.05,0.4,0.4,container)
-    saveallvoxels(sdir,join(cort_vol_dir + "_s2fa_m"),join(subcort_vol_dir + "_s2fa_m"),allvoxelscortsubcort,container)
+    maskseeds(sdir,join(cort_vol_dir + "_s2fa"),join(cort_vol_dir + "_s2fa_m"),0.05,1,1,params)
+    maskseeds(sdir,join(subcort_vol_dir + "_s2fa"),join(subcort_vol_dir + "_s2fa_m"),0.05,0.4,0.4,params)
+    saveallvoxels(sdir,join(cort_vol_dir + "_s2fa_m"),join(subcort_vol_dir + "_s2fa_m"),allvoxelscortsubcort,params)
     smart_remove(terminationmask)
     run("fslmaths {} -uthr .15 {}".format(FA, terminationmask), params)
     run("fslmaths {} -add {} {}".format(terminationmask, bs, terminationmask), params)
