@@ -33,20 +33,16 @@ def s2a_bedpostx(params, inputs=[]):
     copyfile(join(sdir,"bvals"),join(bedpostx,"bvals"))
     copyfile(join(sdir,"bvecs"),join(bedpostx,"bvecs"))
 
-    bedpostx_sh = join(sdir, "bedpostx.sh")
-    if container:
-        odir = split(sdir)[0]
-        bedpostx = bedpostx.replace(odir, "/share")
-
     if use_gpu:
         write(stdout, "Running Bedpostx with GPU")
+        bedpostx_sh = join(sdir, "bedpostx.sh")
         write(bedpostx_sh, "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n" +
                            "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
-                           "bedpostx_gpu {} -NJOBS 4".format(bedpostx))
+                           "bedpostx_gpu {} -NJOBS 4".format(bedpostx.replace(odir, "/share")))
+        run("sh " + bedpostx_sh, params)
     else:
         write(stdout, "Running Bedpostx without GPU")
-        write(bedpostx_sh, "bedpostx {}".format(bedpostx))
-    run("sh " + bedpostx_sh, params)
+        run("bedpostx {}".format(bedpostx), params)
     run("make_dyadic_vectors {} {} {} {}".format(th1,ph1,brain_mask,dyads1), params)
     run("make_dyadic_vectors {} {} {} {}".format(th2,ph2,brain_mask,dyads2), params)
     update_permissions(params)

@@ -13,6 +13,7 @@ def s2b_1_recon_all(params, inputs=[]):
     cores_per_task = params['cores_per_task']
     use_gpu = params['use_gpu']
     group = params['group']
+    subject = split(sdir)[1]
     record_start(params)
     start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
@@ -21,27 +22,22 @@ def s2b_1_recon_all(params, inputs=[]):
     smart_mkdir(join(sdir,"mri","orig"))
     run("mri_convert {} {}".format(T1,mri_out), params)
 
-    freesurfer_sh = join(sdir, "freesurfer.sh")
-    if container:
-        odir = split(sdir)[0]
-        subject = subject.replace(odir, "/share")
-        write(freesurfer_sh, "export SUBJECTS_DIR=/share")
-    else:
+    if not container:
         environ['SUBJECTS_DIR'] = split(sdir)[0]
-        subject = split(sdir)[1]
 
     if use_gpu:
         write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
+        freesurfer_sh = join(sdir, "freesurfer.sh")
         write(freesurfer_sh, "export CUDA_LIB_DIR=$CUDA_5_LIB_DIR\n" +
                   "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
                   "recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task))
+        run("sh " + freesurfer_sh, params)
     elif cores_per_task > 1:
         write(stdout, "Running Freesurfer with {} cores".format(cores_per_task))
-        write(freesurfer_sh, "recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task))
+        run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task), params)
     else:
         write(stdout, "Running Freesurfer with a single core")
-        write(freesurfer_sh, "recon-all -s {} -all -no-isrunning".format(subject))
-    run("sh " + freesurfer_sh, params)
+        run("recon-all -s {} -all -no-isrunning".format(subject), params)
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['all_core'], cache=True)
@@ -85,10 +81,10 @@ def s2b_2_process_vols(params, inputs=[]):
     smart_mkdir(subcort_vol_dir_out)
     smart_mkdir(EDI)
     smart_mkdir(EDI_allvols)
-    if container:
-        environ['SUBJECTS_DIR'] = "/share"
-    else:
+
+    if not container:
         environ['SUBJECTS_DIR'] = split(sdir)[0]
+        
     run("mri_convert {} {} ".format(join(sdir,"mri","brain.mgz"),T1), params)
     run("flirt -in {} -ref {} -omat {}".format(FA,T1,FA2T1), params)
     run("convert_xfm -omat {} -inverse {}".format(T12FA,FA2T1), params)
