@@ -22,9 +22,11 @@ from subscripts.s4_edi import run_s4
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
-parser.add_argument('--steps', type=str.lower, help='Steps to run across subjects', default="s1 s2a s2b s3 s4")
-parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a")
-parser.add_argument('--max_nodes', help='Max number of nodes to request. If not set, will prompt for user input.')
+parser.add_argument('--steps', type=str.lower, help='Steps to run across subjects', default="s1 s2a s2b s3 s4", nargs='+')
+parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
+node_count = parser.add_mutually_exclusive_group()
+node_count.add_argument('--max_nodes', help='Max number of nodes to request. If not set, will prompt for user input.')
+node_count.add_argument('--use_recommended_nodes', help='Use recommended number of nodes, disabling prompt.',action='store_true')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","listEdgesEDI.txt"))
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
@@ -42,8 +44,12 @@ parser.add_argument('--two_core_nodes', help='Override max_nodes setting. Number
 parser.add_argument('--all_core_nodes', help='Override max_nodes setting. Number of nodes using all cores on each task. For steps s2a_bedpostx and s2b_freesurfer.')
 args = parser.parse_args()
 
-steps = [x.strip() for x in args.steps.split(' ') if x]
-gpu_steps = [x.strip() for x in args.gpu_steps.split(' ') if x]
+steps = args.steps
+if isinstance(args.steps, str):
+    steps = [x.strip() for x in args.steps.split(' ') if x]
+gpu_steps = args.gpu_steps
+if isinstance(args.gpu_steps, str):
+    gpu_steps = [x.strip() for x in args.gpu_steps.split(' ') if x]
 
 # Make sure input files exist for each subject, then generate checksum
 subjects = []
@@ -67,6 +73,7 @@ for input_dir in input_dirs:
 num_jobs = len(subjects)
 
 # Weight core allocations, to determine recommended nodes and allocate nodes of each type
+# Weight values are somewhat arbitrary, based on core-time consumption in testing
 one_core_weight = 0.1 if running_step(steps, 's1', 's4') else 0
 two_core_weight = 0.4 if running_step(steps, 's3') else 0
 all_core_weight = 0.5 if running_step(steps, 's2a', 's2b') else 0
@@ -82,21 +89,24 @@ if args.max_nodes is not None:
     max_nodes = int(args.max_nodes)
 else:
     recommended_nodes = max(int(ceil(3 * total_weight * num_jobs)), total_min_nodes)
-    question = "How many nodes to request? [Recommended: {}] ".format(recommended_nodes)
-    while 1:
-        sys.stdout.write(question)
-        choice = input().lower()
-        if choice == '':
-            max_nodes = recommended_nodes
-            break
-        elif is_integer(choice):
-            if int(choice) < total_min_nodes:
-                sys.stdout.write("Job requires at least {} nodes\n".format(total_min_nodes))
-            else:
-                max_nodes = int(choice)
+    if args.use_recommended_nodes:
+        max_nodes = recommended_nodes
+    else:
+        question = "How many nodes to request? [Recommended: {}] ".format(recommended_nodes)
+        while 1:
+            sys.stdout.write(question)
+            choice = input().lower()
+            if choice == '':
+                max_nodes = recommended_nodes
                 break
-        else:
-            sys.stdout.write("Please respond with an integer value\n")
+            elif is_integer(choice):
+                if int(choice) < total_min_nodes:
+                    sys.stdout.write("Job requires at least {} nodes\n".format(total_min_nodes))
+                else:
+                    max_nodes = int(choice)
+                    break
+            else:
+                sys.stdout.write("Please respond with an integer value\n")
 
 if max_nodes < total_min_nodes:
     raise Exception("Job requires at least {} nodes".format(total_min_nodes))
@@ -210,7 +220,7 @@ if len(steps) > 1:
     for step in steps:
         for prereq in prereqs[step]:
             if prereq not in steps:
-                raise Exception("Step {} requires steps {} as well".format(step, prereqs[step]))
+                print("Warning: step {} has prerequisite steps {}".format(step, prereqs[step]))
 
 container = abspath(args.container) if args.container else None
 odir = abspath(args.output_dir)
@@ -255,11 +265,15 @@ for subject in subjects:
             'step': step,
         }
         # Use jobs from previous steps as inputs for current step
-        if len(steps) > 1:
-            inputs = [subject_jobs[prereq] for prereq in prereqs[step]]
-            write(stdout, "Running step {} with inputs {}".format(step, prereqs[step]))
-        else:
-            write(stdout, "Running step {} alone".format(step))
+        inputs = []
+        for prereq in prereqs[step]:
+            if prereq in subject_jobs:
+                inputs.append(subject_jobs[prereq])
+        # if len(steps) > 1:
+        #     inputs = [subject_jobs[prereq] for prereq in prereqs[step]]
+        #     write(stdout, "Running step {} with inputs {}".format(step, prereqs[step]))
+        # else:
+        #     write(stdout, "Running step {} alone".format(step))
         job = step_functions[step](params, inputs)
         subject_jobs[step] = job
         all_jobs.append((params, job))

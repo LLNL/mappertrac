@@ -36,6 +36,7 @@ def s2a_bedpostx(params, inputs=[]):
     if use_gpu:
         write(stdout, "Running Bedpostx with GPU")
         bedpostx_sh = join(sdir, "bedpostx.sh")
+        odir = split(sdir)[0]
         write(bedpostx_sh, "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n" +
                            "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
                            "bedpostx_gpu {} -NJOBS 4".format(bedpostx.replace(odir, "/share")))

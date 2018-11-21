@@ -19,7 +19,7 @@ def s3_1_start(params, inputs=[]):
 def s3_2_probtrackx(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
-    from os.path import join,exists
+    from os.path import join,exists,split
     from shutil import copyfile
     sdir = params['sdir']
     stdout = params['stdout']
@@ -60,8 +60,11 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
     run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
     run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
-    with open(waypoints,"w") as f:
-        f.write(b_file + "\n")
+    if container:
+        odir = split(sdir)[0]
+        b_file = b_file.replace(odir, "/share")
+    write(waypoints, b_file)
+
     arguments = (" -x {} ".format(a_file) +
         " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
         " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
@@ -69,8 +72,8 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +
         " --dir={}".format(tmp) +
-        " --out={}".format(a_to_b_formatted) +
-        " --omatrix1" # output seed-to-seed sparse connectivity matrix
+        " --out={}".format(a_to_b_formatted)
+        # " --omatrix1" # output seed-to-seed sparse connectivity matrix
         )
     if use_gpu:
         run("probtrackx2_gpu" + arguments, params)
@@ -82,15 +85,16 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
             count = f.read().strip()
             if is_integer(count):
                 waytotal_count = int(count)
-        matrix1_count = 0.0
-        with open(fdt_matrix1, 'r') as f:
-            for line in f.readlines():
-                if not line:
-                    continue
-                chunks = [x for x in line.strip().split(' ') if x]
-                if len(chunks) == 3 and is_float(chunks[2]):
-                    matrix1_count += float(chunks[2])
-        write(connectome, "{} {} {} {}".format(a, b, waytotal_count, matrix1_count))
+        write(connectome, "{} {} {}".format(a, b, waytotal_count))
+        # matrix1_count = 0.0
+        # with open(fdt_matrix1, 'r') as f:
+        #     for line in f.readlines():
+        #         if not line:
+        #             continue
+        #         chunks = [x for x in line.strip().split(' ') if x]
+        #         if len(chunks) == 3 and is_float(chunks[2]):
+        #             matrix1_count += float(chunks[2])
+        # write(connectome, "{} {} {} {}".format(a, b, waytotal_count, matrix1_count))
     copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
     if not a == "lh.paracentral": # keep for debugging
         smart_remove(tmp)
@@ -113,14 +117,14 @@ def s3_3_combine(params, inputs=[]):
                 if not line:
                     continue
                 chunks = [x.strip() for x in line.strip().split(' ') if x]
-                if len(chunks) == 3 and is_float(chunks[2]):
+                if len(chunks) >= 3 and is_float(chunks[2]):
                     a_to_b = (chunks[0], chunks[1])
                     b_to_a = (chunks[1], chunks[0])
-                    track_count = float(chunks[2])
+                    waytotal_count = float(chunks[2])
                     if b_to_a in processed_edges:
-                        processed_edges[b_to_a] += track_count
+                        processed_edges[b_to_a] += waytotal_count
                     else:
-                        processed_edges[a_to_b] = track_count
+                        processed_edges[a_to_b] = waytotal_count
     with open(connectome_twoway,'a') as f:
         for a_to_b in processed_edges:
             f.write("{} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b]))
