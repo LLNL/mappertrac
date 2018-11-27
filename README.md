@@ -31,7 +31,7 @@ Running the tractography script:
 ### Using a Singularity container
 
 Requirements:
-* Singlarity 2.5+ (https://www.sylabs.io/guides/2.6/user-guide)
+* Singularity 2.5+ (https://www.sylabs.io/guides/2.6/user-guide)
 * Nvidia Tesla GPU hardware
 
 Building the container:
