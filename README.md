@@ -9,7 +9,7 @@ Requirements:
 
 It can be run two ways:
 
-## Using local libraries
+### Using local libraries
 Requirements:
 * FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
 * Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)
@@ -20,7 +20,7 @@ Optional:
 * CUDA 8.0, for Bedpostx GPU
 * CUDA 5.0, for Freesurfer GPU
 
-### Running the tractography script
+Running the tractography script
 1. Create a subject list, by writing input directories to a text file. Each input directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
 2. Choose an output directory. Each subject may consume large amounts of disk space (>5 GB per subject).
 3. Setup environment variables. From the repo directory, run `source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir (optional)> <CUDA 5 lib dir (optional)>`
@@ -28,24 +28,24 @@ Optional:
 
 **OR**
 
-## Using a Singularity container
+### Using a Singularity container
 Requirements:
 * Singlarity 2.5.2-2.6.0 (https://www.sylabs.io/guides/2.6/user-guide)
 * Nvidia Tesla GPU hardware
 
-### Building the container
+Building the container
 
 1. Make sure you have root access to the building system (you can copy the image to a non-root system afterwards).
-2. Place a Freesurfer license in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
+2. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
 3. From the repo directory, run `./container/build.sh`
 
-### Running the tractography script
+Running the tractography script
 
 1. Create a subject list (see previous).
 2. Choose an output directory (see previous).
 3. From the repo directory, run `./s_all_parsl.py <subject_list> <output_dir> --container=container/image.simg`
 
-## File Overview
+### File Overview
 
 ```
 TracktographyScripts/
