@@ -5,8 +5,9 @@
 *.qsub
 *.core
 *.out
+clean.sh
 license.txt
-configDefault*
+local_default*.sh
 input/
 output/
 runinfo/
@@ -20,3 +21,4 @@ __pycache__
 *~
 subjects*.txt
 cmd_parsl.auto*
+!lists/subjects_example.txt

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# If running outside Singularity, run this script before any others
+# If using local libraries, first run this script in the current shell
 # Example usage: source configLocal.sh /usr/workspace/wsb/tbidata/surface/fsl /usr/workspace/wsb/tbidata/surface/freesurfer /usr/tce/packages/cuda/cuda-8.0/lib64
 
 export FSLDIR=$1

@@ -1,70 +1,70 @@
 # TRACK TBI
 
-### Setup
-Requires a local install of: 
+Parallel EDI tractography workflow
+
+Requirements:
 * Python 3.5+
+* Parsl (http://parsl-project.org/)
+* SLURM job scheduling on a multi-node system
+
+It can be run two ways:
+
+## Using local libraries
+Requirements:
 * FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
 * Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)
-* Parsl (http://parsl-project.org/)
-* Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
-* CUDA 6.5-9.2, for Bedpostx GPU
 
-With optional libraries:
+Optional:
+* Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
+* Freesurfer GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
+* CUDA 8.0, for Bedpostx GPU
 * CUDA 5.0, for Freesurfer GPU
+
+### Running the tractography script
+1. Create a subject list, by writing input directories to a text file. Each input directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
+2. Choose an output directory. Each subject may consume large amounts of disk space (>5 GB per subject).
+3. Setup environment variables. From the repo directory, run `source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir (optional)> <CUDA 5 lib dir (optional)>`
+4. From the repo directory, run `./s_all_parsl.py <subject_list> <output_dir>`
 
 **OR**
 
-Support for Singlarity containers, version 2.6.0 (https://www.sylabs.io/guides/2.6/user-guide)
+## Using a Singularity container
+Requirements:
+* Singlarity 2.5.2-2.6.0 (https://www.sylabs.io/guides/2.6/user-guide)
+* Nvidia Tesla GPU hardware
 
-### Building the Singularity Container ###
+### Building the container
 
-1. Make sure you have root access (you can copy the image to a non-root system afterwards).
+1. Make sure you have root access to the building system (you can copy the image to a non-root system afterwards).
 2. Place a Freesurfer license in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
-3. Install Singularity 2.6.0 (https://github.com/sylabs/singularity/releases/tag/2.6.0)
-4. From the repo directory, run "./container/build.sh"
+3. From the repo directory, run `./container/build.sh`
 
-### Running the Tractography Script
+### Running the tractography script
 
-1. Make sure you are running on a multi-node system using SLURM job scheduling.
-2. Create a subject list, by writing the path to each subject input directory as a line in a text file. Each directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
-3. Choose an output directory. Make sure there exists enough disk space (>5 GB per subject). The results for all subjects will be written here.
-4. From the repo directory, run "./s_all_parsl.py <subject_list> <output_dir>"
+1. Create a subject list (see previous).
+2. Choose an output directory (see previous).
+3. From the repo directory, run `./s_all_parsl.py <subject_list> <output_dir> --container=container/image.simg`
 
-### File Overview
+## File Overview
 
 ```
 TracktographyScripts/
-+- clean.sh                     # Delete the checkpoint, logging, and helper files generated after running scripts
++- local_env.sh                 # source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir (optional)>
+|                                 Load required libraries from local installations
 |
-+- configLocal.sh               # source configLocal.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir (optional)> <CUDA 5 lib dir (optional)> 
-|                                 IMPORTANT: Run this before using local install
 +- container/
 |  +- build.sh                  # ./container/build.sh
 |  |                              Build a compressed Singularity image with required libraries
-|  +- internal/
-|  |  +- fslinstaller.py        # Custom FSL install script (used while building, do not change)
-|  |  +- run.py                 # Container runscript (used while building, do not change)
-|  |
-|  +- image.simg                # Not included
-|  |                              Singularity container with FSL & Freesurfer
-|  |
-|  +- run.sh                    # ./container/run.sh <command>
-|  |                              Run command in container
-|  |
-|  +- runGPU.sh                 # ./container/runGPU.sh <command>
-|  |                              Run GPU-enabled command in container, requires Nvidia Tesla GPU
-|  |
-|  +- shell.sh                  # ./container/shell.sh
-|  |                              Open shell in container
 |  |
 |  +- Singularity               # Singularity build recipe
 |
 +- license.txt                  # Not included, required to use Freesurfer in container
 |
 +- lists/
-|  +- listEdgesEDI.txt          # List of default edges to compute with Probtrackx (930 edges)
+|  +- listEdgesEDI.txt          # List of default edges to compute with Probtrackx and EDI (930 edges)
 |  +- listEdgesEDIAll.txt       # List of all possible edges (6643 edges)
 |  +- subcorticalIndex.txt      # List of regions post-processed in Freesurfer step
+|  +- subjects_example.txt      # Example of how the subject list should look like
 +- README.md
 |
 +- s_all_parsl.py               # ./s_all_parsl.py <subject_list> <output_dir>
