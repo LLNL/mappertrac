@@ -16,6 +16,8 @@ def smart_mkdir(path):
         makedirs(path)
 
 def smart_remove(path):
+    """Remove all files and directories if they exist
+    """
     if isdir(path):
         shutil.rmtree(path)
     elif exists(path):
@@ -27,21 +29,24 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None):
+    """Run a command in a subprocess.
+    Safer than raw execution. Can also write to logs and utilize a container.
+    """
     start = time.time()
     stdout = params['stdout'] if params else None
     container = params['container'] if params else None
     use_gpu = params['use_gpu'] if params else None
     sdir = params['sdir'] if params else None
 
+    # When using a container, change all paths to be relative to its mounted directory (hideous, but works without changing other code)
     if container is not None:
         odir = split(sdir)[0]
-        # Change all paths to be relative to the output dir (hideous, but works without changing other code)
         command = command.replace(odir, "/share")
         command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", odir, container, command)
         write(stdout, command)
 
-    process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ)
+    process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""
     while True:
         new_line = process.stdout.readline()
@@ -89,14 +94,20 @@ def str2bool(string):
     return string.lower() in ("yes", "true", "t", "1")
 
 def get_time_date():
+    """Returns date and time as Y-m-d H:M am/pm
+    """
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")
 
 def get_time_string(seconds):
+    """Returns seconds as Slurm-compatible time string
+    """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
 
 def get_time_seconds(string):
+    """Returns Slurm-compatible time string as seconds
+    """
     while (len(string.split(":")) < 3):
         string = "00:" + string
     return sum(secs * int(digit) for secs,digit in zip([3600, 60, 1], string.split(":")))
@@ -119,6 +130,8 @@ def write(path, output):
         f.write(str(output) + "\n")
 
 def record_start(params):
+    """Record step start in timing log, and write to stdout.
+    """
     step = params['step']
     timing_log = params['timing_log']
     stdout = params['stdout']
@@ -129,6 +142,8 @@ def record_start(params):
     write(timing_log, "{} start".format(time.time()))
 
 def record_apptime(params, app_start_time, substep, *args):
+    """Record substep duration in timing log.
+    """
     timing_log = params['timing_log']
     apptime = time.time() - app_start_time
     line = "{} {}".format(apptime, substep)
@@ -137,6 +152,8 @@ def record_apptime(params, app_start_time, substep, *args):
     write(timing_log, line)
 
 def record_finish(params):
+    """Record cumulative step duration from timing log, and write to stdout.
+    """
     sdir = params['sdir']
     step = params['step']
     timing_log = params['timing_log']
@@ -180,6 +197,8 @@ def record_finish(params):
     run("chmod 770 {}".format(stdout))
 
 def update_permissions(params):
+    """Give user and group permissions to all generated files.
+    """
     start_time = time.time()
     sdir = params['sdir']
     group = params['group']
@@ -191,6 +210,8 @@ def update_permissions(params):
     write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time)))
 
 def generate_checksum(input_dir):
+    """Return checksum of subject input files. This ensures re-computation if inputs change.
+    """
     buf_size = 65536  # read file in 64kb chunks
     md5 = hashlib.md5()
     for fname in ['anat.nii.gz','bvals','bvecs','hardi.nii.gz']:
@@ -204,6 +225,8 @@ def generate_checksum(input_dir):
     return md5.hexdigest()
 
 def get_valid_filepath(template):
+    """Return a valid path for new files. Used for log outputs.
+    """
     path, ext = splitext(template)
     idx = 0
     valid_path = path + "_{:02d}".format(idx) + ext
@@ -215,13 +238,16 @@ def get_valid_filepath(template):
     return valid_path, idx
 
 def running_step(steps, *argv):
-    """Return whether at least one of the *argv steps is one of them."""
+    """Return true if running any step in arguments.
+    """
     for step in argv:
         if step in steps:
             return True
     return False
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
+    """Not used during runtime. Generates a list of all possible edges from Freesurfer output.
+    """
     with open(path,'w') as f:
         files = glob(join(vol_dir,"*_s2fa.nii.gz"))  # Assemble all files
         files = [abspath(vol) for vol in files]

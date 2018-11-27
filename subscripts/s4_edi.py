@@ -11,7 +11,7 @@ def s4_1_start(params, inputs=[]):
 def s4_2_edi_consensus(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_apptime
-    from os.path import join,exists
+    from os.path import join,exists,split
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
@@ -25,16 +25,17 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
         return
     smart_mkdir(join(pbtk_dir,"twoway_consensus_edges"))
     consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b)
-    amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), stdout, container, print_output=False, working_dir=pbtk_dir).strip()
+    amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), params).strip()
     if not is_float(amax):
         write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
         return
     amax = int(float(amax))
-    bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), stdout, container, print_output=False, working_dir=pbtk_dir).strip()
+    bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), params).strip()
     if not is_float(bmax):
         write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
         return
     bmax = int(float(bmax))
+    write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
     if amax > 0 and bmax > 0:
         tmp1 = join(pbtk_dir, "{}to{}_tmp1.nii.gz".format(a, b))
         tmp2 = join(pbtk_dir, "{}to{}_tmp2.nii.gz".format(b, a))
