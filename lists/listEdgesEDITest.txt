@@ -1,5 +1,0 @@
-lh.bankssts_s2fa,lh.superiortemporal_s2fa
-lh.bankssts_s2fa,lh.supramarginal_s2fa
-lh.caudalanteriorcingulate_s2fa,lh.isthmuscingulate_s2fa
-lh.caudalmiddlefrontal_s2fa,rh.superiorfrontal_s2fa
-lh.cuneus_s2fa,lh.lateraloccipital_s2fa
