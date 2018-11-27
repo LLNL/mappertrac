@@ -23,7 +23,7 @@ Optional:
 Running the tractography script:
 1. Create a subject list, by writing input directories to a text file. Each input directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
 2. Choose an output directory. Each subject may consume large amounts of disk space (>5 GB per subject).
-3. Setup environment variables. From the repo directory, run `source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir (optional)> <CUDA 5 lib dir (optional)>`
+3. Setup environment variables. From the repo directory, run `source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir>`
 4. From the repo directory, run `./s_run_all.py <subject_list> <output_dir>`
 
 **OR**
@@ -31,7 +31,7 @@ Running the tractography script:
 ### Using a Singularity container
 
 Requirements:
-* Singlarity 2.5.2-2.6.0 (https://www.sylabs.io/guides/2.6/user-guide)
+* Singlarity 2.5+ (https://www.sylabs.io/guides/2.6/user-guide)
 * Nvidia Tesla GPU hardware
 
 Building the container:
@@ -62,11 +62,11 @@ TracktographyScripts/
 |  +- subcorticalIndex.txt      # List of regions post-processed in Freesurfer step
 |  +- subjects_example.txt      # Example of how the subject list should look like
 |
-+- local_env.sh                 # source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir (optional)>
++- local_env.sh                 # source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir>
 |                                 Setup environment with local libraries
 +- README.md
 |
-+- s_run_all.py               # ./s_run_all.py <subject_list> <output_dir>
++- s_run_all.py                 # ./s_run_all.py <subject_list> <output_dir>
 |                                 Main script
 |
 +- subscripts/
