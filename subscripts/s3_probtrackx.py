@@ -32,71 +32,77 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     a_to_b = "{}to{}".format(a, b)
     a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
     pbtk_dir = join(sdir,"EDI","PBTKresults")
-    connectome_inputs = join(pbtk_dir, "connectome")
     a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-    tmp = join(sdir, "tmp", a_to_b)
-    waypoints = join(tmp,"waypoint.txt")
-    exclusion = join(tmp,"exclusion.nii.gz")
-    termination = join(tmp,"termination.nii.gz")
     bs = join(sdir,"bs.nii.gz")
     allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
     terminationmask = join(sdir,"terminationmask.nii.gz")
+    exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
     bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
     merged = join(bedpostxResults,"merged")
     nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
-    fdt_matrix1 = join(tmp, "fdt_matrix1.dot")
-    waytotal = join(tmp, "waytotal")
-    connectome = join(sdir, "connectome_oneway.dot")
+    tmp = join(sdir, "tmp", a_to_b)
+    connectome_tmp = join(tmp, "connectome")
+    edi_tmp = join(tmp, "edi")
+    edi_waypoints = join(edi_tmp,"edi_waypoint.txt")
+    edi_exclusion = join(edi_tmp,"edi_exclusion.nii.gz")
+    edi_termination = join(edi_tmp,"edi_termination.nii.gz")
+    edi_waytotal = join(edi_tmp, "waytotal")
+    connectome_oneway = join(sdir, "connectome_oneway.dot")
     if not exists(a_file) or not exists(b_file):
-        write(stdout, "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
-        return
+        raise Exception("Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
     smart_remove(a_to_b_file)
     smart_remove(tmp)
     smart_mkdir(tmp)
+    smart_mkdir(connectome_tmp)
+    smart_mkdir(edi_tmp)
     smart_mkdir(pbtk_dir)
-    smart_mkdir(connectome_inputs)
     write(stdout, "Running subproc: {}".format(a_to_b))
-    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
-    run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
-    run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
-    run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
+    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, edi_exclusion), params)
+    run("fslmaths {} -sub {} {}".format(edi_exclusion, b_file, edi_exclusion), params)
+    run("fslmaths {} -add {} {}".format(edi_exclusion, bs, edi_exclusion), params)
+    run("fslmaths {} -add {} {}".format(terminationmask, b_file, edi_termination), params)
     if container:
         odir = split(sdir)[0]
-        b_file = b_file.replace(odir, "/share")
-    write(waypoints, b_file)
+        write(edi_waypoints, b_file.replace(odir, "/share"))
+    else:
+        write(edi_waypoints, b_file)
 
-    arguments = (" -x {} ".format(a_file) +
+    connectome_arguments = (" -x {} ".format(a_file) +
         " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-        " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
+        " --avoid={} --stop={}".format(exclusion_bsplusthalami, terminationmask) +
         " --forcedir --opd" +
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +
-        " --dir={}".format(tmp) +
+        " --dir={}".format(connectome_tmp) +
         " --out={}".format(a_to_b_formatted)
-        # " --omatrix1" # output seed-to-seed sparse connectivity matrix
+        )
+    edi_arguments = (" -x {} ".format(a_file) +
+        " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+        " --waypoints={} --avoid={} --stop={}".format(edi_waypoints, edi_exclusion, edi_termination) +
+        " --forcedir --opd" +
+        " -s {}".format(merged) +
+        " -m {}".format(nodif_brain_mask) +
+        " --dir={}".format(edi_tmp) +
+        " --out={}".format(a_to_b_formatted)
         )
     if use_gpu:
-        run("probtrackx2_gpu" + arguments, params)
+        run("probtrackx2_gpu" + connectome_arguments, params)
+        run("probtrackx2_gpu" + edi_arguments, params)
     else:
-        run("probtrackx2" + arguments, params)
-    if exists(fdt_matrix1) and exists(waytotal):
-        waytotal_count = 0
-        with open(waytotal, 'r') as f:
-            count = f.read().strip()
-            if is_integer(count):
-                waytotal_count = int(count)
-        write(connectome, "{} {} {}".format(a, b, waytotal_count))
-        # matrix1_count = 0.0
-        # with open(fdt_matrix1, 'r') as f:
-        #     for line in f.readlines():
-        #         if not line:
-        #             continue
-        #         chunks = [x for x in line.strip().split(' ') if x]
-        #         if len(chunks) == 3 and is_float(chunks[2]):
-        #             matrix1_count += float(chunks[2])
-        # write(connectome, "{} {} {} {}".format(a, b, waytotal_count, matrix1_count))
-    copyfile(join(tmp, a_to_b_formatted), a_to_b_file)
-    if not a == "lh.paracentral": # keep for debugging
+        run("probtrackx2" + connectome_arguments, params)
+        run("probtrackx2" + edi_arguments, params)
+
+    waytotal_count = 0
+    with open(edi_waytotal, 'r') as f:
+        waytotal_count = f.read().strip()
+    fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(connectome_tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
+    if not is_float(waytotal_count):
+        raise Exception("Error: Failed to read waytotal_count value {}".format(waytotal_count))
+    if not is_float(fdt_count):
+        raise Exception("Error: Failed to read fdt_count value {}".format(fdt_count))
+    write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+    copyfile(join(edi_tmp, a_to_b_formatted), a_to_b_file) # keep edi output
+    if not a == "lh.paracentral": # discard all temp files except these for debugging
         smart_remove(tmp)
     record_apptime(params, start_time, 1, a, b)
 
@@ -107,27 +113,30 @@ def s3_3_combine(params, inputs=[]):
     from os.path import join,exists
     sdir = params['sdir']
     start_time = time.time()
-    connectome = join(sdir, "connectome_oneway.dot")
+    connectome_oneway = join(sdir, "connectome_oneway.dot")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
     smart_remove(connectome_twoway)
     processed_edges = {}
-    if exists(connectome):
-        with open(connectome,'r') as f:
-            for line in f.readlines():
-                if not line:
-                    continue
-                chunks = [x.strip() for x in line.strip().split(' ') if x]
-                if len(chunks) >= 3 and is_float(chunks[2]):
-                    a_to_b = (chunks[0], chunks[1])
-                    b_to_a = (chunks[1], chunks[0])
-                    waytotal_count = float(chunks[2])
-                    if b_to_a in processed_edges:
-                        processed_edges[b_to_a] += waytotal_count
-                    else:
-                        processed_edges[a_to_b] = waytotal_count
+    if not exists(connectome_oneway):
+        raise Exception("Error: Failed to generate {}".format(connectome_oneway))
+    with open(connectome_oneway,'r') as f:
+        for line in f.readlines():
+            if not line:
+                continue
+            chunks = [x.strip() for x in line.strip().split(' ') if x]
+            if len(chunks) >= 4 and is_float(chunks[2]) and is_float(chunks[3]):
+                a_to_b = (chunks[0], chunks[1])
+                b_to_a = (chunks[1], chunks[0])
+                waytotal_count = float(chunks[2])
+                fdt_count = float(chunks[3])
+                if b_to_a in processed_edges:
+                    processed_edges[b_to_a][0] += waytotal_count
+                    processed_edges[b_to_a][1] += fdt_count
+                else:
+                    processed_edges[a_to_b] = (waytotal_count, fdt_count)
     with open(connectome_twoway,'a') as f:
         for a_to_b in processed_edges:
-            f.write("{} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b]))
+            f.write("{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
@@ -139,7 +148,8 @@ def run_s3(params, inputs):
     s3_1_future = s3_1_start(params, inputs=inputs)
     s3_2_futures = []
     processed_edges = []
-    smart_remove(join(sdir, "connectome.dot"))
+    connectome = join(sdir, "connectome_oneway.dot")
+    smart_remove(connectome)
     smart_remove(join(sdir, "tmp"))
     with open(edge_list) as f:
         for edge in f.readlines():

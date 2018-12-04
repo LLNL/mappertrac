@@ -24,14 +24,12 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
-node_count = parser.add_mutually_exclusive_group()
-node_count.add_argument('--max_nodes', help='Max number of nodes to request. If not set, will prompt for user input.')
-# node_count.add_argument('--use_recommended_nodes', help='Use recommended number of nodes, disabling prompt.',action='store_true')
+parser.add_argument('--max_nodes', help='Max number of nodes to request, otherwise use recommended number of nodes.')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
-parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","listEdgesEDI.txt"))
+parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","listEdgesEDIAll.txt"))
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2_job_time', help='Average time to finish s2a and s2b on a single subject with a single node', default="08:00:00")
-parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="06:00:00")
+parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="72:00:00")
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
 parser.add_argument('--local_only', help='Run only on local machine', action='store_true')
@@ -90,37 +88,21 @@ if args.max_nodes is not None:
 else:
     recommended_nodes = max(int(ceil(3 * total_weight * num_jobs)), total_min_nodes)
     max_nodes = recommended_nodes
-    # if args.use_recommended_nodes:
-    #     max_nodes = recommended_nodes
-    # else:
-    #     question = "How many nodes to request? [Recommended: {}] ".format(recommended_nodes)
-    #     while 1:
-    #         sys.stdout.write(question)
-    #         choice = input().lower()
-    #         if choice == '':
-    #             max_nodes = recommended_nodes
-    #             break
-    #         elif is_integer(choice):
-    #             if int(choice) < total_min_nodes:
-    #                 sys.stdout.write("Job requires at least {} nodes\n".format(total_min_nodes))
-    #             else:
-    #                 max_nodes = int(choice)
-    #                 break
-    #         else:
-    #             sys.stdout.write("Please respond with an integer value\n")
 
 if max_nodes < total_min_nodes:
     raise Exception("Job requires at least {} nodes".format(total_min_nodes))
+if len(steps) < 1:
+    raise Exception("Must run at least one step")
 
 # Calculate number of nodes of each type
-one_core_nodes = max(int(floor((one_core_weight / total_weight) * max_nodes)), one_core_min)
-two_core_nodes = max(int(floor((two_core_weight / total_weight) * max_nodes)), two_core_min)
-all_core_nodes = max(max_nodes - two_core_nodes - one_core_nodes, all_core_min)
+one_core_nodes = max(floor(one_core_weight / total_weight * max_nodes), one_core_min)
+two_core_nodes = max(floor(two_core_weight / total_weight * max_nodes), two_core_min)
+all_core_nodes = max(floor(all_core_weight / total_weight * max_nodes), all_core_min)
 
 # Override number of nodes using command line arguments
-one_core_nodes = int(args.one_core_nodes) if args.one_core_nodes is not None else one_core_nodes
-two_core_nodes = int(args.two_core_nodes) if args.two_core_nodes is not None else two_core_nodes
-all_core_nodes = int(args.all_core_nodes) if args.all_core_nodes is not None else all_core_nodes
+one_core_nodes = int(args.one_core_nodes) if args.one_core_nodes is not None else int(one_core_nodes)
+two_core_nodes = int(args.two_core_nodes) if args.two_core_nodes is not None else int(two_core_nodes)
+all_core_nodes = int(args.all_core_nodes) if args.all_core_nodes is not None else int(all_core_nodes)
 if args.local_only:
     one_core_nodes = 0
     two_core_nodes = 0
@@ -128,7 +110,7 @@ if args.local_only:
     if running_step(steps, 's2a', 's2b', 's3'):
         raise Exception("Steps s2a, s2b, and s3 cannot by run with just the local node.")
 
-print("Running with {} max nodes".format(one_core_nodes + two_core_nodes + all_core_nodes))
+print("Running with {} one-core nodes, {} two-core nodes, and {} all-core nodes.".format(one_core_nodes, two_core_nodes, all_core_nodes))
 
 s1_job_time = get_time_seconds(args.s1_job_time)
 s2_job_time = get_time_seconds(args.s2_job_time)
@@ -168,7 +150,7 @@ if all_core_nodes > 0:
                      walltime=all_core_walltime,
                      overrides=overrides + "\nmodule load cuda/8.0;")))
 if two_core_nodes > 0:
-    two_core_walltime = get_time_string(clamp((num_jobs * s3_job_time) / two_core_nodes, 7200, 86399)) # clamp between 2 and 24 hours
+    two_core_walltime = get_time_string(clamp((num_jobs * s3_job_time) / two_core_nodes, 28800, 86399)) # clamp between 8 and 24 hours
     two_core_walltime = args.two_core_walltime if args.two_core_walltime is not None else two_core_walltime
     executors.append(IPyParallelExecutor(label='two_core',
                      provider=SlurmProvider('pbatch',
@@ -216,7 +198,7 @@ cores_per_task = {
     's4':1,
 }
 
-# Verify that prerequisite steps are set. Ignore prerequisites for single step runs.
+# Print warning if prerequisite steps are not set
 if len(steps) > 1:
     for step in steps:
         for prereq in prereqs[step]:
@@ -270,11 +252,6 @@ for subject in subjects:
         for prereq in prereqs[step]:
             if prereq in subject_jobs:
                 inputs.append(subject_jobs[prereq])
-        # if len(steps) > 1:
-        #     inputs = [subject_jobs[prereq] for prereq in prereqs[step]]
-        #     write(stdout, "Running step {} with inputs {}".format(step, prereqs[step]))
-        # else:
-        #     write(stdout, "Running step {} alone".format(step))
         job = step_functions[step](params, inputs)
         subject_jobs[step] = job
         all_jobs.append((params, job))

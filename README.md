@@ -22,7 +22,7 @@ Optional:
 
 Running the tractography script:
 1. Create a subject list, by writing input directories to a text file. Each input directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
-2. Choose an output directory. Each subject may consume large amounts of disk space (>5 GB per subject).
+2. Choose an output directory. Each subject may consume large amounts of disk space (up to 5 GB per subject).
 3. Setup environment variables. From the repo directory, run `source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir>`
 4. From the repo directory, run `./s_run_all.py <subject_list> <output_dir>`
 
