@@ -40,6 +40,7 @@ parser.add_argument('--all_core_walltime', help='Override walltime for all-core 
 parser.add_argument('--one_core_nodes', help='Override max_nodes setting. Number of nodes with one core per task. For steps s1_dti_preproc and s4_edi.')
 parser.add_argument('--two_core_nodes', help='Override max_nodes setting. Number of nodes with two cores per task. For step s3_probtrackx.')
 parser.add_argument('--all_core_nodes', help='Override max_nodes setting. Number of nodes using all cores on each task. For steps s2a_bedpostx and s2b_freesurfer.')
+parser.add_argument('--make_connectome', help='Generate a connectome in s3_probtrackx. This will roughly double the time it takes to complete.', action='store_true')
 args = parser.parse_args()
 
 steps = args.steps
@@ -246,6 +247,7 @@ for subject in subjects:
             'stdout': stdout,
             'timing_log': timing_log,
             'step': step,
+            'make_connectome': args.make_connectome,
         }
         # Use jobs from previous steps as inputs for current step
         inputs = []

@@ -25,6 +25,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
+    make_connectome = params['make_connectome']
     start_time = time.time()
     EDI_allvols = join(sdir,"EDI","allvols")
     a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
@@ -47,7 +48,10 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     edi_exclusion = join(edi_tmp,"edi_exclusion.nii.gz")
     edi_termination = join(edi_tmp,"edi_termination.nii.gz")
     edi_waytotal = join(edi_tmp, "waytotal")
-    connectome_oneway = join(sdir, "connectome_oneway.dot")
+    if make_connectome:
+        connectome_oneway = join(sdir, "connectome_oneway.dot")
+    else:
+        connectome_oneway = join(sdir, "waytotal_oneway.dot")
     if not exists(a_file) or not exists(b_file):
         raise Exception("Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
     smart_remove(a_to_b_file)
@@ -86,21 +90,26 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         " --out={}".format(a_to_b_formatted)
         )
     if use_gpu:
-        run("probtrackx2_gpu" + connectome_arguments, params)
+        if make_connectome:
+            run("probtrackx2_gpu" + connectome_arguments, params)
         run("probtrackx2_gpu" + edi_arguments, params)
     else:
-        run("probtrackx2" + connectome_arguments, params)
+        if make_connectome:
+            run("probtrackx2" + connectome_arguments, params)
         run("probtrackx2" + edi_arguments, params)
 
     waytotal_count = 0
     with open(edi_waytotal, 'r') as f:
         waytotal_count = f.read().strip()
-    fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(connectome_tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
     if not is_float(waytotal_count):
         raise Exception("Error: Failed to read waytotal_count value {}".format(waytotal_count))
-    if not is_float(fdt_count):
-        raise Exception("Error: Failed to read fdt_count value {}".format(fdt_count))
-    write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+    if make_connectome:
+        fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(connectome_tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
+        if not is_float(fdt_count):
+            raise Exception("Error: Failed to read fdt_count value {}".format(fdt_count))
+        write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+    else:
+        write(connectome_oneway, "{} {} {}".format(a, b, waytotal_count))
     copyfile(join(edi_tmp, a_to_b_formatted), a_to_b_file) # keep edi output
     if not a == "lh.paracentral": # discard all temp files except these for debugging
         smart_remove(tmp)
@@ -112,9 +121,14 @@ def s3_3_combine(params, inputs=[]):
     from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float
     from os.path import join,exists
     sdir = params['sdir']
+    make_connectome = params['make_connectome']
     start_time = time.time()
-    connectome_oneway = join(sdir, "connectome_oneway.dot")
-    connectome_twoway = join(sdir, "connectome_twoway.dot")
+    if make_connectome:
+        connectome_oneway = join(sdir, "connectome_oneway.dot")
+        connectome_twoway = join(sdir, "connectome_twoway.dot")
+    else:
+        connectome_oneway = join(sdir, "waytotal_oneway.dot")
+        connectome_twoway = join(sdir, "waytotal_twoway.dot")
     smart_remove(connectome_twoway)
     processed_edges = {}
     if not exists(connectome_oneway):
@@ -124,11 +138,11 @@ def s3_3_combine(params, inputs=[]):
             if not line:
                 continue
             chunks = [x.strip() for x in line.strip().split(' ') if x]
-            if len(chunks) >= 4 and is_float(chunks[2]) and is_float(chunks[3]):
+            if len(chunks) >= 3:
                 a_to_b = (chunks[0], chunks[1])
                 b_to_a = (chunks[1], chunks[0])
                 waytotal_count = float(chunks[2])
-                fdt_count = float(chunks[3])
+                fdt_count = float(chunks[3]) if len(chunks) >= 4 else 0
                 if b_to_a in processed_edges:
                     processed_edges[b_to_a][0] += waytotal_count
                     processed_edges[b_to_a][1] += fdt_count
@@ -136,7 +150,10 @@ def s3_3_combine(params, inputs=[]):
                     processed_edges[a_to_b] = (waytotal_count, fdt_count)
     with open(connectome_twoway,'a') as f:
         for a_to_b in processed_edges:
-            f.write("{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
+            if make_connectome:
+                f.write("{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
+            else:
+                f.write("{} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0]))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
