@@ -109,7 +109,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
 @python_app(executors=one_core_executor_labels, cache=True)
 def s3_3_combine(params, inputs=[]):
     import time
-    from subscripts.utilities import record_apptime,record_finish,update_permissions
+    from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float
     from os.path import join,exists
     sdir = params['sdir']
     start_time = time.time()
