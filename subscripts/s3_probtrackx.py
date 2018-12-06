@@ -129,7 +129,8 @@ def s3_3_combine(params, inputs=[]):
     else:
         connectome_oneway = join(sdir, "waytotal_oneway.dot")
         connectome_twoway = join(sdir, "waytotal_twoway.dot")
-    smart_remove(connectome_twoway)
+    smart_remove(join(sdir, "connectome_twoway.dot"))
+    smart_remove(join(sdir, "waytotal_twoway.dot"))
     processed_edges = {}
     if not exists(connectome_oneway):
         raise Exception("Error: Failed to generate {}".format(connectome_oneway))
@@ -147,7 +148,7 @@ def s3_3_combine(params, inputs=[]):
                     processed_edges[b_to_a][0] += waytotal_count
                     processed_edges[b_to_a][1] += fdt_count
                 else:
-                    processed_edges[a_to_b] = (waytotal_count, fdt_count)
+                    processed_edges[a_to_b] = [waytotal_count, fdt_count]
     with open(connectome_twoway,'a') as f:
         for a_to_b in processed_edges:
             if make_connectome:
@@ -165,8 +166,8 @@ def run_s3(params, inputs):
     s3_1_future = s3_1_start(params, inputs=inputs)
     s3_2_futures = []
     processed_edges = []
-    connectome = join(sdir, "connectome_oneway.dot")
-    smart_remove(connectome)
+    smart_remove(join(sdir, "connectome_oneway.dot"))
+    smart_remove(join(sdir, "waytotal_oneway.dot"))
     smart_remove(join(sdir, "tmp"))
     with open(edge_list) as f:
         for edge in f.readlines():
