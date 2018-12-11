@@ -24,9 +24,8 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
-parser.add_argument('--max_nodes', help='Max number of nodes to request, otherwise use recommended number of nodes.')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
-parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","listEdgesEDIAll.txt"))
+parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_all.txt"))
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2_job_time', help='Average time to finish s2a and s2b on a single subject with a single node', default="08:00:00")
 parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="72:00:00")
@@ -71,34 +70,12 @@ for input_dir in input_dirs:
     print("Running subject {} with steps {}".format(sname, steps))
 num_jobs = len(subjects)
 
-# Weight core allocations, to determine recommended nodes and allocate nodes of each type
-# Weight values are somewhat arbitrary, based on core-time consumption in testing
-one_core_weight = 0.1 if running_step(steps, 's1', 's4') else 0
-two_core_weight = 0.4 if running_step(steps, 's3') else 0
-all_core_weight = 0.5 if running_step(steps, 's2a', 's2b') else 0
-total_weight = one_core_weight + two_core_weight + all_core_weight
-
-# Minimum 1 node of each type, if required by any steps
-one_core_min = 1 if running_step(steps, 's1', 's4') else 0
-two_core_min = 1 if running_step(steps, 's3') else 0
-all_core_min = 1 if running_step(steps, 's2a', 's2b') else 0
-total_min_nodes = one_core_min + two_core_min + all_core_min
-
-if args.max_nodes is not None:
-    max_nodes = int(args.max_nodes)
-else:
-    recommended_nodes = max(int(ceil(3 * total_weight * num_jobs)), total_min_nodes)
-    max_nodes = recommended_nodes
-
-if max_nodes < total_min_nodes:
-    raise Exception("Job requires at least {} nodes".format(total_min_nodes))
 if len(steps) < 1:
     raise Exception("Must run at least one step")
 
-# Calculate number of nodes of each type
-one_core_nodes = max(floor(one_core_weight / total_weight * max_nodes), one_core_min)
-two_core_nodes = max(floor(two_core_weight / total_weight * max_nodes), two_core_min)
-all_core_nodes = max(floor(all_core_weight / total_weight * max_nodes), all_core_min)
+one_core_nodes = max(floor(0.1 * num_jobs), 1) if running_step(steps, 's1', 's4') else 0
+two_core_nodes = num_jobs * 2 if running_step(steps, 's3') else 0
+all_core_nodes = num_jobs if running_step(steps, 's2a', 's2b') else 0
 
 # Override number of nodes using command line arguments
 one_core_nodes = int(args.one_core_nodes) if args.one_core_nodes is not None else int(one_core_nodes)
