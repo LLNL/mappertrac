@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-from subscripts.config import one_core_executor_labels
 from parsl.app.app import python_app
 
-@python_app(executors=one_core_executor_labels, cache=True)
+@python_app(executors=['s4'], cache=True)
 def s4_1_start(params, inputs=[]):
     from subscripts.utilities import record_start
     record_start(params)
 
-@python_app(executors=one_core_executor_labels, cache=True)
+@python_app(executors=['s4'], cache=True)
 def s4_2_edi_consensus(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_apptime
@@ -51,7 +50,7 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
             log.write("{} is thresholded to {}\n".format(b, bmax))
     record_apptime(params, start_time, 1, a, b)
 
-@python_app(executors=one_core_executor_labels, cache=True)
+@python_app(executors=['s4'], cache=True)
 def s4_3_edi_combine(params, processed_edges, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish,update_permissions

@@ -19,6 +19,5 @@ qsub/
 __pycache__
 !.gitignore
 *~
-subjects*.txt
+lists/subjects*.txt
 cmd_parsl.auto*
-!lists/subjects_example.txt

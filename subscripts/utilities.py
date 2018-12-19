@@ -192,7 +192,7 @@ def record_finish(params):
         f.write("{} parallel cores per task\n".format(cores_per_task))
         f.write("Used GPU: {}\n".format(use_gpu))
         f.write("=====================================\n\n")
-    write(global_timing_log, "{},{},{},{},{},{},{}".format(sname, step, ideal_walltime, actual_walltime, total_core_time, cores_per_task, use_gpu))
+    write(global_timing_log, "{},{},{},{},{},{}".format(sname, step, ideal_walltime, actual_walltime, total_core_time, use_gpu))
     run("chmod 770 {}".format(timing_log))
     run("chmod 770 {}".format(stdout))
 

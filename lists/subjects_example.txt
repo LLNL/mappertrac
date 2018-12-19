@@ -1,10 +1,2 @@
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI2
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI3
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI4
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI5
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI6
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI7
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI8
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI9
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI10
-/usr/workspace/wsb/tbidata/imaging/TRACKPilotNiiData/GO-TBI11
+/usr/WS2/tbidata/Container/input/03_1019
+/usr/WS2/tbidata/Container/input/03_1037

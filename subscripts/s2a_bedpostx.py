@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from parsl.app.app import python_app
 
-@python_app(executors=['all_core'], cache=True)
+@python_app(executors=['s2a'], cache=True)
 def s2a_bedpostx(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_start,record_apptime,record_finish,update_permissions

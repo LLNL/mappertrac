@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from parsl.app.app import python_app
 
-@python_app(executors=['all_core'], cache=True)
+@python_app(executors=['s2b'], cache=True)
 def s2b_1_recon_all(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_start
@@ -40,7 +40,7 @@ def s2b_1_recon_all(params, inputs=[]):
         run("recon-all -s {} -all -no-isrunning".format(subject), params)
     record_apptime(params, start_time, 1)
 
-@python_app(executors=['all_core'], cache=True)
+@python_app(executors=['s2b'], cache=True)
 def s2b_2_process_vols(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_finish,update_permissions

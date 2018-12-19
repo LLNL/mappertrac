@@ -9,6 +9,7 @@ from parsl.executors.ipp import IPyParallelExecutor
 from parsl.providers import LocalProvider,SlurmProvider
 from parsl.launchers import SrunLauncher
 from parsl.utils import get_all_checkpoints
+from parsl.addresses import address_by_route
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
 from os import system,mkdir,remove,environ,makedirs
@@ -26,20 +27,33 @@ parser.add_argument('--steps', type=str.lower, help='Steps to run with this scri
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_all.txt"))
-parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
-parser.add_argument('--s2_job_time', help='Average time to finish s2a and s2b on a single subject with a single node', default="08:00:00")
-parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="72:00:00")
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
-parser.add_argument('--local_only', help='Run only on local machine', action='store_true')
-parser.add_argument('--container', help='Path to Singularity container image')
-parser.add_argument('--one_core_walltime', help='Override walltime for one-core executor. For steps s1_dti_preproc and s4_edi.')
-parser.add_argument('--two_core_walltime', help='Override walltime for two-core executor. For step s3_probtrackx.')
-parser.add_argument('--all_core_walltime', help='Override walltime for all-core executor. For steps s2a_bedpostx and s2b_freesurfer.')
-parser.add_argument('--one_core_nodes', help='Override max_nodes setting. Number of nodes with one core per task. For steps s1_dti_preproc and s4_edi.')
-parser.add_argument('--two_core_nodes', help='Override max_nodes setting. Number of nodes with two cores per task. For step s3_probtrackx.')
-parser.add_argument('--all_core_nodes', help='Override max_nodes setting. Number of nodes using all cores on each task. For steps s2a_bedpostx and s2b_freesurfer.')
-parser.add_argument('--make_connectome', help='Generate a connectome in s3_probtrackx. This will roughly double the time it takes to complete.', action='store_true')
+parser.add_argument('--container_path', help='Path to Singularity container image')
+parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
+parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
+parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
+parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="08:00:00")
+parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="12:00:00")
+parser.add_argument('--s4_job_time', help='Average time to finish s4 on a single subject with a single node', default="00:45:00")
+parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc', default='quartz.llnl.gov')
+parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx', default='pascal.llnl.gov')
+parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer', default='quartz.llnl.gov')
+parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx', default='quartz.llnl.gov')
+parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi', default='quartz.llnl.gov')
+
+# Override arguments
+parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
+parser.add_argument('--s2a_walltime', help='Override total walltime for step s2a.')
+parser.add_argument('--s2b_walltime', help='Override total walltime for step s2b.')
+parser.add_argument('--s3_walltime', help='Override total walltime for step s3.')
+parser.add_argument('--s4_walltime', help='Override total walltime for step s4.')
+parser.add_argument('--s1_nodes', help='Override recommended node count for step s1.')
+parser.add_argument('--s2a_nodes', help='Override recommended node count for step s2a.')
+parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
+parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
+parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
+parser.add_argument('--user', help='Override Unix username for Parsl job requests')
 args = parser.parse_args()
 
 steps = args.steps
@@ -69,81 +83,86 @@ for input_dir in input_dirs:
     subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
     print("Running subject {} with steps {}".format(sname, steps))
 num_jobs = len(subjects)
+print("In total, running {} subjects".format(num_jobs))
 
 if len(steps) < 1:
     raise Exception("Must run at least one step")
 
-one_core_nodes = max(floor(0.1 * num_jobs), 1) if running_step(steps, 's1', 's4') else 0
-two_core_nodes = num_jobs * 2 if running_step(steps, 's3') else 0
-all_core_nodes = num_jobs if running_step(steps, 's2a', 's2b') else 0
+# Set recommended or overriden node counts
+node_counts = {
+    's1': max(floor(0.2 * num_jobs), 1) if args.s1_nodes is None else args.s1_nodes,
+    's2a': num_jobs if args.s2a_nodes is None else args.s2a_nodes,
+    's2b': num_jobs if args.s2b_nodes is None else args.s2b_nodes,
+    's3': num_jobs * 2 if args.s3_nodes is None else args.s3_nodes,
+    's4': max(floor(0.5 * num_jobs), 1) if args.s4_nodes is None else args.s4_nodes,
+}
 
-# Override number of nodes using command line arguments
-one_core_nodes = int(args.one_core_nodes) if args.one_core_nodes is not None else int(one_core_nodes)
-two_core_nodes = int(args.two_core_nodes) if args.two_core_nodes is not None else int(two_core_nodes)
-all_core_nodes = int(args.all_core_nodes) if args.all_core_nodes is not None else int(all_core_nodes)
-if args.local_only:
-    one_core_nodes = 0
-    two_core_nodes = 0
-    all_core_nodes = 0
-    if running_step(steps, 's2a', 's2b', 's3'):
-        raise Exception("Steps s2a, s2b, and s3 cannot by run with just the local node.")
+job_times = {
+    's1': args.s1_job_time,
+    's2a': args.s2a_job_time,
+    's2b': args.s2b_job_time,
+    's3': args.s3_job_time,
+    's4': args.s4_job_time,
+}
 
-print("Running with {} one-core nodes, {} two-core nodes, and {} all-core nodes.".format(one_core_nodes, two_core_nodes, all_core_nodes))
+walltimes = {
+    's1': args.s1_walltime,
+    's2a': args.s2a_walltime,
+    's2b': args.s2b_walltime,
+    's3': args.s3_walltime,
+    's4': args.s4_walltime,
+}
 
-s1_job_time = get_time_seconds(args.s1_job_time)
-s2_job_time = get_time_seconds(args.s2_job_time)
-s3_job_time = get_time_seconds(args.s3_job_time)
+cores_per_task = {
+    's1': 1,
+    's2a': cores_per_node,
+    's2b': cores_per_node,
+    's3': 2,
+    's4': 1,
+}
 
 # We assume 2 vCPUs per core
 cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
 
-overrides = "#SBATCH -A {}".format(args.bank)
+base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
 
-executors = [IPyParallelExecutor(label='one_core_head',
+if args.parsl_path is not None:
+    base_options += "source {}\n".format(args.parsl_path)
+
+executors = [IPyParallelExecutor(label='head',
              provider=LocalProvider(
              init_blocks=cores_per_node,
              max_blocks=cores_per_node))]
-if one_core_nodes > 0:
-    one_core_walltime = get_time_string(clamp((num_jobs * s1_job_time) / one_core_nodes, 3600, 86399)) # clamp between 1 and 24 hours
-    one_core_walltime = args.one_core_walltime if args.one_core_walltime is not None else one_core_walltime
-    executors.append(IPyParallelExecutor(label='one_core',
-                     provider=SlurmProvider('pbatch',
-                     launcher=SrunLauncher(),
-                     nodes_per_block=one_core_nodes,
-                     tasks_per_node=cores_per_node,
-                     init_blocks=1,
-                     max_blocks=1,
-                     walltime=one_core_walltime,
-                     overrides=overrides)))
-if all_core_nodes > 0:
-    all_core_walltime = get_time_string(clamp((num_jobs * s2_job_time) / all_core_nodes, 21600, 86399)) # clamp between 6 and 24 hours
-    all_core_walltime = args.all_core_walltime if args.all_core_walltime is not None else all_core_walltime
-    executors.append(IPyParallelExecutor(label='all_core',
-                     provider=SlurmProvider('pbatch',
-                     launcher=SrunLauncher(),
-                     nodes_per_block=all_core_nodes,
-                     tasks_per_node=1,
-                     init_blocks=1,
-                     max_blocks=1,
-                     walltime=all_core_walltime,
-                     overrides=overrides + "\nmodule load cuda/8.0;")))
-if two_core_nodes > 0:
-    two_core_walltime = get_time_string(clamp((num_jobs * s3_job_time) / two_core_nodes, 28800, 86399)) # clamp between 8 and 24 hours
-    two_core_walltime = args.two_core_walltime if args.two_core_walltime is not None else two_core_walltime
-    executors.append(IPyParallelExecutor(label='two_core',
-                     provider=SlurmProvider('pbatch',
-                     launcher=SrunLauncher(),
-                     nodes_per_block=two_core_nodes,
-                     tasks_per_node=int(cores_per_node / 2),
-                     init_blocks=1,
-                     max_blocks=1,
-                     walltime=two_core_walltime,
-                     overrides=overrides)))
 
-print("Running {} subjects. Using {} all-core nodes, {} two-core nodes, and {} one-core nodes.".format(
-    num_jobs, all_core_nodes, two_core_nodes, one_core_nodes))
+for step in steps:
+    node_count = int(node_counts[step])
+    print("Requesting {} {} nodes".format(node_count, step))
+    if walltimes[step] is not None:
+        walltime = walltimes[step]
+    else:
+        job_time = get_time_seconds(job_times[step])
+        walltime = get_time_string(clamp((num_jobs * job_time) / node_count, 3600, 86399)) # clamp between 1 and 24 hours
+    options = base_options
+    if step in gpu_steps:
+        options += "module load cuda/8.0;\n"
+    executors.append(IPyParallelExecutor(
+        label=step,
+        provider=SlurmProvider(
+            'pbatch',
+            launcher=SrunLauncher(),
+            nodes_per_block=node_count,
+            tasks_per_node=int(cores_per_node / cores_per_task),
+            init_blocks=1,
+            max_blocks=1,
+            walltime=walltime,
+            scheduler_options=options,
+            move_files=False,
+            ),
+        controller=Controller(public_ip=address_by_route()),
+        )
+    )
 
-subscripts.config.one_core_executor_labels = ['one_core_head'] + ['one_core'] * one_core_nodes
+subscripts.config.s1_executor_labels = ['head'] + ['s1'] * node_counts['s1']
 
 config = Config(executors=executors)
 config.retries = 5
@@ -154,26 +173,19 @@ parsl.set_stream_logger()
 parsl.load(config)
 
 step_functions = {
-    's1':run_s1,
-    's2a':run_s2a,
-    's2b':run_s2b,
-    's3':run_s3,
-    's4':run_s4,
-}
-prereqs = {
-    's1':[],
-    's2a':['s1'],
-    's2b':['s1'],
-    's3':['s2a','s2b'],
-    's4':['s3'],
+    's1': run_s1,
+    's2a': run_s2a,
+    's2b': run_s2b,
+    's3': run_s3,
+    's4': run_s4,
 }
 
-cores_per_task = {
-    's1':1,
-    's2a':cores_per_node,
-    's2b':cores_per_node,
-    's3':2,
-    's4':1,
+prereqs = {
+    's1': [],
+    's2a': ['s1'],
+    's2b': ['s1'],
+    's3': ['s2a','s2b'],
+    's4': ['s3'],
 }
 
 # Print warning if prerequisite steps are not set
@@ -183,13 +195,13 @@ if len(steps) > 1:
             if prereq not in steps:
                 print("Warning: step {} has prerequisite steps {}".format(step, prereqs[step]))
 
-container = abspath(args.container) if args.container else None
+container = abspath(args.container_path) if args.container_path else None
 odir = abspath(args.output_dir)
 global_timing_log = join(odir, 'global_log', 'timing.csv')
 smart_mkdir(odir)
 smart_mkdir(join(odir, 'global_log'))
 if not exists(global_timing_log):
-    write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,cores_per_task,use_gpu")
+    write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 from os.path import join,exists
-from subscripts.config import one_core_executor_labels
 from subscripts.utilities import write,smart_remove
 from parsl.app.app import python_app
 
-@python_app(executors=one_core_executor_labels, cache=True)
+@python_app(executors=['s3'], cache=True)
 def s3_1_start(params, inputs=[]):
     from subscripts.utilities import record_start
     use_gpu = params['use_gpu']
@@ -15,7 +14,7 @@ def s3_1_start(params, inputs=[]):
     else:
         write(stdout, "Running Probtrackx without GPU")
 
-@python_app(executors=['two_core'], cache=True)
+@python_app(executors=['s3'], cache=True)
 def s3_2_probtrackx(params, a, b, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
@@ -115,7 +114,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         smart_remove(tmp)
     record_apptime(params, start_time, 1, a, b)
 
-@python_app(executors=one_core_executor_labels, cache=True)
+@python_app(executors=['s3'], cache=True)
 def s3_3_combine(params, inputs=[]):
     import time
     from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float
