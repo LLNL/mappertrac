@@ -5,6 +5,8 @@ from os.path import join
 from parsl.app.app import python_app
 from shutil import copyfile
 
+### These three functions parallelize FSL's "eddy_correct"
+
 @python_app(executors=s1_executor_labels, cache=True)
 def s1_1_split_timeslices(params, inputs=[]):
     import time

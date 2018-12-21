@@ -34,17 +34,18 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
     Safer than raw execution. Can also write to logs and utilize a container.
     """
     start = time.time()
-    stdout = params['stdout'] if params else None
-    container = params['container'] if params else None
-    use_gpu = params['use_gpu'] if params else None
-    sdir = params['sdir'] if params else None
+    stdout = params['stdout'] if (params and 'stdout' in params) else None
+    container = params['container'] if (params and 'container' in params) else None
+    use_gpu = params['use_gpu'] if (params and 'use_gpu' in params) else None
+    sdir = params['sdir'] if (params and 'sdir' in params) else None
 
     # When using a container, change all paths to be relative to its mounted directory (hideous, but works without changing other code)
     if container is not None:
         odir = split(sdir)[0]
         command = command.replace(odir, "/share")
         command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", odir, container, command)
-        write(stdout, command)
+        if stdout:
+            write(stdout, command)
 
     process = Popen(command, stdout=PIPE, stderr=subprocess.STDOUT, shell=True, env=environ, cwd=working_dir)
     line = ""
@@ -53,13 +54,13 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
         new_line = str(new_line, 'utf-8')[:-1]
         if print_output and new_line:
             print(new_line)
-        if stdout is not None and not new_line.isspace():
+        if stdout and not new_line.isspace():
             write(stdout, new_line)
         if new_line == '' and process.poll() is not None:
             break
         line = new_line
     if process.returncode != 0 and not ignore_errors:
-        if stdout is not None and not new_line.isspace():
+        if stdout and not new_line.isspace():
             write(stdout, "Error: non zero return code")
             write(stdout, get_time_date())
         raise Exception("Non zero return code: {}".format(process.returncode))

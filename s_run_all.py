@@ -3,12 +3,16 @@ import argparse
 import multiprocessing
 import parsl
 import subscripts.config
+import getpass
+import socket
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from parsl.providers import LocalProvider,SlurmProvider
+from parsl.channels import SSHInteractiveLoginChannel, LocalChannel, SSHChannel
 from parsl.launchers import SrunLauncher
 from parsl.utils import get_all_checkpoints
+from parsl.executors.ipp_controller import Controller
 from parsl.addresses import address_by_route
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
@@ -25,7 +29,7 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
-parser.add_argument('--force', help='Force re-compute if checkpoints already exist',action='store_true')
+parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
 parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_all.txt"))
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
@@ -41,6 +45,7 @@ parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_
 parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer', default='quartz.llnl.gov')
 parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx', default='quartz.llnl.gov')
 parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi', default='quartz.llnl.gov')
+parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
 
 # Override arguments
 parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
@@ -54,7 +59,14 @@ parser.add_argument('--s2b_nodes', help='Override recommended node count for ste
 parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
 parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
 parser.add_argument('--user', help='Override Unix username for Parsl job requests')
+parser.add_argument('--password', help='Set password for Parsl job requests. Otherwise the user must enter an interactive prompt.')
 args = parser.parse_args()
+
+if (not args.local_host_only and
+    (not exists(join(str(args.parsl_path), 'ipengine')) and
+    not exists('/usr/bin/ipengine') and
+    not exists('/usr/sbin/ipengine'))):
+    raise Exception("Could not find Parsl installation. Please set --parsl_path to a valid directory.")
 
 steps = args.steps
 if isinstance(args.steps, str):
@@ -88,6 +100,9 @@ print("In total, running {} subjects".format(num_jobs))
 if len(steps) < 1:
     raise Exception("Must run at least one step")
 
+# We assume 2 vCPUs per core
+cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
+
 # Set recommended or overriden node counts
 node_counts = {
     's1': max(floor(0.2 * num_jobs), 1) if args.s1_nodes is None else args.s1_nodes,
@@ -113,6 +128,14 @@ walltimes = {
     's4': args.s4_walltime,
 }
 
+hostnames = {
+    's1': args.s1_hostname,
+    's2a': args.s2a_hostname,
+    's2b': args.s2b_hostname,
+    's3': args.s3_hostname,
+    's4': args.s4_hostname,
+}
+
 cores_per_task = {
     's1': 1,
     's2a': cores_per_node,
@@ -121,13 +144,15 @@ cores_per_task = {
     's4': 1,
 }
 
-# We assume 2 vCPUs per core
-cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
-
 base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
 
 if args.parsl_path is not None:
     base_options += "source {}\n".format(args.parsl_path)
+
+if args.user is not None:
+    username = args.user
+else:
+    username = getpass.getuser()
 
 executors = [IPyParallelExecutor(label='head',
              provider=LocalProvider(
@@ -145,13 +170,27 @@ for step in steps:
     options = base_options
     if step in gpu_steps:
         options += "module load cuda/8.0;\n"
+    if args.local_host_only:
+        channel = LocalChannel()
+    elif args.password is not None:
+        channel = SSHChannel(
+                hostname=hostnames[step],
+                username=username,
+                password=args.password
+                )
+    else:
+        channel = SSHInteractiveLoginChannel(
+                hostname=hostnames[step],
+                username=username,
+                )
     executors.append(IPyParallelExecutor(
         label=step,
+        workers_per_node=int(cores_per_node / cores_per_task[step]),
         provider=SlurmProvider(
             'pbatch',
+            channel=channel,
             launcher=SrunLauncher(),
             nodes_per_block=node_count,
-            tasks_per_node=int(cores_per_node / cores_per_task),
             init_blocks=1,
             max_blocks=1,
             walltime=walltime,
@@ -236,7 +275,6 @@ for subject in subjects:
             'stdout': stdout,
             'timing_log': timing_log,
             'step': step,
-            'make_connectome': args.make_connectome,
         }
         # Use jobs from previous steps as inputs for current step
         inputs = []

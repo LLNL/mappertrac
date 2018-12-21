@@ -24,7 +24,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
-    make_connectome = params['make_connectome']
+    # make_connectome = params['make_connectome']
     start_time = time.time()
     EDI_allvols = join(sdir,"EDI","allvols")
     a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
@@ -47,10 +47,10 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     edi_exclusion = join(edi_tmp,"edi_exclusion.nii.gz")
     edi_termination = join(edi_tmp,"edi_termination.nii.gz")
     edi_waytotal = join(edi_tmp, "waytotal")
-    if make_connectome:
-        connectome_oneway = join(sdir, "connectome_oneway.dot")
-    else:
-        connectome_oneway = join(sdir, "waytotal_oneway.dot")
+    # if make_connectome:
+        # connectome_oneway = join(sdir, "connectome_oneway.dot")
+    # else:
+    connectome_oneway = join(sdir, "waytotal_oneway.dot")
     if not exists(a_file) or not exists(b_file):
         raise Exception("Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
     smart_remove(a_to_b_file)
@@ -70,15 +70,15 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     else:
         write(edi_waypoints, b_file)
 
-    connectome_arguments = (" -x {} ".format(a_file) +
-        " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-        " --avoid={} --stop={}".format(exclusion_bsplusthalami, terminationmask) +
-        " --forcedir --opd" +
-        " -s {}".format(merged) +
-        " -m {}".format(nodif_brain_mask) +
-        " --dir={}".format(connectome_tmp) +
-        " --out={}".format(a_to_b_formatted)
-        )
+    # connectome_arguments = (" -x {} ".format(a_file) +
+    #     " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+    #     " --avoid={} --stop={}".format(exclusion_bsplusthalami, terminationmask) +
+    #     " --forcedir --opd" +
+    #     " -s {}".format(merged) +
+    #     " -m {}".format(nodif_brain_mask) +
+    #     " --dir={}".format(connectome_tmp) +
+    #     " --out={}".format(a_to_b_formatted)
+    #     )
     edi_arguments = (" -x {} ".format(a_file) +
         " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
         " --waypoints={} --avoid={} --stop={}".format(edi_waypoints, edi_exclusion, edi_termination) +
@@ -89,12 +89,12 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         " --out={}".format(a_to_b_formatted)
         )
     if use_gpu:
-        if make_connectome:
-            run("probtrackx2_gpu" + connectome_arguments, params)
+        # if make_connectome:
+            # run("probtrackx2_gpu" + connectome_arguments, params)
         run("probtrackx2_gpu" + edi_arguments, params)
     else:
-        if make_connectome:
-            run("probtrackx2" + connectome_arguments, params)
+        # if make_connectome:
+            # run("probtrackx2" + connectome_arguments, params)
         run("probtrackx2" + edi_arguments, params)
 
     waytotal_count = 0
