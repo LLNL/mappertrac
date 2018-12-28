@@ -35,6 +35,11 @@ parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
 parser.add_argument('--container_path', help='Path to Singularity container image')
 parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
+parser.add_argument('--username', help='Unix username for Parsl job requests', default=getpass.getuser())
+parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
+parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
+
+# Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
 parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="08:00:00")
@@ -45,9 +50,8 @@ parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_
 parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer', default='quartz.llnl.gov')
 parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx', default='quartz.llnl.gov')
 parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi', default='quartz.llnl.gov')
-parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
 
-# Override arguments
+# Override auto-generated machine settings
 parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
 parser.add_argument('--s2a_walltime', help='Override total walltime for step s2a.')
 parser.add_argument('--s2b_walltime', help='Override total walltime for step s2b.')
@@ -58,15 +62,11 @@ parser.add_argument('--s2a_nodes', help='Override recommended node count for ste
 parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
 parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
 parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
-parser.add_argument('--user', help='Override Unix username for Parsl job requests')
-parser.add_argument('--password', help='Set password for Parsl job requests. Otherwise the user must enter an interactive prompt.')
 args = parser.parse_args()
 
-if (not args.local_host_only and
-    (not exists(join(str(args.parsl_path), 'ipengine')) and
-    not exists('/usr/bin/ipengine') and
-    not exists('/usr/sbin/ipengine'))):
-    raise Exception("Could not find Parsl installation. Please set --parsl_path to a valid directory.")
+if not args.local_host_only:
+    if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
+        raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
 
 steps = args.steps
 if isinstance(args.steps, str):
@@ -147,12 +147,7 @@ cores_per_task = {
 base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
 
 if args.parsl_path is not None:
-    base_options += "source {}\n".format(args.parsl_path)
-
-if args.user is not None:
-    username = args.user
-else:
-    username = getpass.getuser()
+    base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
 
 executors = [IPyParallelExecutor(label='head',
              provider=LocalProvider(
@@ -172,16 +167,11 @@ for step in steps:
         options += "module load cuda/8.0;\n"
     if args.local_host_only:
         channel = LocalChannel()
-    elif args.password is not None:
+    else:
         channel = SSHChannel(
                 hostname=hostnames[step],
-                username=username,
-                password=args.password
-                )
-    else:
-        channel = SSHInteractiveLoginChannel(
-                hostname=hostnames[step],
-                username=username,
+                username=args.username,
+                gssapi_auth=args.gssapi,
                 )
     executors.append(IPyParallelExecutor(
         label=step,
