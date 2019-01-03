@@ -26,7 +26,7 @@ from subscripts.s4_edi import run_s4
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
-parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject')
+parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Should not point to a parallel file system.')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')

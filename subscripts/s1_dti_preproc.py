@@ -31,7 +31,6 @@ def s1_1_split_timeslices(params, inputs=[]):
     copyfile(join(input_dir,"bvals"),join(sdir,"bvals"))
     copyfile(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
     output_prefix = join(sdir,"data_eddy")
-    output_data = join(sdir,"data_eddy.nii.gz")
     run("fslroi {} {}_ref 0 1".format(input_data, output_prefix), params)
     run("fslsplit {} {}_tmp".format(input_data, output_prefix), params)
     record_apptime(params, start_time, 1)
@@ -47,7 +46,7 @@ def s1_2_timeslice_process(params, timeslice, inputs=[]):
     start_time = time.time()
     slice_data = join(sdir,"data_eddy_tmp{:04d}.nii.gz".format(timeslice))
     if not exists(slice_data):
-        return
+        raise Exception("Error: Failed to find timeslice {}".format(slice_data)) 
     output_prefix = join(sdir,"data_eddy")
     run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1".format(slice_data, output_prefix), params)
     record_apptime(params, start_time, 2)
