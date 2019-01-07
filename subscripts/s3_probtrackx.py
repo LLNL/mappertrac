@@ -41,6 +41,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     tmp = join(sdir, "tmp", a_to_b)
     waypoints = join(tmp,"waypoint.txt")
     connectome_oneway = join(sdir, "connectome_oneway.dot")
+    waytotal = join(tmp, "waytotal")
     if not exists(a_file) or not exists(b_file):
         raise Exception("Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
     smart_remove(a_to_b_file)
@@ -53,23 +54,26 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         write(waypoints, b_file.replace(odir, "/share"))
     else:
         write(waypoints, b_file)
+
+    allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
+    exclusion = join(tmp,"exclusion.nii.gz")
+    termination = join(tmp,"termination.nii.gz")
+    run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
+    run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
+    run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
+    run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
+
     pbtx_args = (" -x {} ".format(a_file) +
         " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-        " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion_bsplusthalami, terminationmask) +
+        " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
+        # " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion_bsplusthalami, terminationmask) +
         " --forcedir --opd" +
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +
         " --dir={}".format(tmp) +
         " --out={}".format(a_to_b_formatted)
         )
-    # allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
-    # exclusion = join(tmp,"exclusion.nii.gz")
-    # termination = join(tmp,"termination.nii.gz")
-    # waytotal = join(tmp, "waytotal")
-    # run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
-    # run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
-    # run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
-    # run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
+    
 
     # pbtx_args = (" -x {} ".format(a_file) +
     #     " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
@@ -88,9 +92,9 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     waytotal_count = 0
     with open(waytotal, 'r') as f:
         waytotal_count = f.read().strip()
-    if not is_float(waytotal_count):
-        raise Exception("Error: Failed to read waytotal_count value {}".format(waytotal_count))
         fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
+        if not is_float(waytotal_count):
+            raise Exception("Error: Failed to read waytotal_count value {}".format(waytotal_count))
         if not is_float(fdt_count):
             raise Exception("Error: Failed to read fdt_count value {}".format(fdt_count))
         write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
@@ -102,7 +106,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
 @python_app(executors=['s3'], cache=True)
 def s3_3_combine(params, inputs=[]):
     import time
-    from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float
+    from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write
     from os.path import join,exists
     sdir = params['sdir']
     start_time = time.time()
@@ -127,9 +131,8 @@ def s3_3_combine(params, inputs=[]):
                     processed_edges[b_to_a][1] += fdt_count
                 else:
                     processed_edges[a_to_b] = [waytotal_count, fdt_count]
-    with open(connectome_twoway,'a') as f:
-        for a_to_b in processed_edges:
-            f.write("{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
+    for a_to_b in processed_edges:
+        write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
