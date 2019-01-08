@@ -22,3 +22,4 @@ __pycache__
 lists/subjects*.txt
 cmd_parsl.auto*
 test_*
+nvram*

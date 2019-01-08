@@ -7,7 +7,7 @@ import shutil
 import hashlib
 import grp
 from glob import glob
-from os.path import exists,join,split,splitext,abspath,basename,isdir
+from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir
 from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
 
@@ -204,11 +204,14 @@ def update_permissions(params):
     sdir = params['sdir']
     group = params['group']
     stdout = params['stdout']
-    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(sdir))
-    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
-    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(sdir))
-    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
+    update_permissions_base(sdir, group)
     write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time)))
+
+def update_permissions_base(target_dir, group):
+    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(target_dir))
+    run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(target_dir, group))
+    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(target_dir))
+    run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(target_dir, group))
 
 def generate_checksum(input_dir):
     """Return checksum of subject input files. This ensures re-computation if inputs change.

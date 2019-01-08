@@ -38,7 +38,8 @@ parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not install
 parser.add_argument('--username', help='Unix username for Parsl job requests', default=getpass.getuser())
 parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
 parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
-
+parser.add_argument('--copy_src_dir', help='Copy inputs from this directory before running')
+parser.add_argument('--copy_dest_dir', help='Copy outputs to this directory after completion')
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
@@ -234,6 +235,13 @@ if not exists(global_timing_log):
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
 
+if args.copy_src_dir:
+    if not exists(args.copy_src_dir):
+        print("Warning: {} does not exist. Skipping copy.".format(args.copy_src_dir))
+    else:
+        run("cp -Rf {} {}".format(args.copy_src_dir, odir))
+        update_permissions_base(odir, args.group)
+
 all_jobs = []
 for subject in subjects:
     input_dir = subject['input_dir']
@@ -266,6 +274,7 @@ for subject in subjects:
             'timing_log': timing_log,
             'step': step,
         }
+
         # Use jobs from previous steps as inputs for current step
         inputs = []
         for prereq in prereqs[step]:
@@ -286,3 +295,8 @@ for job in all_jobs:
         print("Finished processing step {} on subject {}".format(step, sname))
     except:
         print("Error: failed to process step {} on subject {}".format(step, sname))
+
+if args.copy_dest_dir:
+    smart_mkdir(args.copy_dest_dir)
+    run("cp -Rf {} {}".format(odir, args.copy_dest_dir))
+    

@@ -73,17 +73,6 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
         " --dir={}".format(tmp) +
         " --out={}".format(a_to_b_formatted)
         )
-    
-
-    # pbtx_args = (" -x {} ".format(a_file) +
-    #     " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-    #     " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
-    #     " --forcedir --opd" +
-    #     " -s {}".format(merged) +
-    #     " -m {}".format(nodif_brain_mask) +
-    #     " --dir={}".format(tmp) +
-    #     " --out={}".format(a_to_b_formatted)
-    #     )
     if use_gpu:
         run("probtrackx2_gpu" + pbtx_args, params)
     else:
