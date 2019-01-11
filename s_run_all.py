@@ -26,7 +26,7 @@ from subscripts.s4_edi import run_s4
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
-parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Should not point to a parallel file system.')
+parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system (e.g. /p/lscratchh for LLNL users).')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
@@ -38,8 +38,7 @@ parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not install
 parser.add_argument('--username', help='Unix username for Parsl job requests', default=getpass.getuser())
 parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
 parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
-parser.add_argument('--copy_src_dir', help='Copy inputs from this directory before running')
-parser.add_argument('--copy_dest_dir', help='Copy outputs to this directory after completion')
+parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
@@ -235,12 +234,12 @@ if not exists(global_timing_log):
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
 
-if args.copy_src_dir:
-    if not exists(args.copy_src_dir):
-        print("Warning: {} does not exist. Skipping copy.".format(args.copy_src_dir))
-    else:
-        run("cp -Rf {} {}".format(args.copy_src_dir, odir))
-        update_permissions_base(odir, args.group)
+# if args.copy_src_dir:
+#     if not exists(args.copy_src_dir):
+#         print("Warning: {} does not exist. Skipping copy.".format(args.copy_src_dir))
+#     else:
+#         run("cp -Rf {} {}".format(args.copy_src_dir, odir))
+#         update_permissions_base(odir, args.group)
 
 all_jobs = []
 for subject in subjects:
@@ -249,6 +248,10 @@ for subject in subjects:
     checksum = subject['checksum']
     sdir = join(odir, sname)
     log_dir = join(sdir,'log')
+    if args.work_dir:
+        work_sdir = join(args.work_dir, sname)
+    else:
+        work_sdir = None
     
     smart_mkdir(log_dir)
     smart_mkdir(sdir)
@@ -273,6 +276,7 @@ for subject in subjects:
             'stdout': stdout,
             'timing_log': timing_log,
             'step': step,
+            'work_sdir': work_sdir,
         }
 
         # Use jobs from previous steps as inputs for current step
@@ -296,7 +300,8 @@ for job in all_jobs:
     except:
         print("Error: failed to process step {} on subject {}".format(step, sname))
 
-if args.copy_dest_dir:
-    smart_mkdir(args.copy_dest_dir)
-    run("cp -Rf {} {}".format(odir, args.copy_dest_dir))
+# if args.copy_dest_dir:
+#     update_permissions_base(odir, args.group)
+#     smart_mkdir(args.copy_dest_dir)
+#     run("cp -Rf {} {}".format(odir, args.copy_dest_dir))
     

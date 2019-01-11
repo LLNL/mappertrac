@@ -4,10 +4,14 @@ from parsl.app.app import python_app
 @python_app(executors=['s2b'], cache=True)
 def s2b_1_recon_all(params, inputs=[]):
     import time
-    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_start
+    from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_start,copy_dir
     from os import environ
     from os.path import exists,join,split,basename
     sdir = params['sdir']
+    work_sdir = params['work_sdir']
+    if work_sdir:
+        smart_mkdir(work_sdir)
+        sdir = work_sdir
     stdout = params['stdout']
     container = params['container']
     cores_per_task = params['cores_per_task']
@@ -38,6 +42,9 @@ def s2b_1_recon_all(params, inputs=[]):
     else:
         write(stdout, "Running Freesurfer with a single core")
         run("recon-all -s {} -all -no-isrunning".format(subject), params)
+    if work_sdir:
+        copy_dir(work_sdir, params['sdir'])
+        run("rm -Rf {}".format(work_sdir))
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['s2b'], cache=True)

@@ -66,7 +66,6 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     pbtx_args = (" -x {} ".format(a_file) +
         " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
         " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
-        # " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion_bsplusthalami, terminationmask) +
         " --forcedir --opd" +
         " -s {}".format(merged) +
         " -m {}".format(nodif_brain_mask) +

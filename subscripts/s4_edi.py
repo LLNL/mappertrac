@@ -15,10 +15,12 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     stdout = params['stdout']
     container = params['container']
     start_time = time.time()
-    pbtk_dir = join(sdir,"EDI","PBTKresults")
     a_to_b = "{}to{}".format(a, b)
-    a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
-    b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    a_to_b_file = join(pbtk_dir,"{}to{}.nii.gz".format(a,b))
+    b_to_a_file = join(pbtk_dir,"{}to{}.nii.gz".format(b,a))    
+    # a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+    # b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
     if not exists(a_to_b_file) or not exists(b_to_a_file):
         write(stdout, "Error: both {} and {} must exist".format(a_to_b_file, b_to_a_file))
         return
@@ -74,6 +76,8 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
             copyfile(consensus, total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, total), params)
+    if not exists(total):
+        raise Exception("Error: Failed to generate {}".format(total))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
@@ -93,4 +97,6 @@ def run_s4(params, inputs):
             if a_to_b not in processed_edges and b_to_a not in processed_edges:
                 s4_2_futures.append(s4_2_edi_consensus(params, a, b, inputs=[s4_1_future]))
                 processed_edges.append(a_to_b)
+    if not processed_edges:
+        raise Exception("Error: Edge list is empty")
     return s4_3_edi_combine(params, processed_edges, inputs=s4_2_futures)
