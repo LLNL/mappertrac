@@ -17,10 +17,10 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     start_time = time.time()
     a_to_b = "{}to{}".format(a, b)
     pbtk_dir = join(sdir,"EDI","PBTKresults")
-    a_to_b_file = join(pbtk_dir,"{}to{}.nii.gz".format(a,b))
-    b_to_a_file = join(pbtk_dir,"{}to{}.nii.gz".format(b,a))    
-    # a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
-    # b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
+    # a_to_b_file = join(pbtk_dir,"{}to{}.nii.gz".format(a,b))
+    # b_to_a_file = join(pbtk_dir,"{}to{}.nii.gz".format(b,a))
+    a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+    b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
     if not exists(a_to_b_file) or not exists(b_to_a_file):
         write(stdout, "Error: both {} and {} must exist".format(a_to_b_file, b_to_a_file))
         return

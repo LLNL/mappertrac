@@ -253,7 +253,7 @@ def copy_dir(src, dest):
     if not isdir(src):
         raise Exception("Source directory {} does not exist".format(src))
     smart_mkdir(dest)
-    run("cp -Rf {} {}".format(src, dest))
+    run("cp -Rf {} {}".format(join(src,"."), join(dest,".")))
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
     """Not used during runtime. Generates a list of all possible edges from Freesurfer output.
