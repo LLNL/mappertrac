@@ -6,7 +6,7 @@ From: ubuntu:16.04
 
 %post
     # Links
-    GET_PIP=https://bootstrap.pypa.io/get-pip.py
+    VTK=https://gitlab.kitware.com/vtk/vtk/-/archive/v5.10.1/vtk-v5.10.1.tar.gz
     TESLA=http://us.download.nvidia.com/tesla/396.44/NVIDIA-Linux-x86_64-396.44.run
     CUDA5=http://developer.download.nvidia.com/compute/cuda/5_0/rel-update-1/installers/cuda_5.0.35_linux_64_ubuntu11.10-1.run
     CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
@@ -19,15 +19,10 @@ From: ubuntu:16.04
     apt-get install -y software-properties-common
     add-apt-repository -y universe
     apt-get -y update
-    apt-get -y install wget tcsh build-essential python3 python3-dev curl libtool unzip kmod initramfs-tools locales vim-tiny dkms
+    apt-get -y install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms
     locale-gen en_US.UTF-8
     rm /bin/sh
     ln -s /bin/bash /bin/sh
-
-    # Python3 and Parsl
-    curl -Ok $GET_PIP
-    python3 get-pip.py
-    python3 -m pip install parsl
 
     # Nvidia Drivers
     apt-get -y install linux-headers-`uname -r`
@@ -67,8 +62,40 @@ From: ubuntu:16.04
     tar -xzf $FREESURFER_GZ -C /opt
     cp license.txt /opt/freesurfer/license.txt
 
+    # VTK
+    VTK_ZIP=$(basename $VTK)
+    apt-get -y install python2.7 python2.7-dev libosmesa6-dev libgl1-mesa-glx cmake
+    wget --no-check-certificate $VTK
+    tar -xzf $VTK_ZIP
+    VTK_SRC=$PWD/"${VTK_ZIP%.tar.gz}"
+    mkdir /opt/vtk
+    cd /opt/vtk
+
+    INC_DIR=/usr/include
+    LIB_DIR=/usr/lib/x86_64-linux-gnu
+    cmake \
+    -DVTK_OPENGL_HAS_OSMESA=ON \
+    -DVTK_USE_OFFSCREEN=ON \
+    -DVTK_WRAP_PYTHON=ON \
+    -DPYTHON_EXECUTABLE=/usr/bin/python2.7 \
+    -DPYTHON_INCLUDE_PATH=$INC_DIR/python2.7 \
+    -DPYTHON_LIBRARY=$LIB_DIR/libpython2.7.so \
+    -DOSMESA_INCLUDE_DIR=$INC_DIR \
+    -DOSMESA_LIBRARY=$LIB_DIR/libOSMesa.so \
+    -DOPENGL_INCLUDE_DIR=$INC_DIR \
+    -DOPENGL_gl_LIBRARY=$LIB_DIR/mesa/libGL.so.1 \
+    -DOPENGL_glu_LIBRARY=$LIB_DIR/libGLU.so.1 \
+    -DVTK_USE_X=OFF \
+    -DVTK_USE_TK=OFF \
+    -DBUILD_SHARED_LIBS=ON \
+    -DVTK_USE_GL2PS=ON \
+    $VTK_SRC
+
+    # On multicore system, can use -j flag
+    # make -j6
+    make
+
     # Cleanup
-    rm -rf get-pip.py
     rm -rf $TESLA_RUN
     rm -rf $CUDA5_RUN
     rm -rf $CUDA8_RUN
@@ -103,11 +130,17 @@ From: ubuntu:16.04
     MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
     SUBJECTS_DIR=/share
     FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
+
     export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+
+    export VTK_DIR=/opt/vtk
+    export MESA_DIR=/usr/lib/x86_64-linux-gnu
+    export PYTHONPATH=$VTK_DIR/bin:$VTK_DIR/Wrapping/Python``
 
     export CUDA_5_LIB_DIR=/usr/local/cuda-5.0/lib64
     export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
 
     export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
-    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="${VTK_DIR}/bin:$MESA_DIR:${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
+

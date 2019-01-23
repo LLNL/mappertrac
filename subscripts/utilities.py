@@ -169,7 +169,7 @@ def record_finish(params):
     with open(timing_log, 'r') as f:
         for line in f.readlines():
             chunks = [x.strip() for x in line.strip().split(' ', 2) if x]
-            if len(chunks) < 2:
+            if len(chunks) < 2 or not is_float(chunks[0]) or not is_integer(chunks[1]):
                 continue
             if chunks[1] == 'start':
                 task_start_time = float(chunks[0])

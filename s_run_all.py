@@ -26,7 +26,7 @@ from subscripts.s4_edi import run_s4
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
-parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system (e.g. /p/lscratchh for LLNL users).')
+parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
@@ -39,6 +39,12 @@ parser.add_argument('--username', help='Unix username for Parsl job requests', d
 parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
 parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
 parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
+
+# Render settings
+parser.add_argument('--render_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
+parser.add_argument('--s1_render_targets', help='', default='data_eddy.nii.gz, DTIparams_L1.nii.gz, FA.nii.gz')
+parser.add_argument('--s4_render_targets', help='', default='EDI/EDImaps/FAtractsumsTwoway.nii.gz')
+
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
@@ -300,8 +306,6 @@ for job in all_jobs:
     except:
         print("Error: failed to process step {} on subject {}".format(step, sname))
 
-# if args.copy_dest_dir:
-#     update_permissions_base(odir, args.group)
-#     smart_mkdir(args.copy_dest_dir)
-#     run("cp -Rf {} {}".format(odir, args.copy_dest_dir))
+if args.render_dir:
+    from subscripts.render import *
     
