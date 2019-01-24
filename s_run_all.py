@@ -2,7 +2,6 @@
 import argparse
 import multiprocessing
 import parsl
-import subscripts.config
 import getpass
 import socket
 from parsl.app.app import python_app, bash_app
@@ -23,14 +22,15 @@ from subscripts.s2a_bedpostx import run_s2a
 from subscripts.s2b_freesurfer import run_s2b
 from subscripts.s3_probtrackx import run_s3
 from subscripts.s4_edi import run_s4
+from subscripts.s5_render import run_s5
 
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.')
-parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4", nargs='+')
+parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4 s5", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
-parser.add_argument('--edge_list', help='Edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_all.txt"))
+parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_reduced.txt"))
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
 parser.add_argument('--container_path', help='Path to Singularity container image')
@@ -39,11 +39,7 @@ parser.add_argument('--username', help='Unix username for Parsl job requests', d
 parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
 parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
 parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
-
-# Render settings
-parser.add_argument('--render_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
-parser.add_argument('--s1_render_targets', help='', default='data_eddy.nii.gz, DTIparams_L1.nii.gz, FA.nii.gz')
-parser.add_argument('--s4_render_targets', help='', default='EDI/EDImaps/FAtractsumsTwoway.nii.gz')
+parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).', default='lists/render_targets.txt')
 
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
@@ -51,11 +47,13 @@ parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a sing
 parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="08:00:00")
 parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="12:00:00")
 parser.add_argument('--s4_job_time', help='Average time to finish s4 on a single subject with a single node', default="00:45:00")
+parser.add_argument('--s5_job_time', help='Average time to finish s5 on a single subject with a single node', default="00:05:00")
 parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc', default='quartz.llnl.gov')
 parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx', default='pascal.llnl.gov')
 parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer', default='quartz.llnl.gov')
 parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx', default='quartz.llnl.gov')
 parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi', default='quartz.llnl.gov')
+parser.add_argument('--s5_hostname', help='Hostname of machine to run step s5_render', default='quartz.llnl.gov')
 
 # Override auto-generated machine settings
 parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
@@ -63,29 +61,55 @@ parser.add_argument('--s2a_walltime', help='Override total walltime for step s2a
 parser.add_argument('--s2b_walltime', help='Override total walltime for step s2b.')
 parser.add_argument('--s3_walltime', help='Override total walltime for step s3.')
 parser.add_argument('--s4_walltime', help='Override total walltime for step s4.')
+parser.add_argument('--s5_walltime', help='Override total walltime for step s5.')
 parser.add_argument('--s1_nodes', help='Override recommended node count for step s1.')
 parser.add_argument('--s2a_nodes', help='Override recommended node count for step s2a.')
 parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
 parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
 parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
+parser.add_argument('--s5_nodes', help='Override recommended node count for step s5.')
 args = parser.parse_args()
 
-if not args.local_host_only:
-    if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
-        raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
+############################
+# Steps
+############################
 
 steps = args.steps
+gpu_steps = args.gpu_steps
 if isinstance(args.steps, str):
     steps = [x.strip() for x in args.steps.split(' ') if x]
-gpu_steps = args.gpu_steps
 if isinstance(args.gpu_steps, str):
     gpu_steps = [x.strip() for x in args.gpu_steps.split(' ') if x]
+step_functions = {
+    's1': run_s1,
+    's2a': run_s2a,
+    's2b': run_s2b,
+    's3': run_s3,
+    's4': run_s4,
+    's5': run_s5,
+}
+prereqs = {
+    's1': [],
+    's2a': ['s1'],
+    's2b': ['s1'],
+    's3': ['s1','s2a','s2b'],
+    's4': ['s1','s2a','s2b','s3'],
+    's5': ['s1','s2a','s2b','s3','s4'],
+}
+# Print warning if prerequisite steps are not running
+for step in steps:
+    for prereq in prereqs[step]:
+        if prereq not in steps:
+            print("Warning: step {} has prerequisite steps {}. You are only running steps {}.".format(step, prereqs[step], steps))
+            break
+
+############################
+# Inputs
+############################
 
 # Make sure input files exist for each subject, then generate checksum
 subjects = []
-with open(args.subject_list, 'r') as f:
-    input_dirs = f.readlines()
-for input_dir in input_dirs:
+for input_dir in open(args.subject_list, 'r').readlines():
     input_dir = input_dir.strip()
     if not input_dir or not isdir(input_dir):
         continue
@@ -100,74 +124,83 @@ for input_dir in input_dirs:
     checksum = generate_checksum(input_dir)
     subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
     print("Running subject {} with steps {}".format(sname, steps))
-num_jobs = len(subjects)
-print("In total, running {} subjects".format(num_jobs))
+num_subjects = len(subjects)
+print("In total, running {} subjects".format(num_subjects))
 
-if len(steps) < 1:
-    raise Exception("Must run at least one step")
+############################
+# Node Settings
+############################
+
+def get_walltime(num_subjects, job_time_string, node_count):
+    job_time = get_time_seconds(job_time_string)
+    return get_time_string(clamp((num_subjects * job_time) / node_count, 3600, 86399)) # clamp between 1 and 24 hours
 
 # We assume 2 vCPUs per core
 cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
 
 # Set recommended or overriden node counts
 node_counts = {
-    's1': max(floor(0.2 * num_jobs), 1) if args.s1_nodes is None else args.s1_nodes,
-    's2a': num_jobs if args.s2a_nodes is None else args.s2a_nodes,
-    's2b': num_jobs if args.s2b_nodes is None else args.s2b_nodes,
-    's3': num_jobs * 2 if args.s3_nodes is None else args.s3_nodes,
-    's4': max(floor(0.5 * num_jobs), 1) if args.s4_nodes is None else args.s4_nodes,
+    's1': max(floor(0.2 * num_subjects), 1) if args.s1_nodes is None else args.s1_nodes,
+    's2a': num_subjects if args.s2a_nodes is None else args.s2a_nodes,
+    's2b': num_subjects if args.s2b_nodes is None else args.s2b_nodes,
+    's3': num_subjects * 2 if args.s3_nodes is None else args.s3_nodes,
+    's4': max(floor(0.5 * num_subjects), 1) if args.s4_nodes is None else args.s4_nodes,
+    's5': max(floor(0.2 * num_subjects), 1) if args.s5_nodes is None else args.s5_nodes,
 }
-
 job_times = {
     's1': args.s1_job_time,
     's2a': args.s2a_job_time,
     's2b': args.s2b_job_time,
     's3': args.s3_job_time,
     's4': args.s4_job_time,
+    's5': args.s5_job_time,
 }
-
 walltimes = {
-    's1': args.s1_walltime,
-    's2a': args.s2a_walltime,
-    's2b': args.s2b_walltime,
-    's3': args.s3_walltime,
-    's4': args.s4_walltime,
+    's1': get_walltime(num_subjects, job_times['s1'], node_counts['s1']) if args.s1_walltime is None else args.s1_walltime,
+    's2a': get_walltime(num_subjects, job_times['s2a'], node_counts['s2a']) if args.s2a_walltime is None else args.s2a_walltime,
+    's2b': get_walltime(num_subjects, job_times['s2b'], node_counts['s2b']) if args.s2b_walltime is None else args.s2b_walltime,
+    's3': get_walltime(num_subjects, job_times['s3'], node_counts['s3']) if args.s3_walltime is None else args.s3_walltime,
+    's4': get_walltime(num_subjects, job_times['s4'], node_counts['s4']) if args.s4_walltime is None else args.s4_walltime,
+    's5': get_walltime(num_subjects, job_times['s5'], node_counts['s5']) if args.s5_walltime is None else args.s5_walltime,
 }
-
 hostnames = {
     's1': args.s1_hostname,
     's2a': args.s2a_hostname,
     's2b': args.s2b_hostname,
     's3': args.s3_hostname,
     's4': args.s4_hostname,
+    's5': args.s5_hostname,
 }
-
 cores_per_task = {
     's1': 1,
     's2a': cores_per_node,
     's2b': cores_per_node,
     's3': 2,
     's4': 1,
+    's5': 1,
 }
 
-base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
+############################
+# Parsl
+############################
 
-if args.parsl_path is not None:
-    base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
+if not args.local_host_only:
+    if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
+        raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
 
 executors = [IPyParallelExecutor(label='head',
              provider=LocalProvider(
              init_blocks=cores_per_node,
              max_blocks=cores_per_node))]
 
+base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
+
+if args.parsl_path is not None:
+    base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
+
 for step in steps:
     node_count = int(node_counts[step])
     print("Requesting {} {} nodes".format(node_count, step))
-    if walltimes[step] is not None:
-        walltime = walltimes[step]
-    else:
-        job_time = get_time_seconds(job_times[step])
-        walltime = get_time_string(clamp((num_jobs * job_time) / node_count, 3600, 86399)) # clamp between 1 and 24 hours
     options = base_options
     if step in gpu_steps:
         options += "module load cuda/8.0;\n"
@@ -189,15 +222,13 @@ for step in steps:
             nodes_per_block=node_count,
             init_blocks=1,
             max_blocks=1,
-            walltime=walltime,
+            walltime=walltimes[step],
             scheduler_options=options,
             move_files=False,
             ),
         controller=Controller(public_ip=address_by_route()),
         )
     )
-
-subscripts.config.s1_executor_labels = ['head'] + ['s1'] * node_counts['s1']
 
 config = Config(executors=executors)
 config.retries = 5
@@ -207,28 +238,9 @@ if not args.force:
 parsl.set_stream_logger()
 parsl.load(config)
 
-step_functions = {
-    's1': run_s1,
-    's2a': run_s2a,
-    's2b': run_s2b,
-    's3': run_s3,
-    's4': run_s4,
-}
-
-prereqs = {
-    's1': [],
-    's2a': ['s1'],
-    's2b': ['s1'],
-    's3': ['s2a','s2b'],
-    's4': ['s3'],
-}
-
-# Print warning if prerequisite steps are not set
-if len(steps) > 1:
-    for step in steps:
-        for prereq in prereqs[step]:
-            if prereq not in steps:
-                print("Warning: step {} has prerequisite steps {}".format(step, prereqs[step]))
+############################
+# Outputs
+############################
 
 container = abspath(args.container_path) if args.container_path else None
 odir = abspath(args.output_dir)
@@ -239,13 +251,6 @@ if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
-
-# if args.copy_src_dir:
-#     if not exists(args.copy_src_dir):
-#         print("Warning: {} does not exist. Skipping copy.".format(args.copy_src_dir))
-#     else:
-#         run("cp -Rf {} {}".format(args.copy_src_dir, odir))
-#         update_permissions_base(odir, args.group)
 
 all_jobs = []
 for subject in subjects:
@@ -262,8 +267,7 @@ for subject in subjects:
     smart_mkdir(log_dir)
     smart_mkdir(sdir)
 
-    subject_jobs = {}
-    inputs = []
+    subject_jobs = {} # Store jobs in previous steps to use as inputs
     
     for step in steps:
         stdout, idx = get_valid_filepath(join(log_dir, step + ".stdout"))
@@ -283,29 +287,27 @@ for subject in subjects:
             'timing_log': timing_log,
             'step': step,
             'work_sdir': work_sdir,
+            'render_list': args.render_list,
         }
 
-        # Use jobs from previous steps as inputs for current step
         inputs = []
         for prereq in prereqs[step]:
             if prereq in subject_jobs:
                 inputs.append(subject_jobs[prereq])
-        job = step_functions[step](params, inputs)
-        subject_jobs[step] = job
-        all_jobs.append((params, job))
+        job_future = step_functions[step](params, inputs)
+        subject_jobs[step] = job_future
+        all_jobs.append((params, job_future))
         
 for job in all_jobs:
-    if job[1] is None:
-        continue
     params = job[0]
+    job_future = job[1]
+    if job_future is None:
+        continue
     sname = basename(params['input_dir'])
     step = params['step']
     try:
-        job[1].result()
+        job_future.result()
         print("Finished processing step {} on subject {}".format(step, sname))
     except:
         print("Error: failed to process step {} on subject {}".format(step, sname))
-
-if args.render_dir:
-    from subscripts.render import *
     

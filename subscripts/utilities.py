@@ -181,9 +181,9 @@ def record_finish(params):
                 max_apptimes[substep] = apptime
             else:
                 max_apptimes[substep] = max(apptime, max_apptimes[substep])
-    ideal_walltime = get_time_string(sum(list(max_apptimes.values())))
+    ideal_walltime = get_time_string(sum(list(max_apptimes.values()))) # find longest apptimes in same substep
     actual_walltime = get_time_string(time.time() - task_start_time)
-    total_core_time = get_time_string(task_total_time * cores_per_task)
+    total_core_time = get_time_string(task_total_time * cores_per_task) # sum of apptimes, multiplied by cores
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_finish(step))

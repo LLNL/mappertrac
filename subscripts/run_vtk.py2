@@ -1,7 +1,8 @@
 #!/usr/bin/env python2.7
 import vtk
+import sys
 
-def render(input, output):
+def render(input_file, output_file):
     # try:
     #     v = vtk.vtkMesaRenderer()
     #     if myProcId > 0:
@@ -44,8 +45,11 @@ def render(input, output):
     w2if.Update()
 
     writer = vtk.vtkPNGWriter()
-    writer.SetFileName(output)
+    writer.SetFileName('test.png')
     writer.SetInputConnection(w2if.GetOutputPort())
     writer.Write()
 
-render('blah', 'test.png')
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        raise Exception('Script render.py requires two arguments - input and output paths')
+    render(sys.argv[1], sys.argv[2])

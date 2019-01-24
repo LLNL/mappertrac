@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from subscripts.config import s1_executor_labels
 from subscripts.utilities import run,is_integer,write
 from os.path import join
 from parsl.app.app import python_app
@@ -7,7 +6,7 @@ from shutil import copyfile
 
 ### These three functions parallelize FSL's "eddy_correct"
 
-@python_app(executors=s1_executor_labels, cache=True)
+@python_app(executors=['s1'], cache=True)
 def s1_1_split_timeslices(params, inputs=[]):
     import time
     from subscripts.utilities import run,record_apptime,record_start,smart_remove
@@ -35,7 +34,7 @@ def s1_1_split_timeslices(params, inputs=[]):
     run("fslsplit {} {}_tmp".format(input_data, output_prefix), params)
     record_apptime(params, start_time, 1)
 
-@python_app(executors=s1_executor_labels, cache=True)
+@python_app(executors=['s1'], cache=True)
 def s1_2_timeslice_process(params, timeslice, inputs=[]):
     import time
     from subscripts.utilities import run,record_apptime
@@ -51,7 +50,7 @@ def s1_2_timeslice_process(params, timeslice, inputs=[]):
     run("flirt -in {0} -ref {1}_ref -nosearch -interp trilinear -o {0} -paddingsize 1".format(slice_data, output_prefix), params)
     record_apptime(params, start_time, 2)
 
-@python_app(executors=s1_executor_labels, cache=True)
+@python_app(executors=['s1'], cache=True)
 def s1_3_dti_fit(params, inputs=[]):
     import time
     from subscripts.utilities import run,smart_remove,record_apptime,record_finish,update_permissions

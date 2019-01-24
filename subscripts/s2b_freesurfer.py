@@ -81,7 +81,22 @@ def s2b_2_process_vols(params, inputs=[]):
     allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
     intersection = join(sdir,"intersection.nii.gz")
     exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
-    subcortical_index = join("lists","subcorticalIndex.txt")
+    subcortical_index = [
+        '10:lh_thalamus',
+        '11:lh_caudate',
+        '12:lh_putamen',
+        '13:lh_pallidum',
+        '17:lh_hippocampus',
+        '18:lh_amygdala',
+        '26:lh_acumbens',
+        '49:rh_thalamus',
+        '50:rh_caudate',
+        '51:rh_putamen',
+        '52:rh_pallidum',
+        '53:rh_hippocampus',
+        '54:rh_amygdala',
+        '58:rh_acumbens',
+    ]
     EDI = join(sdir,"EDI")
     EDI_allvols = join(EDI,"allvols")
     smart_mkdir(cort_label_dir)
@@ -106,7 +121,7 @@ def s2b_2_process_vols(params, inputs=[]):
         run("mri_label2vol --label {} --temp {} --identity --o {}".format(label,T1,vol_file), params)
 
     run("mri_convert {} {}".format(join(sdir,"mri","aseg.mgz"),aseg), params)
-    for line in open(subcortical_index,"r").readlines():
+    for line in subcortical_index:
         num = line.split(":")[0].lstrip().rstrip()
         area = line.split(":")[1].lstrip().rstrip()
         area_out = join(subcort_vol_dir,area + ".nii.gz")
