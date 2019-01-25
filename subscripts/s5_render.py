@@ -14,18 +14,15 @@ def s5_2_render_target(params, input_file, output_file, inputs=[]):
     # import time, nibabel, pyevtk, numpy
     import time
     from subscripts.utilities import record_apptime,run,write
-    from os.path import splitext
+    from os.path import splitext,join
     start_time = time.time()
     sdir = params['sdir']
-    vtk_script = join(sdir, 'run_vtk.py2')
-    output_name = splitext(output_file)[0]
-    # data = nibabel.load(input_file).get_data().transpose()
-    # x = numpy.linspace(0, data.shape[0], 100)
-    # y = numpy.linspace(0, data.shape[1], 100)
-    # z = numpy.linspace(0, data.shape[2], 100)
-    # pyevtk.hl.gridToVTK(output_name, x, y, z, pointData = {'data':data})
+    format_vtk = join(sdir, 'format_vtk.py2')
+    run_vtk = join(sdir, 'run_vtk.py2')
+    output_name = splitext(output_file)[0].strip()
     vtr_file = output_name + '.vtr'
-    run('python2.7 {} {} {}'.format(vtk_script, vtr_file, output_file), params)
+    run('python2.7 {} {} {}'.format(format_vtk, input_file, output_name), params)
+    run('python2.7 {} {} {}'.format(run_vtk, vtr_file, output_file), params)
 
     record_apptime(params, start_time, 1)
 
@@ -41,12 +38,15 @@ def run_s5(params, inputs):
     sdir = params['sdir']
     render_dir = join(sdir, 'render')
     smart_mkdir(render_dir)
-    vtk_script = join(sdir, 'run_vtk.py2')
-    copyfile('subscripts/run_vtk.py2', vtk_script)
+    format_vtk = join(sdir, 'format_vtk.py2')
+    run_vtk = join(sdir, 'run_vtk.py2')
+    copyfile('subscripts/format_vtk.py2', format_vtk)
+    copyfile('subscripts/run_vtk.py2', run_vtk)
     s5_1_future = s5_1_start(params, inputs=inputs)
     s5_2_futures = []
     with open(render_list) as f:
         for render_target in f.readlines():
+            render_target = render_target.strip()
             render_name = basename(render_target).split('.')[0]
             input_file = join(sdir, render_target)
             output_file = join(render_dir, render_name + '.png')

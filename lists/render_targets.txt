@@ -1,4 +1,3 @@
-data_eddy.nii.gz
 DTIparams_L1.nii.gz
 FA.nii.gz
 EDI/EDImaps/FAtractsumsTwoway.nii.gz

@@ -1,27 +1,25 @@
 #!/usr/bin/env python2.7
-import vtk
-import sys
+import vtk, sys
 
 def render(input_file, output_file):
     # create a rendering window and renderer
+
+    reader = vtk.vtkXMLRectilinearGridReader()
+    reader.SetFileName(input_file)
+    reader.Update()
+
+    mapper = vtk.vtkDataSetMapper()
+    mapper.SetInputConnection(reader.GetOutputPort());
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+
     ren = vtk.vtkRenderer()
+    ren.SetBackground(0,0,0);
+    ren.AddActor(actor)
+
     renWin = vtk.vtkRenderWindow()
     renWin.AddRenderer(ren)
-
-    cone = vtk.vtkConeSource()
-    cone.SetHeight(3.0)
-    cone.SetRadius(1.0)
-    cone.SetResolution(10)
-
-    coneMapper = vtk.vtkPolyDataMapper()
-    coneMapper.SetInputConnection(cone.GetOutputPort())
-
-    coneActor = vtk.vtkActor()
-    coneActor.SetMapper(coneMapper)
-
-    # assign actor to the renderer
-    ren.AddActor(coneActor)
-
     renWin.Render()
 
     # screenshot code:
@@ -36,5 +34,5 @@ def render(input_file, output_file):
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        raise Exception('Script render.py requires two arguments - input and output paths')
+        raise Exception('Script run_vtk.py2 requires two arguments - input and output paths')
     render(sys.argv[1], sys.argv[2])
