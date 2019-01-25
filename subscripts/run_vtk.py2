@@ -3,25 +3,10 @@ import vtk
 import sys
 
 def render(input_file, output_file):
-    # try:
-    #     v = vtk.vtkMesaRenderer()
-    #     if myProcId > 0:
-    #         _graphics_fact=vtk.vtkGraphicsFactory()
-    #         _graphics_fact.SetOffScreenOnlyMode(1)
-    #         _graphics_fact.SetUseMesaClasses(1)
-    #         del _graphics_fact
-    #     del v
-    # except Exception as e:
-    #     print("No mesa", e)
-
     # create a rendering window and renderer
     ren = vtk.vtkRenderer()
     renWin = vtk.vtkRenderWindow()
     renWin.AddRenderer(ren)
-
-    # create a renderwindowinteractor
-    # iren = vtk.vtkRenderWindowInteractor()
-    # iren.SetRenderWindow(renWin)
 
     cone = vtk.vtkConeSource()
     cone.SetHeight(3.0)
@@ -45,7 +30,7 @@ def render(input_file, output_file):
     w2if.Update()
 
     writer = vtk.vtkPNGWriter()
-    writer.SetFileName('test.png')
+    writer.SetFileName(output_file)
     writer.SetInputConnection(w2if.GetOutputPort())
     writer.Write()
 

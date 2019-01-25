@@ -64,7 +64,8 @@ From: ubuntu:16.04
 
     # VTK
     VTK_ZIP=$(basename $VTK)
-    apt-get -y install python2.7 python2.7-dev libosmesa6-dev libgl1-mesa-glx cmake
+    apt-get -y install python2.7 python2.7-dev python-pip libosmesa6-dev libgl1-mesa-glx cmake
+    python2.7 -m pip install nibabel pyevtk numpy
     wget --no-check-certificate $VTK
     tar -xzf $VTK_ZIP
     VTK_SRC=$PWD/"${VTK_ZIP%.tar.gz}"

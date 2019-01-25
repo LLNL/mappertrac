@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 from parsl.app.app import python_app
+from os.path import exists,join,basename
+from subscripts.utilities import smart_mkdir
+from shutil import copyfile
 
 @python_app(executors=['s5'], cache=True)
 def s5_1_start(params, inputs=[]):
@@ -8,28 +11,47 @@ def s5_1_start(params, inputs=[]):
 
 @python_app(executors=['s5'], cache=True)
 def s5_2_render_target(params, input_file, output_file, inputs=[]):
+    # import time, nibabel, pyevtk, numpy
     import time
-    from subscripts.utilities import record_apptime
+    from subscripts.utilities import record_apptime,run,write
+    from os.path import splitext
     start_time = time.time()
+    sdir = params['sdir']
+    vtk_script = join(sdir, 'run_vtk.py2')
+    output_name = splitext(output_file)[0]
+    # data = nibabel.load(input_file).get_data().transpose()
+    # x = numpy.linspace(0, data.shape[0], 100)
+    # y = numpy.linspace(0, data.shape[1], 100)
+    # z = numpy.linspace(0, data.shape[2], 100)
+    # pyevtk.hl.gridToVTK(output_name, x, y, z, pointData = {'data':data})
+    vtr_file = output_name + '.vtr'
+    run('python2.7 {} {} {}'.format(vtk_script, vtr_file, output_file), params)
+
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['s5'], cache=True)
 def s5_3_complete(params, inputs=[]):
     import time
     from subscripts.utilities import record_apptime,record_finish,update_permissions
-    start_time = time.time()
     update_permissions(params)
-    record_apptime(params, start_time, 2)
     record_finish(params)
 
 def run_s5(params, inputs):
     render_list = params['render_list']
+    sdir = params['sdir']
+    render_dir = join(sdir, 'render')
+    smart_mkdir(render_dir)
+    vtk_script = join(sdir, 'run_vtk.py2')
+    copyfile('subscripts/run_vtk.py2', vtk_script)
     s5_1_future = s5_1_start(params, inputs=inputs)
     s5_2_futures = []
     with open(render_list) as f:
         for render_target in f.readlines():
-            input_file = ''
-            output_file = ''
+            render_name = basename(render_target).split('.')[0]
+            input_file = join(sdir, render_target)
+            output_file = join(render_dir, render_name + '.png')
+            print(input_file)
+            print(output_file)
             s5_2_futures.append(s5_2_render_target(params, input_file, output_file, inputs=[s5_1_future]))
     return s5_3_complete(params, inputs=s5_2_futures)
 
