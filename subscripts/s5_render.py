@@ -17,12 +17,12 @@ def s5_2_render_target(params, input_file, output_file, inputs=[]):
     from os.path import splitext,join
     start_time = time.time()
     sdir = params['sdir']
-    format_vtk = join(sdir, 'format_vtk.py2')
-    run_vtk = join(sdir, 'run_vtk.py2')
+    format_vtk = join(sdir, 'format_vtk.py')
+    run_vtk = join(sdir, 'run_vtk.py')
     output_name = splitext(output_file)[0].strip()
-    vtr_file = output_name + '.vtr'
-    run('python2.7 {} {} {}'.format(format_vtk, input_file, output_name), params)
-    run('python2.7 {} {} {}'.format(run_vtk, vtr_file, output_file), params)
+    # vtr_file = output_name + '.vtr'
+    # run('python3.5 {} {} {}'.format(format_vtk, input_file, output_name), params)
+    run('/opt/vtk/bin/vtkpython {} {} {}'.format(run_vtk, input_file, output_file), params)
 
     record_apptime(params, start_time, 1)
 
@@ -38,10 +38,10 @@ def run_s5(params, inputs):
     sdir = params['sdir']
     render_dir = join(sdir, 'render')
     smart_mkdir(render_dir)
-    format_vtk = join(sdir, 'format_vtk.py2')
-    run_vtk = join(sdir, 'run_vtk.py2')
-    copyfile('subscripts/format_vtk.py2', format_vtk)
-    copyfile('subscripts/run_vtk.py2', run_vtk)
+    format_vtk = join(sdir, 'format_vtk.py')
+    run_vtk = join(sdir, 'run_vtk.py')
+    copyfile('subscripts/format_vtk.py', format_vtk)
+    copyfile('subscripts/run_vtk.py', run_vtk)
     s5_1_future = s5_1_start(params, inputs=inputs)
     s5_2_futures = []
     with open(render_list) as f:
@@ -73,5 +73,5 @@ def run_s5(params, inputs):
 #         }
 #         for target in open(args.render_targets, 'r').readlines():
 #             # Ugly, but only way I could get OSMesa working
-#             run("python2.7 subscripts/render.py2 {} {}".format('a', 'b'), params)
+#             run("python2.7 subscripts/render.py {} {}".format('a', 'b'), params)
 #         update_permissions_base(render_dir, args.group)
