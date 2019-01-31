@@ -1,3 +1,5 @@
 DTIparams_L1.nii.gz
 FA.nii.gz
+cort.nii.gz
+subcort.nii.gz
 EDI/EDImaps/FAtractsumsTwoway.nii.gz
