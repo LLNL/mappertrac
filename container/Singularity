@@ -56,7 +56,7 @@ From: ubuntu:16.04
         --disable-glx                                     \
         --disable-osmesa --enable-gallium-osmesa          \
         ac_cv_path_LLVM_CONFIG=llvm-config-8
-    make -j6
+    make -j12
     make install
     cd $MAIN_DIR
 
@@ -82,9 +82,9 @@ From: ubuntu:16.04
     -DBUILD_SHARED_LIBS=ON \
     -DBUILD_TESTING=OFF \
     $VTK_SRC
-    make -j6
+    make -j12
     cd $MAIN_DIR
-    #python3.5 -m pip install numpy
+    #python3.5 -m pip install nibabel pyevtk numpy
 
     # Nvidia Drivers
     apt-get -y install linux-headers-`uname -r`
@@ -106,6 +106,10 @@ From: ubuntu:16.04
     sh $CUDA8_RUN -silent -override -toolkit
 
     # FSL
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get install -y tzdata
+    ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+    dpkg-reconfigure --frontend noninteractive tzdata
     gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv 9BDB3D89CE49EC21
     wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
     apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9
@@ -174,3 +178,4 @@ From: ubuntu:16.04
     export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${VTK_DIR}/bin:$MESA_DIR/lib:${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
+

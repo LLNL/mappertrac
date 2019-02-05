@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from parsl.app.app import python_app
 from os.path import exists,join,basename
-from subscripts.utilities import smart_mkdir
+from subscripts.utilities import smart_mkdir,write
 from shutil import copyfile
 
 @python_app(executors=['s5'], cache=True)
@@ -35,6 +35,7 @@ def s5_3_complete(params, inputs=[]):
 def run_s5(params, inputs):
     render_list = params['render_list']
     sdir = params['sdir']
+    stdout = params['stdout']
     render_dir = join(sdir, 'render')
     smart_mkdir(render_dir)
     run_vtk = join(sdir, 'run_vtk.py')
@@ -47,7 +48,8 @@ def run_s5(params, inputs):
             render_name = basename(render_target).split('.')[0]
             input_file = join(sdir, render_target)
             output_file = join(render_dir, render_name + '.png')
-            print(input_file)
-            print(output_file)
-            s5_2_futures.append(s5_2_render_target(params, input_file, output_file, inputs=[s5_1_future]))
+            if exists(input_file):
+                s5_2_futures.append(s5_2_render_target(params, input_file, output_file, inputs=[s5_1_future]))
+            else:
+                write(stdout, "Cannot find input file {}".format(input_file))
     return s5_3_complete(params, inputs=s5_2_futures)

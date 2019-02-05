@@ -34,7 +34,7 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     a_to_b_file = join(pbtk_dir,a_to_b_formatted)
     bs = join(sdir,"bs.nii.gz")
     terminationmask = join(sdir,"terminationmask.nii.gz")
-    exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
+    # exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
     bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
     merged = join(bedpostxResults,"merged")
     nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
@@ -64,8 +64,8 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
 
     pbtx_args = (" -x {} ".format(a_file) +
-        " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-        # " --pd -l -c 0.2 -S 1000 --steplength=0.5 -P 100" +
+        # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+        " --pd -l -c 0.2 -S 1000 --steplength=0.5 -P 100" +
         " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
         " --forcedir --opd" +
         " -s {}".format(merged) +

@@ -63,9 +63,9 @@ def render(input_file, output_file):
     slice_side.GetProperty().SetColorLevel(0.5*slice_scale)
 
     text1_actor = vtk.vtkTextActor()
-    text1_actor.SetInput("min {:.6g}, max {:.6g}".format(vrange[0], vrange[1]))
+    text1_actor.SetInput("min {:.5g}, max {:.5g}".format(vrange[0], vrange[1]))
     text1_actor.SetPosition(0.1 * center1[0], 0.1 * center1[1])
-    text1_actor.GetTextProperty().SetFontSize(24)
+    text1_actor.GetTextProperty().SetFontSize(18)
     text1_actor.GetTextProperty().SetColor(1,1,1)
 
     text2_actor = vtk.vtkTextActor()

@@ -80,7 +80,7 @@ def s2b_2_process_vols(params, inputs=[]):
     terminationmask = join(sdir,"terminationmask.nii.gz")
     allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
     intersection = join(sdir,"intersection.nii.gz")
-    exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
+    # exclusion_bsplusthalami = join(sdir,"exclusion_bsplusthalami.nii.gz")
     subcortical_index = [
         '10:lh_thalamus',
         '11:lh_caudate',
@@ -150,10 +150,10 @@ def s2b_2_process_vols(params, inputs=[]):
     run("fslmaths {} -bin {}".format(terminationmask, terminationmask), params)
     run("fslmaths {} -mul {} {}".format(terminationmask, allvoxelscortsubcort, intersection), params)
     run("fslmaths {} -sub {} {}".format(terminationmask, intersection, terminationmask), params)
-    run("fslmaths {} -add {} -add {} {}".format(bs,
-                                                join(subcort_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
-                                                join(subcort_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
-                                                exclusion_bsplusthalami), params)
+    # run("fslmaths {} -add {} -add {} {}".format(bs,
+    #                                             join(subcort_vol_dir + "_s2fa_m","lh_thalamus_s2fa.nii.gz"),
+    #                                             join(subcort_vol_dir + "_s2fa_m","rh_thalamus_s2fa.nii.gz"),
+    #                                             exclusion_bsplusthalami), params)
     for file in glob(join(sdir,"volumes_cortical_s2fa","*.nii.gz")):
         copy(file,EDI_allvols)
     for file in glob(join(sdir,"volumes_subcortical_s2fa","*.nii.gz")):
