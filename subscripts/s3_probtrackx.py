@@ -64,8 +64,8 @@ def s3_2_probtrackx(params, a, b, inputs=[]):
     run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
 
     pbtx_args = (" -x {} ".format(a_file) +
-        # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-        " --pd -l -c 0.2 -S 1000 --steplength=0.5 -P 100" +
+        " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+        # " --pd -l -c 0.2 -S 1000 --steplength=0.5 -P 100" +
         " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
         " --forcedir --opd" +
         " -s {}".format(merged) +

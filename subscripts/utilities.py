@@ -7,7 +7,7 @@ import shutil
 import hashlib
 import grp
 from glob import glob
-from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir
+from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile
 from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
 
@@ -22,6 +22,18 @@ def smart_remove(path):
         shutil.rmtree(path)
     elif exists(path):
         remove(path)
+
+def smart_copy(src, dest):
+    if not exists(src):
+        raise Exception("Cannot find file to copy: {}".format(src))
+    if exists(dest) and samefile(src, dest):
+        print("Warning: ignoring smart_copy because src and dest both point to {}".format(dest))
+        return
+    smart_remove(dest)
+    if isdir(src):
+        shutil.copytree(src, dest)
+    else:
+        shutil.copyfile(src, dest)
 
 def exist_all(paths):
     for path in paths:

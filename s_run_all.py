@@ -125,7 +125,10 @@ for input_dir in open(args.subject_list, 'r').readlines():
     subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
     print("Running subject {} with steps {}".format(sname, steps))
 num_subjects = len(subjects)
+if num_subjects == 0:
+    raise Exception("Not running any subjects")
 print("In total, running {} subjects".format(num_subjects))
+
 
 ############################
 # Node Settings
@@ -291,9 +294,12 @@ for subject in subjects:
         }
 
         inputs = []
+        actual_prereqs = []
         for prereq in prereqs[step]:
             if prereq in subject_jobs:
                 inputs.append(subject_jobs[prereq])
+                actual_prereqs.append(prereq)
+        print("Starting step {} after prereq steps {}".format(step, actual_prereqs))
         job_future = step_functions[step](params, inputs)
         subject_jobs[step] = job_future
         all_jobs.append((params, job_future))

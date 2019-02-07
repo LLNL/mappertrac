@@ -17,6 +17,6 @@ qsub/
 __pycache__
 !.gitignore
 *~
-lists/subjects*.txt
+lists/subject*.txt
 cmd_parsl.auto*
 test*

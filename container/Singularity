@@ -27,7 +27,7 @@ From: ubuntu:16.04
     rm /bin/sh
     ln -s /bin/bash /bin/sh
 
-    # VTK
+    # Image Rendering
     ### LLVM
     wget --no-check-certificate -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
     apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from subscripts.utilities import run,is_integer,write
+from subscripts.utilities import run,is_integer,write,smart_copy
 from os.path import join
 from parsl.app.app import python_app
 from shutil import copyfile
@@ -9,9 +9,8 @@ from shutil import copyfile
 @python_app(executors=['s1'], cache=True)
 def s1_1_split_timeslices(params, inputs=[]):
     import time
-    from subscripts.utilities import run,record_apptime,record_start,smart_remove
+    from subscripts.utilities import run,record_apptime,record_start,smart_remove,smart_copy
     from os.path import join
-    from shutil import copyfile
     from glob import glob
     input_dir = params['input_dir']
     sdir = params['sdir']
@@ -26,9 +25,9 @@ def s1_1_split_timeslices(params, inputs=[]):
     for j in glob("{}_ref*".format(output_prefix)):
         smart_remove(j)
     input_data = join(sdir, "hardi.nii.gz")
-    copyfile(join(input_dir,"bvecs"),join(sdir,"bvecs"))
-    copyfile(join(input_dir,"bvals"),join(sdir,"bvals"))
-    copyfile(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
+    smart_copy(join(input_dir,"bvecs"),join(sdir,"bvecs"))
+    smart_copy(join(input_dir,"bvals"),join(sdir,"bvals"))
+    smart_copy(join(input_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
     output_prefix = join(sdir,"data_eddy")
     run("fslroi {} {}_ref 0 1".format(input_data, output_prefix), params)
     run("fslsplit {} {}_tmp".format(input_data, output_prefix), params)
@@ -100,7 +99,7 @@ def run_s1(params, inputs):
     container = params['container']
     sdir = params['sdir']
     input_data = join(sdir, "hardi.nii.gz")
-    copyfile(join(input_dir, "hardi.nii.gz"), input_data)
+    smart_copy(join(input_dir, "hardi.nii.gz"), input_data)
     timeslices = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data), params).split()
     if not timeslices or not is_integer(timeslices[-1]):
         write(stdout, "Failed to read timeslices from {}".format(input_data))

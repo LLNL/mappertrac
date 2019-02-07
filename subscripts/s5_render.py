@@ -11,18 +11,18 @@ def s5_1_start(params, inputs=[]):
 
 @python_app(executors=['s5'], cache=True)
 def s5_2_render_target(params, input_file, output_file, inputs=[]):
-    # import time, nibabel, pyevtk, numpy
     import time
     from subscripts.utilities import record_apptime,run,write
-    from os.path import splitext,join
+    from os.path import splitext,join,exists
     start_time = time.time()
     sdir = params['sdir']
     run_vtk = join(sdir, 'run_vtk.py')
+    stdout = params['stdout']
+    if not exists(input_file):
+        write(stdout, "Cannot find input file {}".format(input_file))
+        return
     output_name = splitext(output_file)[0].strip()
-    # vtr_file = output_name + '.vtr'
-    # run('python3.5 {} {} {}'.format(format_vtk, input_file, output_name), params)
     run('/opt/vtk/bin/vtkpython {} {} {}'.format(run_vtk, input_file, output_file), params)
-
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['s5'], cache=True)
@@ -48,8 +48,5 @@ def run_s5(params, inputs):
             render_name = basename(render_target).split('.')[0]
             input_file = join(sdir, render_target)
             output_file = join(render_dir, render_name + '.png')
-            if exists(input_file):
-                s5_2_futures.append(s5_2_render_target(params, input_file, output_file, inputs=[s5_1_future]))
-            else:
-                write(stdout, "Cannot find input file {}".format(input_file))
+            s5_2_futures.append(s5_2_render_target(params, input_file, output_file, inputs=[s5_1_future]))
     return s5_3_complete(params, inputs=s5_2_futures)
