@@ -21,8 +21,11 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     # b_to_a_file = join(pbtk_dir,"{}to{}.nii.gz".format(b,a))
     a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
     b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
-    if not exists(a_to_b_file) or not exists(b_to_a_file):
-        write(stdout, "Error: both {} and {} must exist".format(a_to_b_file, b_to_a_file))
+    if not exists(a_to_b_file):
+        write(stdout, "Error: cannot find {}".format(a_to_b_file))
+        return
+    if not exists(b_to_a_file):
+        write(stdout, "Error: cannot find {}".format(b_to_a_file))
         return
     smart_mkdir(join(pbtk_dir,"twoway_consensus_edges"))
     consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b)

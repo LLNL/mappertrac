@@ -24,6 +24,8 @@ def smart_remove(path):
         remove(path)
 
 def smart_copy(src, dest):
+    """Copy file or directory, while ignoreing non-existent or equivalent files
+    """
     if not exists(src):
         raise Exception("Cannot find file to copy: {}".format(src))
     if exists(dest) and samefile(src, dest):
@@ -116,6 +118,8 @@ def get_time_string(seconds):
     """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
+    if h > 1000:
+        return "invalid_time_string"
     return "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
 
 def get_time_seconds(string):

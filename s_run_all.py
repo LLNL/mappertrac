@@ -80,6 +80,13 @@ if isinstance(args.steps, str):
     steps = [x.strip() for x in args.steps.split(' ') if x]
 if isinstance(args.gpu_steps, str):
     gpu_steps = [x.strip() for x in args.gpu_steps.split(' ') if x]
+valid_steps = ['s1','s2a','s2b','s3','s4','s5']
+steps = [x for x in steps if x in valid_steps]
+gpu_steps = [x for x in gpu_steps if x in valid_steps]
+if len(steps) != len(set(steps)):
+    raise Exception("Argument \"steps\" has duplicate values")
+if len(gpu_steps) != len(set(gpu_steps)):
+    raise Exception("Argument \"gpu_steps\" has duplicate values")
 step_functions = {
     's1': run_s1,
     's2a': run_s2a,
