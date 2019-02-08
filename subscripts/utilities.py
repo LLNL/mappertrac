@@ -118,9 +118,11 @@ def get_time_string(seconds):
     """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
-    if h > 1000:
-        return "invalid_time_string"
-    return "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+    time_string = "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
+    if h > 99 or h < 0:
+        print("Invalid time string {}".format(time_string))
+        return "00:00:00"
+    return time_string
 
 def get_time_seconds(string):
     """Returns Slurm-compatible time string as seconds
