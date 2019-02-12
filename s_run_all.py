@@ -185,7 +185,7 @@ cores_per_task = {
     's1': 1,
     's2a': cores_per_node,
     's2b': cores_per_node,
-    's3': 2,
+    's3': 3, # setting this too low can lead to probtrackx exceeding local memory and crashing
     's4': 1,
     's5': 1,
 }

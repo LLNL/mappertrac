@@ -84,7 +84,7 @@ From: ubuntu:16.04
     $VTK_SRC
     make -j12
     cd $MAIN_DIR
-    #python3.5 -m pip install nibabel pyevtk numpy
+    python3.5 -m pip install numpy
 
     # Nvidia Drivers
     apt-get -y install linux-headers-`uname -r`

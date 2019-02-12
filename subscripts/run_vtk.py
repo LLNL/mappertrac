@@ -1,5 +1,8 @@
 #!/usr/bin/env python3.5
 import vtk, sys
+import numpy as np
+from os.path import join, split, splitext
+from vtk.util import numpy_support
 
 def render(input_file, output_file):
     reader = vtk.vtkNIFTIImageReader()
@@ -138,7 +141,26 @@ def render(input_file, output_file):
     writer.SetInputConnection(w2if.GetOutputPort())
     writer.Write()
 
+    # histogram code:
+    num_bins = 256
+    histogram = vtk.vtkImageHistogram()
+    histogram.SetInputConnection(reader.GetOutputPort())
+    histogram.AutomaticBinningOn()
+    histogram.SetMaximumNumberOfBins(num_bins)
+    histogram.Update()
+    origin = histogram.GetBinOrigin()
+    spacing = histogram.GetBinSpacing()
+    path, output_name = split(output_file)
+    output_root, ext = splitext(output_name)
+    bin_values = np.linspace(0, num_bins * spacing, num=num_bins, endpoint=False)
+    hist_output = join(path, output_root + '_hist.txt')
+    hist_values = numpy_support.vtk_to_numpy(histogram.GetHistogram())
+    if len(hist_values) != len(bin_values):
+        raise Exception('Histogram values and bins do not match')
+    hist_mat = np.column_stack((bin_values, hist_values))
+    np.savetxt(hist_output, hist_mat, fmt='%.9g')
+
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        raise Exception('Script run_vtk.py2 requires two arguments - input and output paths')
+        raise Exception('Script run_vtk.py requires two arguments - input and output paths')
     render(sys.argv[1], sys.argv[2])
