@@ -40,6 +40,7 @@ parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', act
 parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
 parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
 parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).', default='lists/render_targets.txt')
+parser.add_argument('--fast_probtrackx', help='Faster parameters for s3_probtrackx. 1/5th number of streamlines, 1/2 number of steps per streamline', action='store_true')
 
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
@@ -154,8 +155,8 @@ node_counts = {
     's2a': num_subjects if args.s2a_nodes is None else args.s2a_nodes,
     's2b': num_subjects if args.s2b_nodes is None else args.s2b_nodes,
     's3': num_subjects * 2 if args.s3_nodes is None else args.s3_nodes,
-    's4': max(floor(0.5 * num_subjects), 1) if args.s4_nodes is None else args.s4_nodes,
-    's5': max(floor(0.2 * num_subjects), 1) if args.s5_nodes is None else args.s5_nodes,
+    's4': max(floor(0.1 * num_subjects), 1) if args.s4_nodes is None else args.s4_nodes,
+    's5': max(floor(0.1 * num_subjects), 1) if args.s5_nodes is None else args.s5_nodes,
 }
 job_times = {
     's1': args.s1_job_time,
@@ -254,9 +255,9 @@ parsl.load(config)
 
 container = abspath(args.container_path) if args.container_path else None
 odir = abspath(args.output_dir)
-global_timing_log = join(odir, 'global_log', 'timing.csv')
+global_timing_log = join(odir, 'global_timing', 'timing.csv')
 smart_mkdir(odir)
-smart_mkdir(join(odir, 'global_log'))
+smart_mkdir(join(odir, 'global_timing'))
 if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
 if islink(join(odir,"fsaverage")):
@@ -298,6 +299,7 @@ for subject in subjects:
             'step': step,
             'work_sdir': work_sdir,
             'render_list': args.render_list,
+            'fast_probtrackx': args.fast_probtrackx,
         }
 
         inputs = []

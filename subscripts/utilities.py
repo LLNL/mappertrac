@@ -1,11 +1,4 @@
-import time
-import datetime
-import os
-import subprocess
-import sys
-import shutil
-import hashlib
-import grp
+import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap
 from glob import glob
 from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile
 from os import system,environ,makedirs,remove
@@ -157,6 +150,10 @@ def record_start(params):
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_start(step))
+        f.write("---------------------------------------\n")
+        f.write("Parameters:\n")
+        for k, v in params.items():
+            f.write(str(k) + ': ' + str(v) + '\n')
         f.write("=====================================\n\n")
     write(timing_log, "{} start".format(time.time()))
 
@@ -211,6 +208,7 @@ def record_finish(params):
         f.write("{} parallel cores per task\n".format(cores_per_task))
         f.write("Used GPU: {}\n".format(use_gpu))
         f.write("=====================================\n\n")
+        f.write("stdout_log_complete")
     write(global_timing_log, "{},{},{},{},{},{}".format(sname, step, ideal_walltime, actual_walltime, total_core_time, use_gpu))
     run("chmod 770 {}".format(timing_log))
     run("chmod 770 {}".format(stdout))
@@ -252,11 +250,19 @@ def get_valid_filepath(template):
     path, ext = splitext(template)
     idx = 0
     valid_path = path + "_{:02d}".format(idx) + ext
-    while exists(valid_path) and idx < 100:
+    while exists(valid_path):
         idx += 1
+        if idx >= 100:
+            raise Exception("Could not find valid filepath for template {}".format(template))
         valid_path = path + "_{:02d}".format(idx) + ext
-    if idx >= 100:
-        raise Exception("Could not find valid filepath for template {}".format(template))
+
+    # Return last log output if it hasn't completed (to preserve Parsl checkpointing)
+    last_valid_path = path + "_{:02d}".format(idx-1) + ext
+    if exists(last_valid_path):
+        with open(last_valid_path, 'rb', 0) as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
+            if s.find(b'stdout_log_complete') != -1:
+                return last_valid_path, idx-1
+
     return valid_path, idx
 
 def running_step(steps, *argv):
