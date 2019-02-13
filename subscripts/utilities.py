@@ -260,8 +260,8 @@ def get_valid_filepath(template):
     last_valid_path = path + "_{:02d}".format(idx-1) + ext
     if exists(last_valid_path):
         with open(last_valid_path, 'rb', 0) as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
-            if s.find(b'stdout_log_complete') != -1:
-                return last_valid_path, idx-1
+            if s.find(b'stdout_log_complete') == -1:
+                return last_valid_path, idx-1 # return previous log path if it did not complete
 
     return valid_path, idx
 

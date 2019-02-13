@@ -43,7 +43,7 @@ parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s
 parser.add_argument('--fast_probtrackx', help='Faster parameters for s3_probtrackx. 1/5th number of streamlines, 1/2 number of steps per streamline', action='store_true')
 
 # Site-specific machine settings
-parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:05:00")
+parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:15:00")
 parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
 parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="08:00:00")
 parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="12:00:00")
@@ -144,7 +144,7 @@ print("In total, running {} subjects".format(num_subjects))
 
 def get_walltime(num_subjects, job_time_string, node_count):
     job_time = get_time_seconds(job_time_string)
-    return get_time_string(clamp((num_subjects * job_time) / node_count, 3600, 86399)) # clamp between 1 and 24 hours
+    return get_time_string(clamp((num_subjects * job_time) / node_count, 7200, 86399)) # clamp between 2 and 24 hours
 
 # We assume 2 vCPUs per core
 cores_per_node = int(floor(multiprocessing.cpu_count() / 2))

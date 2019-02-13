@@ -20,12 +20,12 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
     from os.path import join,exists,split
     from shutil import copyfile
+    start_time = time.time()
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
     fast_probtrackx = params['fast_probtrackx']
-    start_time = time.time()
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_oneway = join(sdir, "connectome_oneway.dot")
@@ -95,7 +95,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
         if not a == "lh.paracentral": # discard all temp files except these for debugging
             smart_remove(tmp)
-        record_apptime(params, start_time, 1, a, b)
+    record_apptime(params, start_time, 1)
 
 @python_app(executors=['s3'], cache=True)
 def s3_3_combine(params, inputs=[]):
