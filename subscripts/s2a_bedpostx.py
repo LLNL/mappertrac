@@ -54,5 +54,5 @@ def s2a_bedpostx(params, inputs=[]):
     record_apptime(params, start_time, 1)
     record_finish(params)
 
-def run_s2a(params, inputs=[]):
+def setup_s2a(params, inputs=[]):
     return s2a_bedpostx(params, inputs=inputs)

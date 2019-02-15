@@ -32,7 +32,7 @@ def s5_3_complete(params, inputs=[]):
     update_permissions(params)
     record_finish(params)
 
-def run_s5(params, inputs):
+def setup_s5(params, inputs):
     render_list = params['render_list']
     sdir = params['sdir']
     stdout = params['stdout']

@@ -162,6 +162,6 @@ def s2b_2_process_vols(params, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
-def run_s2b(params, inputs):
+def setup_s2b(params, inputs):
     s2b_1_future = s2b_1_recon_all(params, inputs=inputs)
     return s2b_2_process_vols(params, inputs=[s2b_1_future])

@@ -131,7 +131,7 @@ def s3_3_combine(params, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
-def run_s3(params, inputs):
+def setup_s3(params, inputs):
     edge_chunk_size = 4 # help with edge case, where number of jobs causes log output to crash
     sdir = params['sdir']
     stdout = params['stdout']

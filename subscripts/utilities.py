@@ -244,26 +244,24 @@ def generate_checksum(input_dir):
         f.close()
     return md5.hexdigest()
 
-def get_valid_filepath(template):
-    """Return a valid path for new files. Used for log outputs.
+def get_log_path(template):
+    """Return paths for log outputs.
     """
     path, ext = splitext(template)
     idx = 0
-    valid_path = path + "_{:02d}".format(idx) + ext
-    while exists(valid_path):
+    new_log = path + "_{:02d}".format(idx) + ext
+    while exists(new_log):
         idx += 1
         if idx >= 100:
             raise Exception("Could not find valid filepath for template {}".format(template))
-        valid_path = path + "_{:02d}".format(idx) + ext
+        new_log = path + "_{:02d}".format(idx) + ext
+    prev_log = path + "_{:02d}".format(idx-1) + ext
+    return new_log, prev_log, idx
 
-    # Return last log output if it hasn't completed (to preserve Parsl checkpointing)
-    last_valid_path = path + "_{:02d}".format(idx-1) + ext
-    if exists(last_valid_path):
-        with open(last_valid_path, 'rb', 0) as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
-            if s.find(b'stdout_log_complete') == -1:
-                return last_valid_path, idx-1 # return previous log path if it did not complete
-
-    return valid_path, idx
+def is_log_complete(path):
+    if exists(path):
+        with open(path, 'rb', 0) as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as s:
+            return s.find(b'stdout_log_complete') != -1
 
 def running_step(steps, *argv):
     """Return true if running any step in arguments.

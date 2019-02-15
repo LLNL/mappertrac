@@ -93,13 +93,15 @@ def s1_3_dti_fit(params, inputs=[]):
     record_apptime(params, start_time, 3)
     record_finish(params)
 
-def run_s1(params, inputs):
+def setup_s1(params, inputs):
     input_dir = params['input_dir']
     stdout = params['stdout']
     container = params['container']
     sdir = params['sdir']
     input_data = join(sdir, "hardi.nii.gz")
     smart_copy(join(input_dir, "hardi.nii.gz"), input_data)
+    # run("chmod 770 {}".format(input_data)) # fix edge cases where permissions aren't applied
+    # run("chgrp tbidata {}".format(input_data))
     timeslices = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data), params).split()
     if not timeslices or not is_integer(timeslices[-1]):
         write(stdout, "Failed to read timeslices from {}".format(input_data))

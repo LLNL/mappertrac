@@ -85,7 +85,7 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
-def run_s4(params, inputs):
+def setup_s4(params, inputs):
     edge_list = params['edge_list']
     s4_1_future = s4_1_start(params, inputs=inputs)
     s4_2_futures = []
