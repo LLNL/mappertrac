@@ -33,6 +33,9 @@ parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
 parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_reduced.txt"))
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
+parser.add_argument('--partition', help='Slurm partition to assign jobs', default="pbatch")
+parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
+parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps', default="module load cuda/8.0;")
 parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
 parser.add_argument('--container_path', help='Path to Singularity container image')
 parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
@@ -45,7 +48,7 @@ parser.add_argument('--fast_probtrackx', help='Faster parameters for s3_probtrac
 
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:15:00")
-parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:60:00")
+parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:45:00")
 parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="08:00:00")
 parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="12:00:00")
 parser.add_argument('--s4_job_time', help='Average time to finish s4 on a single subject with a single node', default="00:45:00")
@@ -155,12 +158,12 @@ cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
 # Set recommended or overriden node counts
 node_counts = {
     'debug': 1,
-    's1': max(floor(0.2 * num_subjects), 1) if args.s1_nodes is None else args.s1_nodes,
-    's2a': max(floor(0.3 * num_subjects), 1) if args.s2a_nodes is None else args.s2a_nodes,
-    's2b': max(floor(1.0 * num_subjects), 1) if args.s2b_nodes is None else args.s2b_nodes,
-    's3': max(floor(2.0 * num_subjects), 1) if args.s3_nodes is None else args.s3_nodes,
-    's4': max(floor(0.1 * num_subjects), 1) if args.s4_nodes is None else args.s4_nodes,
-    's5': max(floor(0.1 * num_subjects), 1) if args.s5_nodes is None else args.s5_nodes,
+    's1': max(floor(0.2 * num_subjects), 1) if args.s1_nodes is None else int(args.s1_nodes),
+    's2a': max(floor(1.0 * num_subjects), 1) if args.s2a_nodes is None else int(args.s2a_nodes),
+    's2b': max(floor(1.0 * num_subjects), 1) if args.s2b_nodes is None else int(args.s2b_nodes),
+    's3': max(floor(2.0 * num_subjects), 1) if args.s3_nodes is None else int(args.s3_nodes),
+    's4': max(floor(0.1 * num_subjects), 1) if args.s4_nodes is None else int(args.s4_nodes),
+    's5': max(floor(0.1 * num_subjects), 1) if args.s5_nodes is None else int(args.s5_nodes),
 }
 job_times = {
     's1': args.s1_job_time,
@@ -212,6 +215,8 @@ executors = [IPyParallelExecutor(label='head',
              max_blocks=cores_per_node))]
 
 base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
+if args.scheduler_options is not None:
+    base_options += str(args.scheduler_options) + '\n'
 
 if args.parsl_path is not None:
     base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
@@ -221,7 +226,7 @@ for step in steps:
     print("Requesting {} {} nodes".format(node_count, step))
     options = base_options
     if step in gpu_steps:
-        options += "module load cuda/8.0;\n"
+        options += str(args.gpu_options) + '\n'
     if args.local_host_only:
         channel = LocalChannel()
     else:
@@ -234,7 +239,7 @@ for step in steps:
         label=step,
         workers_per_node=int(cores_per_node / cores_per_task[step]),
         provider=SlurmProvider(
-            'pbatch',
+            args.partition,
             channel=channel,
             launcher=SrunLauncher(),
             nodes_per_block=node_count,
@@ -269,6 +274,8 @@ if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
+edge_list = abspath(args.edge_list)
+render_list = abspath(args.render_list)
 
 all_jobs = []
 for subject in subjects:
@@ -310,7 +317,7 @@ for subject in subjects:
             'sdir': sdir,
             'container': container,
             'checksum': checksum,
-            'edge_list': args.edge_list,
+            'edge_list': edge_list,
             'group': args.group,
             'global_timing_log': global_timing_log,
             'cores_per_task': cores_per_task[step],
@@ -319,7 +326,7 @@ for subject in subjects:
             'timing_log': timing_log,
             'step': step,
             'work_sdir': work_sdir,
-            'render_list': args.render_list,
+            'render_list': render_list,
             'fast_probtrackx': args.fast_probtrackx,
         }
 
