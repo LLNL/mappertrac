@@ -36,7 +36,7 @@ parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp
 parser.add_argument('--partition', help='Slurm partition to assign jobs', default="pbatch")
 parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
 parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps', default="module load cuda/8.0;")
-parser.add_argument('--group', help='Unix group to assign file permissions', default='tbidata')
+parser.add_argument('--group', help='Unix group to assign file permissions')
 parser.add_argument('--container_path', help='Path to Singularity container image')
 parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
 parser.add_argument('--username', help='Unix username for Parsl job requests', default=getpass.getuser())
