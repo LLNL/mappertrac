@@ -73,6 +73,12 @@ parser.add_argument('--s2b_nodes', help='Override recommended node count for ste
 parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
 parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
 parser.add_argument('--s5_nodes', help='Override recommended node count for step s5.')
+parser.add_argument('--s1_cores', help='Override core count for node running step s1.')
+parser.add_argument('--s2a_cores', help='Override core count for node running step s2a.')
+parser.add_argument('--s2b_cores', help='Override core count for node running step s2b.')
+parser.add_argument('--s3_cores', help='Override core count for node running step s3.')
+parser.add_argument('--s4_cores', help='Override core count for node running step s4.')
+parser.add_argument('--s5_cores', help='Override core count for node running step s5.')
 args = parser.parse_args()
 
 ############################
@@ -153,7 +159,7 @@ def get_walltime(num_subjects, job_time_string, node_count):
     return get_time_string(clamp((num_subjects * job_time) / node_count, 7200, 86399)) # clamp between 2 and 24 hours
 
 # We assume 2 vCPUs per core
-cores_per_node = int(floor(multiprocessing.cpu_count() / 2))
+head_node_cores = int(floor(multiprocessing.cpu_count() / 2))
 
 # Set recommended or overriden node counts
 node_counts = {
@@ -191,11 +197,20 @@ hostnames = {
     's4': args.s4_hostname,
     's5': args.s5_hostname,
 }
+cores_per_node = {
+    'debug': head_node_cores,
+    's1': head_node_cores if args.s1_cores is None else int(args.s1_cores),
+    's2a': head_node_cores if args.s2a_cores is None else int(args.s2a_cores),
+    's2b': head_node_cores if args.s2b_cores is None else int(args.s2b_cores),
+    's3': head_node_cores if args.s3_cores is None else int(args.s3_cores),
+    's4': head_node_cores if args.s4_cores is None else int(args.s4_cores),
+    's5': head_node_cores if args.s5_cores is None else int(args.s5_cores),
+}
 cores_per_task = {
     'debug': 1,
     's1': 1,
-    's2a': cores_per_node,
-    's2b': cores_per_node,
+    's2a': cores_per_node['s2a'],
+    's2b': cores_per_node['s2b'],
     's3': 3, # setting this too low can lead to probtrackx exceeding local memory and crashing
     's4': 1,
     's5': 1,
@@ -211,8 +226,8 @@ if not args.local_host_only:
 
 executors = [IPyParallelExecutor(label='head',
              provider=LocalProvider(
-             init_blocks=cores_per_node,
-             max_blocks=cores_per_node))]
+             init_blocks=head_node_cores,
+             max_blocks=head_node_cores))]
 
 base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
 if args.scheduler_options is not None:
@@ -237,7 +252,7 @@ for step in steps:
                 )
     executors.append(IPyParallelExecutor(
         label=step,
-        workers_per_node=int(cores_per_node / cores_per_task[step]),
+        workers_per_node=int(cores_per_node[step] / cores_per_task[step]),
         provider=SlurmProvider(
             args.partition,
             channel=channel,
