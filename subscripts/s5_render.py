@@ -18,11 +18,12 @@ def s5_2_render_target(params, input_file, output_file, inputs=[]):
     sdir = params['sdir']
     run_vtk = join(sdir, 'run_vtk.py')
     stdout = params['stdout']
+    histogram_bin_count = params['histogram_bin_count']
     if not exists(input_file):
         write(stdout, "Cannot find input file {}".format(input_file))
         return
     output_name = splitext(output_file)[0].strip()
-    run('/opt/vtk/bin/vtkpython {} {} {}'.format(run_vtk, input_file, output_file), params)
+    run('/opt/vtk/bin/vtkpython {} {} {} {}'.format(run_vtk, input_file, output_file, histogram_bin_count), params)
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['s5'], cache=True)

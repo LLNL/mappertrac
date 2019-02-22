@@ -4,7 +4,7 @@ import numpy as np
 from os.path import join, split, splitext
 from vtk.util import numpy_support
 
-def render(input_file, output_file):
+def render(input_file, output_file, histogram_bin_count):
     reader = vtk.vtkNIFTIImageReader()
     reader.SetFileName(input_file)
     reader.Update()
@@ -142,7 +142,7 @@ def render(input_file, output_file):
     writer.Write()
 
     # histogram code:
-    num_bins = 256
+    num_bins = histogram_bin_count
     histogram = vtk.vtkImageHistogram()
     histogram.SetInputConnection(reader.GetOutputPort())
     histogram.AutomaticBinningOn()
@@ -161,6 +161,6 @@ def render(input_file, output_file):
     np.savetxt(hist_output, hist_mat, fmt='%.9g')
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        raise Exception('Script run_vtk.py requires two arguments - input and output paths')
-    render(sys.argv[1], sys.argv[2])
+    if len(sys.argv) != 4:
+        raise Exception('Script run_vtk.py requires three arguments - input and output paths, and histogram bin count')
+    render(sys.argv[1], sys.argv[2], sys.argv[3])

@@ -45,6 +45,7 @@ parser.add_argument('--local_host_only', help='Request all jobs on local machine
 parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
 parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).', default='lists/render_targets.txt')
 parser.add_argument('--fast_probtrackx', help='Faster parameters for s3_probtrackx. 1/5th number of streamlines, 1/2 number of steps per streamline', action='store_true')
+parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms', default=256)
 
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:15:00")
@@ -343,6 +344,7 @@ for subject in subjects:
             'work_sdir': work_sdir,
             'render_list': render_list,
             'fast_probtrackx': args.fast_probtrackx,
+            'histogram_bin_count': int(args.histogram_bin_count),
         }
 
         inputs = []
