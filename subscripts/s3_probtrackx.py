@@ -79,7 +79,12 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             " --out={}".format(a_to_b_formatted)
             )
         if use_gpu:
-            run("probtrackx2_gpu" + pbtx_args, params)
+            probtrackx2_sh = join(sdir, "probtrackx2.sh")
+            smart_remove(probtrackx2_sh)
+            write(probtrackx2_sh, "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n" +
+                           "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
+                           "probtrackx2_gpu" + pbtx_args)
+            run("sh " + probtrackx2_sh, params)
         else:
             run("probtrackx2" + pbtx_args, params)
 
