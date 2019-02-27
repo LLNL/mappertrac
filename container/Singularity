@@ -14,6 +14,7 @@ From: ubuntu:16.04
     CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
     FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
     BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_8.0/bedpostx_gpu.zip
+    PROBTRACKX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Probtrackx_GPU/CUDA_8.0/probtrackx2_gpu.zip
 
     mkdir /share
     apt-get -y update
@@ -27,7 +28,18 @@ From: ubuntu:16.04
     rm /bin/sh
     ln -s /bin/bash /bin/sh
 
-    # Image Rendering
+    # FSL
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get install -y tzdata
+    ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+    dpkg-reconfigure --frontend noninteractive tzdata
+    gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv 9BDB3D89CE49EC21
+    wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
+    apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9
+    apt-get -y update
+    apt-get -y install fsl-5.0-complete
+
+    # VTK
     ### LLVM
     wget --no-check-certificate -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
     apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main"
@@ -84,7 +96,7 @@ From: ubuntu:16.04
     $VTK_SRC
     make -j12
     cd $MAIN_DIR
-    python3.5 -m pip install numpy
+    python3.5 -m pip install nibabel pyevtk numpy
 
     # Nvidia Drivers
     apt-get -y install linux-headers-`uname -r`
@@ -105,22 +117,16 @@ From: ubuntu:16.04
     wget --no-check-certificate $CUDA8
     sh $CUDA8_RUN -silent -override -toolkit
 
-    # FSL
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get install -y tzdata
-    ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
-    dpkg-reconfigure --frontend noninteractive tzdata
-    gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv 9BDB3D89CE49EC21
-    wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
-    apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9
-    apt-get -y update
-    apt-get -y install fsl-5.0-complete
-
     # Bedpostx GPU
     BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
     wget --no-check-certificate $BEDPOSTX_GPU
     unzip -o -d /usr/share/fsl/5.0 $BEDPOSTX_GPU_ZIP
     cp /usr/share/fsl/5.0/bin/*.so /usr/share/fsl/5.0/lib/
+
+    # Probtrackx GPU
+    PROBTRACKX_GPU_ZIP=$(basename $PROBTRACKX_GPU)
+    wget --no-check-certificate $PROBTRACKX_GPU
+    unzip -o -d /usr/share/fsl/5.0/bin $PROBTRACKX_GPU_ZIP
 
     # Freesurfer
     FREESURFER_GZ=$(basename $FREESURFER)

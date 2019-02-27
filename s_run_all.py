@@ -30,6 +30,7 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4 s5", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
+# parser.add_argument('--head_steps', type=str.lower, help='Steps to run using head node', default="s5", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
 parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_reduced.txt"))
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
@@ -50,7 +51,7 @@ parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image
 # Site-specific machine settings
 parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:15:00")
 parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:45:00")
-parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="08:00:00")
+parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="10:00:00")
 parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="12:00:00")
 parser.add_argument('--s4_job_time', help='Average time to finish s4 on a single subject with a single node', default="00:45:00")
 parser.add_argument('--s5_job_time', help='Average time to finish s5 on a single subject with a single node', default="00:05:00")
@@ -128,9 +129,18 @@ for step in steps:
 # Inputs
 ############################
 
-# Make sure input files exist for each subject, then generate checksum
+odir = abspath(args.output_dir)
 subjects = []
+num_subjects = {
+    's1': 0,
+    's2a': 0,
+    's2b': 0,
+    's3': 0,
+    's4': 0,
+    's5': 0,
+}
 for input_dir in open(args.subject_list, 'r').readlines():
+    # Make sure input files exist for each subject
     input_dir = input_dir.strip()
     if not input_dir or not isdir(input_dir):
         continue
@@ -142,22 +152,32 @@ for input_dir in open(args.subject_list, 'r').readlines():
     if not exist_all([bvecs, bvals, hardi, anat]):
         print("Skipping subject {}. Missing input files - must have bvecs, bvals, hardi.nii.gz, and anat.nii.gz.".format(sname))
         continue
+
+    # Check if existing log shows completion
+    for step in steps:
+        sdir = join(odir, sname)
+        log_dir = join(sdir,'log')
+        log_template = join(log_dir, step + ".stdout")
+        new_log, prev_log, idx = get_log_path(log_template)
+        if is_log_complete(prev_log):
+            if not args.force:
+                print("Skipping step {} for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
+                continue
+        num_subjects[step] += 1
+
     checksum = generate_checksum(input_dir)
     subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
     print("Running subject {} with steps {}".format(sname, steps))
-num_subjects = len(subjects)
-if num_subjects == 0:
-    raise Exception("Not running any subjects")
-print("In total, running {} subjects".format(num_subjects))
 
+print("In total, running {} steps on {} subjects".format(sum(num_subjects.values()), len(subjects)))
 
 ############################
 # Node Settings
 ############################
 
-def get_walltime(num_subjects, job_time_string, node_count):
+def get_walltime(_num_subjects, job_time_string, node_count):
     job_time = get_time_seconds(job_time_string)
-    return get_time_string(clamp((num_subjects * job_time) / node_count, 7200, 86399)) # clamp between 2 and 24 hours
+    return get_time_string(clamp((_num_subjects * job_time) / node_count, 7200, 86399)) # clamp between 2 and 24 hours
 
 # We assume 2 vCPUs per core
 head_node_cores = int(floor(multiprocessing.cpu_count() / 2))
@@ -165,12 +185,12 @@ head_node_cores = int(floor(multiprocessing.cpu_count() / 2))
 # Set recommended or overriden node counts
 node_counts = {
     'debug': 1,
-    's1': max(floor(0.2 * num_subjects), 1) if args.s1_nodes is None else int(args.s1_nodes),
-    's2a': max(floor(1.0 * num_subjects), 1) if args.s2a_nodes is None else int(args.s2a_nodes),
-    's2b': max(floor(1.0 * num_subjects), 1) if args.s2b_nodes is None else int(args.s2b_nodes),
-    's3': max(floor(2.0 * num_subjects), 1) if args.s3_nodes is None else int(args.s3_nodes),
-    's4': max(floor(0.1 * num_subjects), 1) if args.s4_nodes is None else int(args.s4_nodes),
-    's5': max(floor(0.1 * num_subjects), 1) if args.s5_nodes is None else int(args.s5_nodes),
+    's1': max(floor(0.2 * num_subjects['s1']), 1) if args.s1_nodes is None else int(args.s1_nodes),
+    's2a': max(floor(1.0 * num_subjects['s2a']), 1) if args.s2a_nodes is None else int(args.s2a_nodes),
+    's2b': max(floor(1.0 * num_subjects['s2b']), 1) if args.s2b_nodes is None else int(args.s2b_nodes),
+    's3': max(floor(2.0 * num_subjects['s3']), 1) if args.s3_nodes is None else int(args.s3_nodes),
+    's4': max(floor(0.1 * num_subjects['s4']), 1) if args.s4_nodes is None else int(args.s4_nodes),
+    's5': max(floor(0.1 * num_subjects['s5']), 1) if args.s5_nodes is None else int(args.s5_nodes),
 }
 job_times = {
     's1': args.s1_job_time,
@@ -182,12 +202,12 @@ job_times = {
 }
 walltimes = {
     'debug': "00:05:00",
-    's1': get_walltime(num_subjects, job_times['s1'], node_counts['s1']) if args.s1_walltime is None else args.s1_walltime,
-    's2a': get_walltime(num_subjects, job_times['s2a'], node_counts['s2a']) if args.s2a_walltime is None else args.s2a_walltime,
-    's2b': get_walltime(num_subjects, job_times['s2b'], node_counts['s2b']) if args.s2b_walltime is None else args.s2b_walltime,
-    's3': get_walltime(num_subjects, job_times['s3'], node_counts['s3']) if args.s3_walltime is None else args.s3_walltime,
-    's4': get_walltime(num_subjects, job_times['s4'], node_counts['s4']) if args.s4_walltime is None else args.s4_walltime,
-    's5': get_walltime(num_subjects, job_times['s5'], node_counts['s5']) if args.s5_walltime is None else args.s5_walltime,
+    's1': get_walltime(num_subjects['s1'], job_times['s1'], node_counts['s1']) if args.s1_walltime is None else args.s1_walltime,
+    's2a': get_walltime(num_subjects['s2a'], job_times['s2a'], node_counts['s2a']) if args.s2a_walltime is None else args.s2a_walltime,
+    's2b': get_walltime(num_subjects['s2b'], job_times['s2b'], node_counts['s2b']) if args.s2b_walltime is None else args.s2b_walltime,
+    's3': get_walltime(num_subjects['s3'], job_times['s3'], node_counts['s3']) if args.s3_walltime is None else args.s3_walltime,
+    's4': get_walltime(num_subjects['s4'], job_times['s4'], node_counts['s4']) if args.s4_walltime is None else args.s4_walltime,
+    's5': get_walltime(num_subjects['s5'], job_times['s5'], node_counts['s5']) if args.s5_walltime is None else args.s5_walltime,
 }
 hostnames = {
     'debug': args.s1_hostname,
@@ -282,7 +302,6 @@ parsl.load(config)
 ############################
 
 container = abspath(args.container_path) if args.container_path else None
-odir = abspath(args.output_dir)
 global_timing_log = join(odir, 'global_timing', 'timing.csv')
 smart_mkdir(odir)
 smart_mkdir(join(odir, 'global_timing'))

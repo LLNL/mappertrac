@@ -142,7 +142,7 @@ def render(input_file, output_file, histogram_bin_count):
     writer.Write()
 
     # histogram code:
-    num_bins = histogram_bin_count
+    num_bins = int(histogram_bin_count)
     histogram = vtk.vtkImageHistogram()
     histogram.SetInputConnection(reader.GetOutputPort())
     histogram.AutomaticBinningOn()
