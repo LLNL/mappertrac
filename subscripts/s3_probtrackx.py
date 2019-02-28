@@ -89,13 +89,15 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             run("probtrackx2" + pbtx_args, params)
 
         waytotal_count = 0
+        if not exists(waytotal):
+            raise Exception('Waytotal missing from edge {}'.format(a_to_b))
         with open(waytotal, 'r') as f:
             waytotal_count = f.read().strip()
             fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
             if not is_float(waytotal_count):
-                raise Exception("Error: Failed to read waytotal_count value {}".format(waytotal_count))
+                raise Exception("Failed to read waytotal_count value {}".format(waytotal_count))
             if not is_float(fdt_count):
-                raise Exception("Error: Failed to read fdt_count value {}".format(fdt_count))
+                raise Exception("Failed to read fdt_count value {}".format(fdt_count))
             write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
         if not a == "lh.paracentral": # discard all temp files except these for debugging

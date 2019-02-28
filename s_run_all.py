@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-import argparse
-import multiprocessing
-import parsl
-import getpass
-import socket
+import argparse,multiprocessing,parsl,getpass,socket,json
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -86,7 +82,9 @@ args = parser.parse_args()
 ############################
 # Steps
 ############################
-
+print("\n===================================================")
+print("Setup")
+print("---------------------------------------------------")
 steps = args.steps
 gpu_steps = args.gpu_steps
 if isinstance(args.steps, str):
@@ -130,15 +128,18 @@ for step in steps:
 ############################
 
 odir = abspath(args.output_dir)
-subjects = []
-num_subjects = {
-    's1': 0,
-    's2a': 0,
-    's2b': 0,
-    's3': 0,
-    's4': 0,
-    's5': 0,
-}
+container = abspath(args.container_path) if args.container_path else None
+global_timing_log = join(odir, 'global_timing', 'timing.csv')
+smart_mkdir(odir)
+smart_mkdir(join(odir, 'global_timing'))
+if not exists(global_timing_log):
+    write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
+if islink(join(odir,"fsaverage")):
+    run("unlink {}".format(join(odir,"fsaverage")))
+edge_list = abspath(args.edge_list)
+render_list = abspath(args.render_list)
+
+subjects = {}
 for input_dir in open(args.subject_list, 'r').readlines():
     # Make sure input files exist for each subject
     input_dir = input_dir.strip()
@@ -153,22 +154,77 @@ for input_dir in open(args.subject_list, 'r').readlines():
         print("Skipping subject {}. Missing input files - must have bvecs, bvals, hardi.nii.gz, and anat.nii.gz.".format(sname))
         continue
 
-    # Check if existing log shows completion
-    for step in steps:
-        sdir = join(odir, sname)
-        log_dir = join(sdir,'log')
-        log_template = join(log_dir, step + ".stdout")
-        new_log, prev_log, idx = get_log_path(log_template)
-        if is_log_complete(prev_log):
-            if not args.force:
-                print("Skipping step {} for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
-                continue
-        num_subjects[step] += 1
-
     checksum = generate_checksum(input_dir)
-    subjects.append({'input_dir':input_dir, 'sname':sname, 'checksum':checksum})
-    print("Running subject {} with steps {}".format(sname, steps))
-
+    sdir = join(odir, sname)
+    log_dir = join(sdir,'log')
+    if args.work_dir:
+        work_sdir = join(args.work_dir, sname)
+    else:
+        work_sdir = None
+    
+    smart_mkdir(log_dir)
+    smart_mkdir(sdir)
+    subject = {}
+    for step in steps:
+        params = {
+            'input_dir': input_dir,
+            'sdir': sdir,
+            'container': container,
+            'checksum': checksum,
+            'edge_list': edge_list,
+            'group': args.group,
+            'global_timing_log': global_timing_log,
+            'use_gpu': step in gpu_steps,
+            'step': step,
+            'work_sdir': work_sdir,
+            'render_list': render_list,
+            'fast_probtrackx': args.fast_probtrackx,
+            'histogram_bin_count': int(args.histogram_bin_count),
+        }
+        stdout_template = join(log_dir, "{}.stdout".format(step))
+        new_stdout, prev_stdout, idx = get_log_path(stdout_template)
+        params_log = join(log_dir, step + "_params.txt")
+        if exists(params_log) and not args.force:
+            with open(params_log) as f:
+                old_params = json.load(f)
+                for k in params:
+                    if k not in old_params or str(params[k]) != str(old_params[k]):
+                        break
+                else:
+                    if is_log_complete(prev_stdout):
+                        print("Skipping step \"{}\" for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
+                        continue
+                    else:
+                        if exists(prev_log):
+                            new_stdout = prev_stdout
+                            idx -= 1
+        timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(step, idx))
+        smart_remove(params_log)
+        smart_remove(timing_log)
+        with open(params_log, 'w') as f:
+            json.dump(params, f)
+        params['stdout'] = new_stdout
+        params['timing_log'] = timing_log
+        
+        subject[step] = params
+    subjects[sname] = subject
+    running_steps = list(subject.keys())
+    if len(running_steps) > 0:
+        print("Running subject {} with steps {}".format(sname, running_steps))
+    else:
+        print("Not running any steps for subject {}".format(sname))
+num_subjects = {
+    'debug': 0,
+    's1': 0,
+    's2a': 0,
+    's2b': 0,
+    's3': 0,
+    's4': 0,
+    's5': 0,
+}
+for sname in subjects:
+    for step in subjects[sname]:
+        num_subjects[step] += 1
 print("In total, running {} steps on {} subjects".format(sum(num_subjects.values()), len(subjects)))
 
 ############################
@@ -259,7 +315,7 @@ if args.parsl_path is not None:
 
 for step in steps:
     node_count = int(node_counts[step])
-    print("Requesting {} {} nodes".format(node_count, step))
+    print("Requesting {} nodes for step \"{}\"".format(node_count, step))
     options = base_options
     if step in gpu_steps:
         options += str(args.gpu_options) + '\n'
@@ -288,6 +344,7 @@ for step in steps:
         controller=Controller(public_ip=address_by_route()),
         )
     )
+print("===================================================\n")
 
 config = Config(executors=executors)
 config.retries = 5
@@ -301,71 +358,12 @@ parsl.load(config)
 # Outputs
 ############################
 
-container = abspath(args.container_path) if args.container_path else None
-global_timing_log = join(odir, 'global_timing', 'timing.csv')
-smart_mkdir(odir)
-smart_mkdir(join(odir, 'global_timing'))
-if not exists(global_timing_log):
-    write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
-if islink(join(odir,"fsaverage")):
-    run("unlink {}".format(join(odir,"fsaverage")))
-edge_list = abspath(args.edge_list)
-render_list = abspath(args.render_list)
-
 all_jobs = []
-for subject in subjects:
-    input_dir = subject['input_dir']
-    sname = subject['sname']
-    checksum = subject['checksum']
-    sdir = join(odir, sname)
-    log_dir = join(sdir,'log')
-    if args.work_dir:
-        work_sdir = join(args.work_dir, sname)
-    else:
-        work_sdir = None
-    
-    smart_mkdir(log_dir)
-    smart_mkdir(sdir)
-
+for sname in subjects:
     subject_jobs = {} # Store jobs in previous steps to use as inputs
-    
-    for step in steps:
-        log_template = join(log_dir, step + ".stdout")
-        new_log, prev_log, idx = get_log_path(log_template)
-        if is_log_complete(prev_log):
-            if not args.force:
-                print("Skipping step {} for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
-                continue
-            stdout = new_log
-        else:
-            # Use last log output if it hasn't completed (to preserve Parsl checkpointing)
-            if exists(prev_log):
-                stdout = prev_log
-                idx -= 1
-            else:
-                stdout = new_log
-
-        timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(step, idx))
-        smart_remove(timing_log)
-        params = {
-            'input_dir': input_dir,
-            'sdir': sdir,
-            'container': container,
-            'checksum': checksum,
-            'edge_list': edge_list,
-            'group': args.group,
-            'global_timing_log': global_timing_log,
-            'cores_per_task': cores_per_task[step],
-            'use_gpu': step in gpu_steps,
-            'stdout': stdout,
-            'timing_log': timing_log,
-            'step': step,
-            'work_sdir': work_sdir,
-            'render_list': render_list,
-            'fast_probtrackx': args.fast_probtrackx,
-            'histogram_bin_count': int(args.histogram_bin_count),
-        }
-
+    for step in subjects[sname]:
+        params = subjects[sname][step]
+        params['cores_per_task'] = cores_per_task[step]
         inputs = []
         actual_prereqs = []
         for prereq in prereqs[step]:

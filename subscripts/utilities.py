@@ -14,7 +14,10 @@ def smart_remove(path):
     if isdir(path):
         shutil.rmtree(path)
     elif exists(path):
-        remove(path)
+        try:
+            remove(path)
+        except OSError:
+            pass
 
 def smart_copy(src, dest):
     """Copy file or directory, while ignoreing non-existent or equivalent files

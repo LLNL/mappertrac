@@ -8,10 +8,14 @@ from shutil import copyfile
 
 @python_app(executors=['head'], cache=True)
 def s_1_debug(params, inputs=[]):
+    from subscripts.utilities import record_start,record_finish
+    record_start(params)
     sdir = params['sdir']
     container = params['container']
     if container:
         run("echo 'Testing Singularity on compute node\nShare dir is {}'".format(sdir), params)
+
+    record_finish(params)
 
 def setup_debug(params, inputs):
     sdir = params['sdir']
