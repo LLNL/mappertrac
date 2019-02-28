@@ -77,7 +77,7 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
     else:
         tokens = command.split(' ')
         if print_time:
-            print("Running {} took {} (h:m:s)".format(tokens[0], get_time_string(int(time.time()) - start)))
+            print("Running {} took {} (h:m:s)".format(tokens[0], get_time_string(int(time.time()) - start, params)))
             if len(tokens) > 1:
                 print("\tArgs: {}".format(' '.join(tokens[1:])))
     return line  # return the last output line
@@ -109,14 +109,15 @@ def get_time_date():
     """
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M %p")
 
-def get_time_string(seconds):
+def get_time_string(seconds, params=None):
     """Returns seconds as Slurm-compatible time string
     """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     time_string = "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
     if h > 99 or h < 0:
-        print("Invalid time string {}".format(time_string))
+        if params and 'stdout' in params:
+            write(params['stdout'], "Error: Invalid time string {}".format(time_string))
         return "00:00:00"
     return time_string
 
@@ -167,7 +168,7 @@ def record_apptime(params, app_start_time, substep, *args):
     apptime = time.time() - app_start_time
     line = "{} {}".format(apptime, substep)
     for arg in args:
-        line += ' ' + str(arg)
+        line += ' ' + str(arg) # save additional args for debug
     write(timing_log, line)
 
 def record_finish(params):
@@ -181,27 +182,33 @@ def record_finish(params):
     use_gpu = params['use_gpu']
     global_timing_log = params['global_timing_log']
     sname = basename(sdir)
-    task_start_time = 0
+    task_start_time = -1
     task_total_time = 0
     max_apptimes = {}
     with open(timing_log, 'r') as f:
         for line in f.readlines():
-            chunks = [x.strip() for x in line.strip().split(' ', 2) if x]
-            if len(chunks) < 2 or not is_float(chunks[0]) or not is_integer(chunks[1]):
-                continue
-            if chunks[1] == 'start':
-                task_start_time = float(chunks[0])
+            chunks = [x.strip() for x in line.strip().split() if x]
+            if len(chunks) < 2 or not is_float(chunks[0]):
+                write(stdout, 'Invalid time value in line: {}'.format(line))
                 continue
             apptime = float(chunks[0])
+            if chunks[1] == 'start':
+                task_start_time = apptime
+                continue
+            if not is_integer(chunks[1]):
+                write(stdout, 'Invalid substep in line: {}'.format(line))
+                continue
             substep = int(chunks[1])
             task_total_time += apptime
             if substep not in max_apptimes:
                 max_apptimes[substep] = apptime
             else:
                 max_apptimes[substep] = max(apptime, max_apptimes[substep])
-    ideal_walltime = get_time_string(sum(list(max_apptimes.values()))) # find longest apptimes in same substep
-    actual_walltime = get_time_string(time.time() - task_start_time)
-    total_core_time = get_time_string(task_total_time * cores_per_task) # sum of apptimes, multiplied by cores
+    if task_start_time == -1:
+        write(stdout, 'Failed to find valid start time')
+    ideal_walltime = get_time_string(sum(list(max_apptimes.values())), params) # find longest apptimes in same substep
+    actual_walltime = get_time_string(time.time() - task_start_time, params)
+    total_core_time = get_time_string(task_total_time * cores_per_task, params) # sum of apptimes, multiplied by cores
     with open(stdout, 'a') as f:
         f.write("\n=====================================\n")
         f.write(get_finish(step))
@@ -228,7 +235,7 @@ def update_permissions(params):
     if params['group']:
         run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
         run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
-    write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time)))
+    write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time, params)))
 
 def generate_checksum(input_dir):
     """Return checksum of subject input files. This ensures re-computation if inputs change.

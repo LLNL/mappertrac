@@ -26,7 +26,6 @@ parser.add_argument('subject_list', help='Text file list of subject directories.
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4 s5", nargs='+')
 parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
-# parser.add_argument('--head_steps', type=str.lower, help='Steps to run using head node', default="s5", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
 parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_reduced.txt"))
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
@@ -41,7 +40,7 @@ parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', act
 parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
 parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
 parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).', default='lists/render_targets.txt')
-parser.add_argument('--fast_probtrackx', help='Faster parameters for s3_probtrackx. 1/5th number of streamlines, 1/2 number of steps per streamline', action='store_true')
+parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx', default=1000)
 parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms', default=256)
 
 # Site-specific machine settings
@@ -178,7 +177,7 @@ for input_dir in open(args.subject_list, 'r').readlines():
             'step': step,
             'work_sdir': work_sdir,
             'render_list': render_list,
-            'fast_probtrackx': args.fast_probtrackx,
+            'pbtx_sample_count': int(args.pbtx_sample_count),
             'histogram_bin_count': int(args.histogram_bin_count),
         }
         stdout_template = join(log_dir, "{}.stdout".format(step))
@@ -195,7 +194,7 @@ for input_dir in open(args.subject_list, 'r').readlines():
                         print("Skipping step \"{}\" for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
                         continue
                     else:
-                        if exists(prev_log):
+                        if exists(prev_stdout):
                             new_stdout = prev_stdout
                             idx -= 1
         timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(step, idx))
@@ -225,7 +224,12 @@ num_subjects = {
 for sname in subjects:
     for step in subjects[sname]:
         num_subjects[step] += 1
-print("In total, running {} steps on {} subjects".format(sum(num_subjects.values()), len(subjects)))
+total_num_steps = sum(num_subjects.values())
+if total_num_steps == 0:
+    print("Error: not running any steps on any subjects")
+    exit(0)
+else:
+    print("In total, running {} steps across {} subjects".format(total_num_steps, len(subjects)))
 
 ############################
 # Node Settings
@@ -384,7 +388,7 @@ for job in all_jobs:
     step = params['step']
     try:
         job_future.result()
-        print("Finished processing step {} on subject {}".format(step, sname))
+        print("Finished processing step \"{}\" for subject {}".format(step, sname))
     except:
-        print("Error: failed to process step {} on subject {}".format(step, sname))
+        print("Error: failed to process step \"{}\" for subject {}".format(step, sname))
     

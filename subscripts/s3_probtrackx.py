@@ -25,7 +25,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
-    fast_probtrackx = params['fast_probtrackx']
+    pbtx_sample_count = int(params['pbtx_sample_count'])
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_oneway = join(sdir, "connectome_oneway.dot")
@@ -66,11 +66,9 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
         run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
 
-        num_steps = 1000 if fast_probtrackx else 2000
-        num_streamlines = 200 if fast_probtrackx else 1000
         pbtx_args = (" -x {} ".format(a_file) +
             # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-            " --pd -l -c 0.2 -S {} --steplength=0.5 -P {}".format(num_steps, num_streamlines) +
+            " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
             " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
             " --forcedir --opd" +
             " -s {}".format(merged) +
