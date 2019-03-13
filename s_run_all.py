@@ -21,11 +21,14 @@ from subscripts.s3_probtrackx import setup_s3
 from subscripts.s4_edi import setup_s4
 from subscripts.s5_render import setup_s5
 
+# We assume 2 vCPUs per core
+head_node_cores = int(floor(multiprocessing.cpu_count() / 2))
+
 parser = argparse.ArgumentParser(description='Generate connectome data')
 parser.add_argument('subject_list', help='Text file list of subject directories.')
 parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.')
 parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4 s5", nargs='+')
-parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a", nargs='+')
+parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a s3", nargs='+')
 parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
 parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_reduced.txt"))
 parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
@@ -44,18 +47,24 @@ parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_pro
 parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms', default=256)
 
 # Site-specific machine settings
-parser.add_argument('--s1_job_time', help='Average time to finish s1 on a single subject with a single node', default="00:15:00")
-parser.add_argument('--s2a_job_time', help='Average time to finish s2a on a single subject with a single node', default="00:45:00")
-parser.add_argument('--s2b_job_time', help='Average time to finish s2b on a single subject with a single node', default="10:00:00")
-parser.add_argument('--s3_job_time', help='Average time to finish s3 on a single subject with a single node', default="12:00:00")
-parser.add_argument('--s4_job_time', help='Average time to finish s4 on a single subject with a single node', default="00:45:00")
-parser.add_argument('--s5_job_time', help='Average time to finish s5 on a single subject with a single node', default="00:05:00")
+parser.add_argument('--s1_job_time', help='Max time to finish s1 on a single subject with a single node', default="00:15:00")
+parser.add_argument('--s2a_job_time', help='Max time to finish s2a on a single subject with a single node', default="00:45:00")
+parser.add_argument('--s2b_job_time', help='Max time to finish s2b on a single subject with a single node', default="10:00:00")
+parser.add_argument('--s3_job_time', help='Max time to finish s3 on a single subject with a single node', default="12:00:00")
+parser.add_argument('--s4_job_time', help='Max time to finish s4 on a single subject with a single node', default="00:45:00")
+parser.add_argument('--s5_job_time', help='Max time to finish s5 on a single subject with a single node', default="00:15:00")
 parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc', default='quartz.llnl.gov')
 parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx', default='pascal.llnl.gov')
 parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer', default='quartz.llnl.gov')
 parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx', default='quartz.llnl.gov')
 parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi', default='quartz.llnl.gov')
 parser.add_argument('--s5_hostname', help='Hostname of machine to run step s5_render', default='quartz.llnl.gov')
+parser.add_argument('--s1_cores_per_task', help='Number of cores to assign each task for step s1_dti_preproc', default=1)
+parser.add_argument('--s2a_cores_per_task', help='Number of cores to assign each task for step s2a_bedpostx', default=head_node_cores)
+parser.add_argument('--s2b_cores_per_task', help='Number of cores to assign each task for step s2b_freesurfer', default=head_node_cores)
+parser.add_argument('--s3_cores_per_task', help='Number of cores to assign each task for step s3_probtrackx', default=3)
+parser.add_argument('--s4_cores_per_task', help='Number of cores to assign each task for step s4_edi', default=1)
+parser.add_argument('--s5_cores_per_task', help='Number of cores to assign each task for step s5_render', default=1)
 
 # Override auto-generated machine settings
 parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
@@ -239,8 +248,7 @@ def get_walltime(_num_subjects, job_time_string, node_count):
     job_time = get_time_seconds(job_time_string)
     return get_time_string(clamp((_num_subjects * job_time) / node_count, 7200, 86399)) # clamp between 2 and 24 hours
 
-# We assume 2 vCPUs per core
-head_node_cores = int(floor(multiprocessing.cpu_count() / 2))
+
 
 # Set recommended or overriden node counts
 node_counts = {
@@ -248,7 +256,7 @@ node_counts = {
     's1': max(floor(0.2 * num_subjects['s1']), 1) if args.s1_nodes is None else int(args.s1_nodes),
     's2a': max(floor(1.0 * num_subjects['s2a']), 1) if args.s2a_nodes is None else int(args.s2a_nodes),
     's2b': max(floor(1.0 * num_subjects['s2b']), 1) if args.s2b_nodes is None else int(args.s2b_nodes),
-    's3': max(floor(2.0 * num_subjects['s3']), 1) if args.s3_nodes is None else int(args.s3_nodes),
+    's3': max(floor(1.0 * num_subjects['s3']), 1) if args.s3_nodes is None else int(args.s3_nodes),
     's4': max(floor(0.1 * num_subjects['s4']), 1) if args.s4_nodes is None else int(args.s4_nodes),
     's5': max(floor(0.1 * num_subjects['s5']), 1) if args.s5_nodes is None else int(args.s5_nodes),
 }
@@ -289,12 +297,12 @@ cores_per_node = {
 }
 cores_per_task = {
     'debug': 1,
-    's1': 1,
-    's2a': cores_per_node['s2a'],
-    's2b': cores_per_node['s2b'],
-    's3': 3, # setting this too low can lead to probtrackx exceeding local memory and crashing
-    's4': 1,
-    's5': 1,
+    's1': args.s1_cores_per_task,
+    's2a': args.s2a_cores_per_task,
+    's2b': args.s2b_cores_per_task,
+    's3': args.s3_cores_per_task, # setting this too low can lead to probtrackx exceeding local memory and crashing
+    's4': args.s4_cores_per_task,
+    's5': args.s5_cores_per_task,
 }
 
 ############################

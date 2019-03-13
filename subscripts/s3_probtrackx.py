@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from os.path import join,exists
-from subscripts.utilities import write,smart_remove
+from subscripts.utilities import write,smart_remove,smart_mkdir
 from parsl.app.app import python_app
 
 @python_app(executors=['s3'], cache=True)
@@ -51,7 +51,6 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         smart_remove(a_to_b_file)
         smart_remove(tmp)
         smart_mkdir(tmp)
-        smart_mkdir(pbtk_dir)
         write(stdout, "Running subproc: {}".format(a_to_b))
         if container:
             odir = split(sdir)[0]
@@ -70,7 +69,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
             " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
             " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
-            " --forcedir --opd" +
+            " --forcedir --opd --rseed=9675674" +
             " -s {}".format(merged) +
             " -m {}".format(nodif_brain_mask) +
             " --dir={}".format(tmp) +
@@ -87,16 +86,17 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             run("probtrackx2" + pbtx_args, params)
 
         waytotal_count = 0
-        if not exists(waytotal):
-            raise Exception('Waytotal missing from edge {}'.format(a_to_b))
-        with open(waytotal, 'r') as f:
-            waytotal_count = f.read().strip()
-            fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
-            if not is_float(waytotal_count):
-                raise Exception("Failed to read waytotal_count value {}".format(waytotal_count))
-            if not is_float(fdt_count):
-                raise Exception("Failed to read fdt_count value {}".format(fdt_count))
-            write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+        if exists(waytotal):
+            with open(waytotal, 'r') as f:
+                waytotal_count = f.read().strip()
+                fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
+                if not is_float(waytotal_count):
+                    raise Exception("Failed to read waytotal_count value {}".format(waytotal_count))
+                if not is_float(fdt_count):
+                    raise Exception("Failed to read fdt_count value {}".format(fdt_count))
+                write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+        else:
+            write(stdout, 'Error: failed to find waytotal for {}'.format(a_to_b))
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
         if not a == "lh.paracentral": # discard all temp files except these for debugging
             smart_remove(tmp)
@@ -108,30 +108,33 @@ def s3_3_combine(params, inputs=[]):
     from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write
     from os.path import join,exists
     sdir = params['sdir']
+    stdout = params['stdout']
     start_time = time.time()
     connectome_oneway = join(sdir, "connectome_oneway.dot")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
     smart_remove(join(sdir, "connectome_twoway.dot"))
     processed_edges = {}
-    if not exists(connectome_oneway):
-        raise Exception("Error: Failed to generate {}".format(connectome_oneway))
-    with open(connectome_oneway,'r') as f:
-        for line in f.readlines():
-            if not line:
-                continue
-            chunks = [x.strip() for x in line.strip().split(' ') if x]
-            if len(chunks) >= 3:
-                a_to_b = (chunks[0], chunks[1])
-                b_to_a = (chunks[1], chunks[0])
-                waytotal_count = float(chunks[2])
-                fdt_count = float(chunks[3]) if len(chunks) >= 4 else 0
-                if b_to_a in processed_edges:
-                    processed_edges[b_to_a][0] += waytotal_count
-                    processed_edges[b_to_a][1] += fdt_count
-                else:
-                    processed_edges[a_to_b] = [waytotal_count, fdt_count]
-    for a_to_b in processed_edges:
-        write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
+    if exists(connectome_oneway):
+        # raise Exception("Error: Failed to generate {}".format(connectome_oneway))
+        with open(connectome_oneway,'r') as f:
+            for line in f.readlines():
+                if not line:
+                    continue
+                chunks = [x.strip() for x in line.strip().split(' ') if x]
+                if len(chunks) >= 3:
+                    a_to_b = (chunks[0], chunks[1])
+                    b_to_a = (chunks[1], chunks[0])
+                    waytotal_count = float(chunks[2])
+                    fdt_count = float(chunks[3]) if len(chunks) >= 4 else 0
+                    if b_to_a in processed_edges:
+                        processed_edges[b_to_a][0] += waytotal_count
+                        processed_edges[b_to_a][1] += fdt_count
+                    else:
+                        processed_edges[a_to_b] = [waytotal_count, fdt_count]
+        for a_to_b in processed_edges:
+            write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
+    else:    
+        write(stdout, 'Error: could not find oneway connectome {}'.format(connectome_oneway))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
@@ -145,7 +148,12 @@ def setup_s3(params, inputs):
     s3_2_futures = []
     smart_remove(join(sdir, "connectome_oneway.dot"))
     smart_remove(join(sdir, "waytotal_oneway.dot"))
-    smart_remove(join(sdir, "tmp"))
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    tmp_dir = join(sdir,"tmp")
+    smart_remove(tmp_dir)
+    smart_remove(pbtk_dir)
+    smart_mkdir(tmp_dir)
+    smart_mkdir(pbtk_dir)
     with open(edge_list) as f:
         edges = []
         for edge in f.readlines():
@@ -156,4 +164,6 @@ def setup_s3(params, inputs):
             if len(edges) >= edge_chunk_size:
                 s3_2_futures.append(s3_2_probtrackx(params, edges, inputs=[s3_1_future]))
                 edges = []
+        if edges:
+            s3_2_futures.append(s3_2_probtrackx(params, edges, inputs=[s3_1_future]))
     return s3_3_combine(params, inputs=s3_2_futures)

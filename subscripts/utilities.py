@@ -115,7 +115,7 @@ def get_time_string(seconds, params=None):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     time_string = "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
-    if h > 99 or h < 0:
+    if h > 99999 or h < 0:
         if params and 'stdout' in params:
             write(params['stdout'], "Error: Invalid time string {}".format(time_string))
         return "00:00:00"

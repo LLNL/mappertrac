@@ -1,0 +1,2 @@
+rh.precuneus_s2fa,rh.superiorparietal_s2fa
+rh.superiorparietal_s2fa,rh.precuneus_s2fa
