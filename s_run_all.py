@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse,multiprocessing,parsl,getpass,socket,json
+import argparse, multiprocessing, parsl, getpass, socket, json, sys
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -10,7 +10,7 @@ from parsl.utils import get_all_checkpoints
 from parsl.executors.ipp_controller import Controller
 from parsl.addresses import address_by_route
 from subscripts.utilities import *
-from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
+from os.path import exists, join, split, splitext, abspath, basename, islink, isdir
 from os import system,mkdir,remove,environ,makedirs
 from math import floor, ceil
 from subscripts.s_debug import setup_debug
@@ -21,75 +21,133 @@ from subscripts.s3_probtrackx import setup_s3
 from subscripts.s4_edi import setup_s4
 from subscripts.s5_render import setup_s5
 
-# We assume 2 vCPUs per core
-head_node_cores = int(floor(multiprocessing.cpu_count() / 2))
+head_node_cores = int(floor(multiprocessing.cpu_count() / 2)) # We assume 2 vCPUs per core
 
-parser = argparse.ArgumentParser(description='Generate connectome data')
-parser.add_argument('subject_list', help='Text file list of subject directories.')
-parser.add_argument('output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.')
-parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', default="s1 s2a s2b s3 s4 s5", nargs='+')
-parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', default="s2a s3", nargs='+')
-parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
-parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi', default=join("lists","list_edges_reduced.txt"))
-parser.add_argument('--bank', help='Slurm bank to charge for jobs', default="ccp")
-parser.add_argument('--partition', help='Slurm partition to assign jobs', default="pbatch")
-parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
-parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps', default="module load cuda/8.0;")
-parser.add_argument('--group', help='Unix group to assign file permissions')
-parser.add_argument('--container_path', help='Path to Singularity container image')
-parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
-parser.add_argument('--username', help='Unix username for Parsl job requests', default=getpass.getuser())
-parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
-parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_true')
-parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
-parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).', default='lists/render_targets.txt')
-parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx', default=1000)
-parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms', default=256)
+class ArgsObject:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
-# Site-specific machine settings
-parser.add_argument('--s1_job_time', help='Max time to finish s1 on a single subject with a single node', default="00:15:00")
-parser.add_argument('--s2a_job_time', help='Max time to finish s2a on a single subject with a single node', default="00:45:00")
-parser.add_argument('--s2b_job_time', help='Max time to finish s2b on a single subject with a single node', default="10:00:00")
-parser.add_argument('--s3_job_time', help='Max time to finish s3 on a single subject with a single node', default="12:00:00")
-parser.add_argument('--s4_job_time', help='Max time to finish s4 on a single subject with a single node', default="00:45:00")
-parser.add_argument('--s5_job_time', help='Max time to finish s5 on a single subject with a single node', default="00:15:00")
-parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc', default='quartz.llnl.gov')
-parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx', default='pascal.llnl.gov')
-parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer', default='quartz.llnl.gov')
-parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx', default='quartz.llnl.gov')
-parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi', default='quartz.llnl.gov')
-parser.add_argument('--s5_hostname', help='Hostname of machine to run step s5_render', default='quartz.llnl.gov')
-parser.add_argument('--s1_cores_per_task', help='Number of cores to assign each task for step s1_dti_preproc', default=1)
-parser.add_argument('--s2a_cores_per_task', help='Number of cores to assign each task for step s2a_bedpostx', default=head_node_cores)
-parser.add_argument('--s2b_cores_per_task', help='Number of cores to assign each task for step s2b_freesurfer', default=head_node_cores)
-parser.add_argument('--s3_cores_per_task', help='Number of cores to assign each task for step s3_probtrackx', default=3)
-parser.add_argument('--s4_cores_per_task', help='Number of cores to assign each task for step s4_edi', default=1)
-parser.add_argument('--s5_cores_per_task', help='Number of cores to assign each task for step s5_render', default=1)
+if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
+    config_file = sys.argv[1]
+    with open(config_file) as f:
+        raw_args = json.load(f)
+    missing_args = []
+    for required_arg in ['subject_list', 'output_dir', 'slurm_bank', 'slurm_partition']:
+        if required_arg not in raw_args:
+            missing_args.append(required_arg)
+    if missing_args:
+        raise Exception('Config file {} is missing required arguments: {}'.format(config_file, missing_args))
+    args = ArgsObject(**raw_args)
+else:
+    parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
+        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --subject_list SUBJECT_LIST --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
+    
+    parser.add_argument('--subject_list', help='Text file list of subject directories.', required=True)
+    parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
+    parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
+    parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
+    parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', nargs='+')
+    parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', nargs='+')
+    parser.add_argument('--force', help='Force re-compute if checkpoints already exist')
+    parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
+    parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
+    parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps')
+    parser.add_argument('--unix_username', help='Unix username for Parsl job requests')
+    parser.add_argument('--unix_group', help='Unix group to assign file permissions')
+    parser.add_argument('--container_path', help='Path to Singularity container image')
+    parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
+    parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.')
+    parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.')
+    parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
+    parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).')
+    parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx')
+    parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
 
-# Override auto-generated machine settings
-parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
-parser.add_argument('--s2a_walltime', help='Override total walltime for step s2a.')
-parser.add_argument('--s2b_walltime', help='Override total walltime for step s2b.')
-parser.add_argument('--s3_walltime', help='Override total walltime for step s3.')
-parser.add_argument('--s4_walltime', help='Override total walltime for step s4.')
-parser.add_argument('--s5_walltime', help='Override total walltime for step s5.')
-parser.add_argument('--s1_nodes', help='Override recommended node count for step s1.')
-parser.add_argument('--s2a_nodes', help='Override recommended node count for step s2a.')
-parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
-parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
-parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
-parser.add_argument('--s5_nodes', help='Override recommended node count for step s5.')
-parser.add_argument('--s1_cores', help='Override core count for node running step s1.')
-parser.add_argument('--s2a_cores', help='Override core count for node running step s2a.')
-parser.add_argument('--s2b_cores', help='Override core count for node running step s2b.')
-parser.add_argument('--s3_cores', help='Override core count for node running step s3.')
-parser.add_argument('--s4_cores', help='Override core count for node running step s4.')
-parser.add_argument('--s5_cores', help='Override core count for node running step s5.')
-args = parser.parse_args()
+    # Site-specific machine settings
+    parser.add_argument('--s1_job_time', help='Max time to finish s1 on a single subject with a single node')
+    parser.add_argument('--s2a_job_time', help='Max time to finish s2a on a single subject with a single node')
+    parser.add_argument('--s2b_job_time', help='Max time to finish s2b on a single subject with a single node')
+    parser.add_argument('--s3_job_time', help='Max time to finish s3 on a single subject with a single node')
+    parser.add_argument('--s4_job_time', help='Max time to finish s4 on a single subject with a single node')
+    parser.add_argument('--s5_job_time', help='Max time to finish s5 on a single subject with a single node')
+    parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
+    parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx')
+    parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer')
+    parser.add_argument('--s3_hostname', help='Hostname of machine to run step s3_probtrackx')
+    parser.add_argument('--s4_hostname', help='Hostname of machine to run step s4_edi')
+    parser.add_argument('--s5_hostname', help='Hostname of machine to run step s5_render')
+    parser.add_argument('--s1_cores_per_task', help='Number of cores to assign each task for step s1_dti_preproc')
+    parser.add_argument('--s2a_cores_per_task', help='Number of cores to assign each task for step s2a_bedpostx')
+    parser.add_argument('--s2b_cores_per_task', help='Number of cores to assign each task for step s2b_freesurfer')
+    parser.add_argument('--s3_cores_per_task', help='Number of cores to assign each task for step s3_probtrackx')
+    parser.add_argument('--s4_cores_per_task', help='Number of cores to assign each task for step s4_edi')
+    parser.add_argument('--s5_cores_per_task', help='Number of cores to assign each task for step s5_render')
+
+    # Override auto-generated machine settings
+    parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
+    parser.add_argument('--s2a_walltime', help='Override total walltime for step s2a.')
+    parser.add_argument('--s2b_walltime', help='Override total walltime for step s2b.')
+    parser.add_argument('--s3_walltime', help='Override total walltime for step s3.')
+    parser.add_argument('--s4_walltime', help='Override total walltime for step s4.')
+    parser.add_argument('--s5_walltime', help='Override total walltime for step s5.')
+    parser.add_argument('--s1_nodes', help='Override recommended node count for step s1.')
+    parser.add_argument('--s2a_nodes', help='Override recommended node count for step s2a.')
+    parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
+    parser.add_argument('--s3_nodes', help='Override recommended node count for step s3.')
+    parser.add_argument('--s4_nodes', help='Override recommended node count for step s4.')
+    parser.add_argument('--s5_nodes', help='Override recommended node count for step s5.')
+    parser.add_argument('--s1_cores', help='Override core count for node running step s1.')
+    parser.add_argument('--s2a_cores', help='Override core count for node running step s2a.')
+    parser.add_argument('--s2b_cores', help='Override core count for node running step s2b.')
+    parser.add_argument('--s3_cores', help='Override core count for node running step s3.')
+    parser.add_argument('--s4_cores', help='Override core count for node running step s4.')
+    parser.add_argument('--s5_cores', help='Override core count for node running step s5.')
+    args = parser.parse_args()
+
+############################
+# Defaults for Optional Args
+############################
+
+parse_default('steps', "s1 s2a s2b s3 s4 s5", args)
+parse_default('gpu_steps', "s2a s2b s3", args)
+parse_default('edge_list', join("lists","list_edges_reduced.txt"), args)
+parse_default('scheduler_options', "", args)
+parse_default('gpu_options', "module load cuda/8.0;", args)
+parse_default('container_path', "container/image.simg", args)
+parse_default('unix_username', getpass.getuser(), args)
+parse_default('unix_group', None, args)
+parse_default('force', False, args)
+parse_default('gssapi', False, args)
+parse_default('local_host_only', True, args)
+parse_default('work_dir', None, args)
+parse_default('parsl_path', None, args)
+parse_default('render_list', "lists/render_targets.txt", args)
+parse_default('pbtx_sample_count', 200, args)
+parse_default('histogram_bin_count', 256, args)
+parse_default('s1_job_time', "00:15:00", args)
+parse_default('s2a_job_time', "00:45:00", args)
+parse_default('s2b_job_time', "10:00:00", args)
+parse_default('s3_job_time', "12:00:00", args)
+parse_default('s4_job_time', "00:45:00", args)
+parse_default('s5_job_time', "00:15:00", args)
+parse_default('s1_cores_per_task', 1, args)
+parse_default('s2a_cores_per_task', head_node_cores, args)
+parse_default('s2b_cores_per_task', head_node_cores, args)
+parse_default('s3_cores_per_task', 3, args)
+parse_default('s4_cores_per_task', 1, args)
+parse_default('s5_cores_per_task', 1, args)
+parse_default('s5_cores_per_task', 1, args)
+
+for step in ['s1','s2a','s2b','s3','s4','s5']:
+    parse_default(step + '_hostname', None, args)
+    parse_default(step + '_walltime', None, args)
+    parse_default(step + '_nodes', None, args)
+    parse_default(step + '_cores', None, args)
 
 ############################
 # Steps
 ############################
+
 print("\n===================================================")
 print("Setup")
 print("---------------------------------------------------")
@@ -180,7 +238,7 @@ for input_dir in open(args.subject_list, 'r').readlines():
             'container': container,
             'checksum': checksum,
             'edge_list': edge_list,
-            'group': args.group,
+            'group': args.unix_group,
             'global_timing_log': global_timing_log,
             'use_gpu': step in gpu_steps,
             'step': step,
@@ -213,7 +271,7 @@ for input_dir in open(args.subject_list, 'r').readlines():
             json.dump(params, f)
         params['stdout'] = new_stdout
         params['timing_log'] = timing_log
-        
+
         subject[step] = params
     subjects[sname] = subject
     running_steps = list(subject.keys())
@@ -247,8 +305,6 @@ else:
 def get_walltime(_num_subjects, job_time_string, node_count):
     job_time = get_time_seconds(job_time_string)
     return get_time_string(clamp((_num_subjects * job_time) / node_count, 7200, 86399)) # clamp between 2 and 24 hours
-
-
 
 # Set recommended or overriden node counts
 node_counts = {
@@ -318,7 +374,7 @@ executors = [IPyParallelExecutor(label='head',
              init_blocks=head_node_cores,
              max_blocks=head_node_cores))]
 
-base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank)
+base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.slurm_bank)
 if args.scheduler_options is not None:
     base_options += str(args.scheduler_options) + '\n'
 
@@ -334,16 +390,18 @@ for step in steps:
     if args.local_host_only:
         channel = LocalChannel()
     else:
+        if hostnames[step] is None:
+            raise Exception('To run step {} on a remote machine, please set the argument --{}_hostname'.format(step))
         channel = SSHChannel(
                 hostname=hostnames[step],
-                username=args.username,
+                username=args.unix_username,
                 gssapi_auth=args.gssapi,
                 )
     executors.append(IPyParallelExecutor(
         label=step,
         workers_per_node=int(cores_per_node[step] / cores_per_task[step]),
         provider=SlurmProvider(
-            args.partition,
+            args.slurm_partition,
             channel=channel,
             launcher=SrunLauncher(),
             nodes_per_block=node_count,

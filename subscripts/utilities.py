@@ -102,7 +102,7 @@ def clamp(value, lo, hi):
 def str2bool(string):
     if string is None:
         return string
-    return string.lower() in ("yes", "true", "t", "1")
+    return str(string).lower() in ("yes", "true", "t", "1")
 
 def get_time_date():
     """Returns date and time as Y-m-d H:M am/pm
@@ -284,6 +284,12 @@ def copy_dir(src, dest):
         raise Exception("Source directory {} does not exist".format(src))
     smart_mkdir(dest)
     run("cp -Rf {} {}".format(join(src,"."), join(dest,".")))
+
+def parse_default(arg, default, args_obj):
+    if not hasattr(args_obj, arg) or getattr(args_obj, arg) is None:
+        setattr(args_obj, arg, default)
+    if isinstance(default, (bool)):
+        setattr(args_obj, arg, str2bool(getattr(args_obj, arg)))
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
     """Not used during runtime. Generates a list of all possible edges from Freesurfer output.
