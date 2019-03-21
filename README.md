@@ -19,64 +19,61 @@ Optional:
 * Freesurfer GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
 * CUDA 8.0, for Bedpostx GPU
 * CUDA 5.0, for Freesurfer GPU
-
-Running the tractography script:
-1. Create a subject list, by writing input directories to a text file. Each input directory must contain hardi.nii.gz, anat.nii.gz, bvals, and bvecs.
-2. Choose an output directory. Each subject may consume large amounts of disk space (up to 5 GB per subject).
-3. Setup environment variables. From the repo directory, run `source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir>`
-4. From the repo directory, run `./s_run_all.py <subject_list> <output_dir>`
+* VTK 8.2 compiled with OSMesa and Python 3.5 wrappers, for image rendering
 
 **OR**
 
 ### Using a Singularity container
 
 Requirements:
-* Singularity 2.5+ (https://www.sylabs.io/guides/2.6/user-guide)
+* Singularity 3.0+ (https://www.sylabs.io/guides/3.0/user-guide/)
 * Nvidia Tesla GPU hardware
 
 Building the container:
-1. Make sure you have root access to the building system (you can copy the image to a non-root system afterwards).
+1. Obtain root access (you can copy the image to a non-root system afterwards).
 2. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
-3. From the repo directory, run `./container/build.sh`
+3. `./container/build.sh`
 
-Running the tractography script:
-1. Create a subject list (see previous).
-2. Choose an output directory (see previous).
-3. From the repo directory, run `./s_run_all.py <subject_list> <output_dir> --container=container/image.simg`
+### Running the scripts
+
+`./s_run_all.py <config_file>`
+
+**OR**
+
+`./s_run_all.py <arg1> <arg2> etc...`
 
 ### File Overview
 
 ```
 TracktographyScripts/
 +- container/
-|  +- build.sh                  # ./container/build.sh
-|  |                              Build a compressed Singularity image with required libraries
-|  |
+|  +- build.sh
 |  +- Singularity               # Singularity build recipe
 |
-+- license.txt                  # Not included, required to use Freesurfer in container
++- example_config.txt           # Example of how the config file should look like
+|
++- license.txt                  # Not included, required to build Singularity container
 |
 +- lists/
-|  +- listEdgesEDI.txt          # List of default edges to compute with Probtrackx and EDI (930 edges)
-|  +- listEdgesEDIAll.txt       # List of all possible edges (6643 edges)
-|  +- subcorticalIndex.txt      # List of regions post-processed in Freesurfer step
-|  +- subjects_example.txt      # Example of how the subject list should look like
+|  +- example_subjects.txt      # Example of how the subject list should look like
+|  +- list_edges_reduced.txt    # List of default edges to compute with Probtrackx and EDI (930 edges)
+|  +- list_edges_all.txt        # List of all possible edges (6643 edges)
+|  +- render_targets.txt        # List of NiFTI images to visualize with s5_render.py
 |
-+- local_env.sh                 # source local_env.sh <FSL dir> <Freesurfer dir> <CUDA 8 lib dir> <CUDA 5 lib dir>
-|                                 Setup environment with local libraries
 +- README.md
 |
-+- s_run_all.py                 # ./s_run_all.py <subject_list> <output_dir>
-|                                 Main script
++- s_run_all.py                 # Main script
 |
 +- subscripts/
    +- __init__.py
-   +- config.py                 # Holds pre-process state, e.g. Parsl executor labels
    +- maskseeds.py              # Helper functions for s2b_freesurfer.py
+   +- run_vtk.py                # Helper script for s5_render.py
+   +- s_debug.py                # Minimal debug step
    +- s1_dti_preproc.py
    +- s2a_bedpostx.py
    +- s2b_freesurfer.py
    +- s3_probtrackx.py
    +- s4_edi.py
+   +- s5_render.py
    +- utilities.py              # General utility functions
 ```
