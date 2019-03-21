@@ -288,7 +288,7 @@ def copy_dir(src, dest):
 def parse_default(arg, default, args_obj):
     if not hasattr(args_obj, arg) or getattr(args_obj, arg) is None:
         setattr(args_obj, arg, default)
-    if isinstance(default, (bool)):
+    if isinstance(default, bool):
         setattr(args_obj, arg, str2bool(getattr(args_obj, arg)))
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
