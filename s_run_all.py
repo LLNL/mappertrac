@@ -49,6 +49,7 @@ else:
     parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', nargs='+')
     parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', nargs='+')
     parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
+    parser.add_argument('--volume_list', help='Text file list of volumes processed by s3_probtrackx')
     parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
     parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps')
     parser.add_argument('--unix_username', help='Unix username for Parsl job requests')
@@ -111,6 +112,7 @@ else:
 parse_default('steps', "s1 s2a s2b s3 s4 s5", args)
 parse_default('gpu_steps', "s2a s2b s3", args)
 parse_default('edge_list', join("lists","list_edges_reduced.txt"), args)
+parse_default('volume_list', join("lists","list_volumes.txt"), args)
 parse_default('scheduler_options', "", args)
 parse_default('gpu_options', "module load cuda/8.0;", args)
 parse_default('container_path', "container/image.simg", args)
@@ -203,6 +205,7 @@ if not exists(global_timing_log):
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
 edge_list = abspath(args.edge_list)
+volume_list = abspath(args.volume_list)
 render_list = abspath(args.render_list)
 
 subjects = {}
@@ -228,6 +231,9 @@ for input_dir in open(args.subject_list, 'r').readlines():
     else:
         work_sdir = None
     
+    with open(args.volume_list, 'r') as f:
+        volumes = [x.strip() for x in f.readlines() if x]
+
     smart_mkdir(log_dir)
     smart_mkdir(sdir)
     subject = {}
@@ -238,6 +244,7 @@ for input_dir in open(args.subject_list, 'r').readlines():
             'container': container,
             'checksum': checksum,
             'edge_list': edge_list,
+            'volumes': volumes,
             'group': args.unix_group,
             'global_timing_log': global_timing_log,
             'use_gpu': step in gpu_steps,

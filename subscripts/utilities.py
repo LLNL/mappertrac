@@ -141,7 +141,10 @@ def print_start():
 def print_finish(start_time):
     print(get_finish())
 
-def write(path, output):
+def write(path, output, params={}):
+    if params and 'container' in params and 'sdir' in params:
+        odir = split(params['sdir'])[0]
+        output = output.replace(odir, "/share")
     with open(path, 'a') as f:
         f.write(str(output) + "\n")
 
@@ -290,6 +293,16 @@ def parse_default(arg, default, args_obj):
         setattr(args_obj, arg, default)
     if isinstance(default, bool):
         setattr(args_obj, arg, str2bool(getattr(args_obj, arg)))
+
+def add_binary_vol(src, target, params={}):
+    run("fslmaths {} -add {} {}".format(src, target, target), params)
+    run("fslmaths {} -bin {}".format(target, target), params)
+
+def sub_binary_vol(src, target, params={}):
+    intersection = "intersection.nii.gz"
+    run("fslmaths {} -mul {} {}".format(src, target, intersection), params)
+    run("fslmaths {} -sub {} {}".format(target, intersection, target), params)
+    run("fslmaths {} -bin {}".format(target, target), params)
 
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
     """Not used during runtime. Generates a list of all possible edges from Freesurfer output.
