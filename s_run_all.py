@@ -129,7 +129,7 @@ parse_default('histogram_bin_count', 256, args)
 parse_default('s1_job_time', "00:15:00", args)
 parse_default('s2a_job_time', "00:45:00", args)
 parse_default('s2b_job_time', "10:00:00", args)
-parse_default('s3_job_time', "12:00:00", args)
+parse_default('s3_job_time', "23:59:00", args)
 parse_default('s4_job_time', "00:45:00", args)
 parse_default('s5_job_time', "00:15:00", args)
 parse_default('s1_cores_per_task', 1, args)
@@ -406,7 +406,7 @@ for step in steps:
                 )
     executors.append(IPyParallelExecutor(
         label=step,
-        workers_per_node=int(cores_per_node[step] / cores_per_task[step]),
+        workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
         provider=SlurmProvider(
             args.slurm_partition,
             channel=channel,
@@ -440,7 +440,7 @@ for sname in subjects:
     subject_jobs = {} # Store jobs in previous steps to use as inputs
     for step in subjects[sname]:
         params = subjects[sname][step]
-        params['cores_per_task'] = cores_per_task[step]
+        params['cores_per_task'] = int(cores_per_task[step])
         inputs = []
         actual_prereqs = []
         for prereq in prereqs[step]:

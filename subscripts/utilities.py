@@ -181,7 +181,7 @@ def record_finish(params):
     step = params['step']
     timing_log = params['timing_log']
     stdout = params['stdout']
-    cores_per_task = params['cores_per_task']
+    cores_per_task = int(params['cores_per_task'])
     use_gpu = params['use_gpu']
     global_timing_log = params['global_timing_log']
     sname = basename(sdir)
