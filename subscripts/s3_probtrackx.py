@@ -16,7 +16,7 @@ def s3_1_start(params, inputs=[]):
 
 @python_app(executors=['s3'], cache=True)
 def s3_2_probtrackx(params, edges, inputs=[]):
-    import time
+    import time,random
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
     from os.path import join,exists,split
     from shutil import copyfile
@@ -26,6 +26,9 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     container = params['container']
     use_gpu = params['use_gpu']
     pbtx_sample_count = int(params['pbtx_sample_count'])
+    pbtx_random_seed = params['pbtx_random_seed']
+    if not pbtx_random_seed:
+        pbtx_random_seed = random.randint(0, 999999)
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_oneway = join(sdir, "connectome_oneway.dot")
@@ -69,7 +72,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
             " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
             " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
-            " --forcedir --opd --rseed=9675674" +
+            " --forcedir --opd --rseed={}".format(pbtx_random_seed) +
             " -s {}".format(merged) +
             " -m {}".format(nodif_brain_mask) +
             " --dir={}".format(tmp) +
@@ -121,16 +124,18 @@ def s3_3_combine(params, inputs=[]):
                 if not line:
                     continue
                 chunks = [x.strip() for x in line.strip().split(' ') if x]
-                if len(chunks) >= 3:
+                if len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3]):
                     a_to_b = (chunks[0], chunks[1])
                     b_to_a = (chunks[1], chunks[0])
                     waytotal_count = float(chunks[2])
-                    fdt_count = float(chunks[3]) if len(chunks) >= 4 else 0
+                    fdt_count = float(chunks[3])
                     if b_to_a in processed_edges:
                         processed_edges[b_to_a][0] += waytotal_count
                         processed_edges[b_to_a][1] += fdt_count
                     else:
                         processed_edges[a_to_b] = [waytotal_count, fdt_count]
+                else:
+                    write(stdout, 'Error: invalid line in connectome_oneway: {}'.format(line))
         for a_to_b in processed_edges:
             write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
     else:    
