@@ -27,8 +27,6 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     use_gpu = params['use_gpu']
     pbtx_sample_count = int(params['pbtx_sample_count'])
     pbtx_random_seed = params['pbtx_random_seed']
-    if not pbtx_random_seed:
-        pbtx_random_seed = random.randint(0, 999999)
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_dir = join(sdir,"EDI","CNTMresults")

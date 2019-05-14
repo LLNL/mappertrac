@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, multiprocessing, parsl, getpass, socket, json, sys
+import argparse, multiprocessing, parsl, getpass, socket, json, sys, random
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -126,7 +126,7 @@ parse_default('work_dir', None, args)
 parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 200, args)
-parse_default('pbtx_random_seed', None, args)
+parse_default('pbtx_random_seed', random.randint(0, 999999), args)
 parse_default('histogram_bin_count', 256, args)
 parse_default('s1_job_time', "00:15:00", args)
 parse_default('s2a_job_time', "00:45:00", args)
