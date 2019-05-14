@@ -15,7 +15,7 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     stdout = params['stdout']
     container = params['container']
     start_time = time.time()
-    a_to_b = "{}to{}".format(a, b)
+    a_to_b = "{}_to_{}".format(a, b)
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     # a_to_b_file = join(pbtk_dir,"{}to{}.nii.gz".format(a,b))
     # b_to_a_file = join(pbtk_dir,"{}to{}.nii.gz".format(b,a))
@@ -41,8 +41,8 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     bmax = int(float(bmax))
     write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
     if amax > 0 and bmax > 0:
-        tmp1 = join(pbtk_dir, "{}to{}_tmp1.nii.gz".format(a, b))
-        tmp2 = join(pbtk_dir, "{}to{}_tmp2.nii.gz".format(b, a))
+        tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
+        tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
         run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
         run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
         run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
@@ -95,8 +95,8 @@ def setup_s4(params, inputs):
             if edge.isspace():
                 continue
             a, b = edge.replace("_s2fa", "").strip().split(',', 1)
-            a_to_b = "{}to{}".format(a, b)
-            b_to_a = "{}to{}".format(b, a)
+            a_to_b = "{}_to_{}".format(a, b)
+            b_to_a = "{}_to_{}".format(b, a)
             if a_to_b not in processed_edges and b_to_a not in processed_edges:
                 s4_2_futures.append(s4_2_edi_consensus(params, a, b, inputs=[s4_1_future]))
                 processed_edges.append(a_to_b)
