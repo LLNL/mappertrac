@@ -155,8 +155,8 @@ for step in ['s1','s2a','s2b','s3','s4','s5']:
 print("\n===================================================")
 print("Setup")
 print("---------------------------------------------------")
-steps = args.steps
-gpu_steps = args.gpu_steps
+steps = args.steps if args.steps else []
+gpu_steps = args.gpu_steps if args.gpu_steps else []
 if isinstance(args.steps, str):
     steps = [x.strip() for x in args.steps.split(' ') if x]
 if isinstance(args.gpu_steps, str):

@@ -293,6 +293,9 @@ def parse_default(arg, default, args_obj):
         setattr(args_obj, arg, default)
     if isinstance(default, bool):
         setattr(args_obj, arg, str2bool(getattr(args_obj, arg)))
+    elif isinstance(default, str):
+        if str(getattr(args_obj, arg)).lower() == "none":
+            setattr(args_obj, arg, None)
 
 def add_binary_vol(src, target, params={}):
     run("fslmaths {} -add {} {}".format(src, target, target), params)

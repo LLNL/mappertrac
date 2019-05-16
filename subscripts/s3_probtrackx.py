@@ -102,7 +102,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
                 if not exists(connectome_oneway):
                     raise Exception("Failed to find connectome for edge {}".format(a_to_b))
                 with open(connectome_oneway) as f:
-                    chunks = [x.strip() for x in f.readlines().strip().split(' ') if x]
+                    chunks = [x.strip() for x in f.read().strip().split(' ') if x]
                     if len(chunks) != 4 or not is_float(chunks[2]) or not is_float(chunks[3]):
                         raise Exception('Connectome edge {} has invalid line {}'.format(a_to_b, line))
         else:
@@ -121,6 +121,7 @@ def s3_3_combine(params, inputs=[]):
     stdout = params['stdout']
     edge_list = params['edge_list']
     start_time = time.time()
+    connectome_dir = join(sdir,"EDI","CNTMresults")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
     smart_remove(join(sdir, "connectome_twoway.dot"))
     processed_edges = {}
@@ -131,8 +132,8 @@ def s3_3_combine(params, inputs=[]):
             a, b = edge.replace("_s2fa", "").strip().split(',', 1)
             a_to_b = "{}_to_{}".format(a, b)
             connectome_oneway = join(connectome_dir, a_to_b + ".dot")
-            chunks = [x.strip() for x in line.strip().split(' ') if x]
-            if len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3]):
+            with open(connectome_oneway) as f:
+                chunks = [x.strip() for x in f.read().strip().split(' ') if x]
                 a_to_b = (chunks[0], chunks[1])
                 b_to_a = (chunks[1], chunks[0])
                 waytotal_count = float(chunks[2])
@@ -155,14 +156,15 @@ def setup_s3(params, inputs):
     edge_list = params['edge_list']
     s3_1_future = s3_1_start(params, inputs=inputs)
     s3_2_futures = []
-    smart_remove(join(sdir, "connectome_oneway.dot"))
-    smart_remove(join(sdir, "waytotal_oneway.dot"))
     pbtk_dir = join(sdir,"EDI","PBTKresults")
+    connectome_dir = join(sdir,"EDI","CNTMresults")
     tmp_dir = join(sdir,"tmp")
     smart_remove(tmp_dir)
     smart_remove(pbtk_dir)
+    smart_remove(connectome_dir)
     smart_mkdir(tmp_dir)
     smart_mkdir(pbtk_dir)
+    smart_mkdir(connectome_dir)
     with open(edge_list) as f:
         edges = []
         for edge in f.readlines():
