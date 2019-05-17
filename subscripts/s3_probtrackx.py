@@ -104,7 +104,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
                 with open(connectome_oneway) as f:
                     chunks = [x.strip() for x in f.read().strip().split(' ') if x]
                     if len(chunks) != 4 or not is_float(chunks[2]) or not is_float(chunks[3]):
-                        raise Exception('Connectome edge {} has invalid line {}'.format(a_to_b, line))
+                        raise Exception('Connectome edge {} has invalid line {}'.format(a_to_b, f.read().strip()))
         else:
             write(stdout, 'Error: failed to find waytotal for {}'.format(a_to_b))
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output

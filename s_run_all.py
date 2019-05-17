@@ -31,8 +31,10 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     config_file = sys.argv[1]
     with open(config_file) as f:
         raw_args = json.load(f)
+    if not ('subject' in raw_args ^ 'subject_list' in raw_args):
+        raise Exception('Config file {} must have exactly one of: subject or subject_list'.format(config_file))
     missing_args = []
-    for required_arg in ['subject_list', 'output_dir', 'slurm_bank', 'slurm_partition']:
+    for required_arg in ['output_dir', 'slurm_bank', 'slurm_partition']:
         if required_arg not in raw_args:
             missing_args.append(required_arg)
     if missing_args:
@@ -40,9 +42,10 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     args = ArgsObject(**raw_args)
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
-        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --subject_list SUBJECT_LIST --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
-    
-    parser.add_argument('--subject_list', help='Text file list of subject directories.', required=True)
+        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
+    subjects_group = parser.add_mutually_exclusive_group(required=True)
+    subjects_group.add_argument('--subject', help='Output subject directory.')
+    subjects_group.add_argument('--subject_list', help='Text file list of subject directories')
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
     parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
     parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
@@ -113,7 +116,6 @@ else:
 parse_default('steps', "s1 s2a s2b s3 s4 s5", args)
 parse_default('gpu_steps', "s2a s2b s3", args)
 parse_default('edge_list', join("lists","list_edges_reduced.txt"), args)
-# parse_default('volume_list', join("lists","list_volumes.txt"), args)
 parse_default('scheduler_options', "", args)
 parse_default('gpu_options', "module load cuda/8.0;", args)
 parse_default('container_path', "container/image.simg", args)
@@ -207,11 +209,14 @@ if not exists(global_timing_log):
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
 edge_list = abspath(args.edge_list)
-# volume_list = abspath(args.volume_list)
 render_list = abspath(args.render_list)
 
-subjects = {}
-for input_dir in open(args.subject_list, 'r').readlines():
+if args.subject_list:
+    input_dirs = open(args.subject_list, 'r').readlines()
+else:
+    input_dirs = [args.subject]
+subject_dict = {}
+for input_dir in input_dirs:
     # Make sure input files exist for each subject
     input_dir = input_dir.strip()
     if not input_dir or not isdir(input_dir):
@@ -232,9 +237,6 @@ for input_dir in open(args.subject_list, 'r').readlines():
         work_sdir = join(args.work_dir, sname)
     else:
         work_sdir = None
-    
-    # with open(args.volume_list, 'r') as f:
-        # volumes = [x.strip() for x in f.readlines() if x]
 
     smart_mkdir(log_dir)
     smart_mkdir(sdir)
@@ -283,7 +285,7 @@ for input_dir in open(args.subject_list, 'r').readlines():
         params['timing_log'] = timing_log
 
         subject[step] = params
-    subjects[sname] = subject
+    subject_dict[sname] = subject
     running_steps = list(subject.keys())
     if len(running_steps) > 0:
         print("Running subject {} with steps {}".format(sname, running_steps))
@@ -298,15 +300,15 @@ num_subjects = {
     's4': 0,
     's5': 0,
 }
-for sname in subjects:
-    for step in subjects[sname]:
+for sname in subject_dict:
+    for step in subject_dict[sname]:
         num_subjects[step] += 1
 total_num_steps = sum(num_subjects.values())
 if total_num_steps == 0:
     print("Error: not running any steps on any subjects")
     exit(0)
 else:
-    print("In total, running {} steps across {} subjects".format(total_num_steps, len(subjects)))
+    print("In total, running {} steps across {} subjects".format(total_num_steps, len(subject_dict)))
 
 ############################
 # Node Settings
@@ -439,10 +441,10 @@ parsl.load(config)
 ############################
 
 all_jobs = []
-for sname in subjects:
+for sname in subject_dict:
     subject_jobs = {} # Store jobs in previous steps to use as inputs
-    for step in subjects[sname]:
-        params = subjects[sname][step]
+    for step in subject_dict[sname]:
+        params = subject_dict[sname][step]
         params['cores_per_task'] = int(cores_per_task[step])
         inputs = []
         actual_prereqs = []
