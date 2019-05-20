@@ -39,12 +39,11 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         a, b = edge
         a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
         b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
-        a_to_b = "{}_to_{}".format(a, b)
+        tmp = join(sdir, "tmp", "{}_to_{}".format(a, b))
         a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
         a_to_b_file = join(pbtk_dir,a_to_b_formatted)
         merged = join(bedpostxResults,"merged")
         nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
-        tmp = join(sdir, "tmp", a_to_b)
         waypoints = join(tmp,"waypoint.txt")
         waytotal = join(tmp, "waytotal")
         if not exists(a_file) or not exists(b_file):
@@ -52,7 +51,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         smart_remove(a_to_b_file)
         smart_remove(tmp)
         smart_mkdir(tmp)
-        write(stdout, "Running subproc: {}".format(a_to_b))
+        write(stdout, "Running subproc: {} to {}".format(a, b))
         if container:
             odir = split(sdir)[0]
             write(waypoints, b_file.replace(odir, "/share"))
@@ -95,18 +94,18 @@ def s3_2_probtrackx(params, edges, inputs=[]):
                     raise Exception("Failed to read waytotal_count value {}".format(waytotal_count))
                 if not is_float(fdt_count):
                     raise Exception("Failed to read fdt_count value {}".format(fdt_count))
-                connectome_oneway = join(connectome_dir, a_to_b + ".dot")
-                write(connectome_oneway, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+                edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+                write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
 
-                # Error check connectome output
-                if not exists(connectome_oneway):
-                    raise Exception("Failed to find connectome for edge {}".format(a_to_b))
-                with open(connectome_oneway) as f:
+                # Error check edge file
+                if not exists(edge_file):
+                    raise Exception("Failed to find connectome for edge {} to {}".format(a, b))
+                with open(edge_file) as f:
                     chunks = [x.strip() for x in f.read().strip().split(' ') if x]
                     if len(chunks) != 4 or not is_float(chunks[2]) or not is_float(chunks[3]):
-                        raise Exception('Connectome edge {} has invalid line {}'.format(a_to_b, f.read().strip()))
+                        raise Exception('Connectome edge {} to {} has invalid line {}'.format(a, b, f.read().strip()))
         else:
-            write(stdout, 'Error: failed to find waytotal for {}'.format(a_to_b))
+            write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
         if not a == "lh.paracentral": # discard all temp files except these for debugging
             smart_remove(tmp)
@@ -120,31 +119,36 @@ def s3_3_combine(params, inputs=[]):
     sdir = params['sdir']
     stdout = params['stdout']
     edge_list = params['edge_list']
+    connectome_idx_list = params['connectome_idx_list']
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
+    connectome_oneway = join(sdir, "connectome_oneway.dot")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
     smart_remove(join(sdir, "connectome_twoway.dot"))
-    processed_edges = {}
+    oneway_edges = {}
+    twoway_edges = {}
     with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():
                 continue
             a, b = edge.replace("_s2fa", "").strip().split(',', 1)
-            a_to_b = "{}_to_{}".format(a, b)
-            connectome_oneway = join(connectome_dir, a_to_b + ".dot")
-            with open(connectome_oneway) as f:
+            edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+            with open(edge_file) as f:
                 chunks = [x.strip() for x in f.read().strip().split(' ') if x]
                 a_to_b = (chunks[0], chunks[1])
                 b_to_a = (chunks[1], chunks[0])
                 waytotal_count = float(chunks[2])
                 fdt_count = float(chunks[3])
-                if b_to_a in processed_edges:
-                    processed_edges[b_to_a][0] += waytotal_count
-                    processed_edges[b_to_a][1] += fdt_count
+                if b_to_a in twoway_edges:
+                    twoway_edges[b_to_a][0] += waytotal_count
+                    twoway_edges[b_to_a][1] += fdt_count
                 else:
-                    processed_edges[a_to_b] = [waytotal_count, fdt_count]
-    for a_to_b in processed_edges:
-        write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], processed_edges[a_to_b][0], processed_edges[a_to_b][1]))
+                    twoway_edges[a_to_b] = [waytotal_count, fdt_count]
+                oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+    for a_to_b in oneway_edges:
+        write(connectome_oneway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], oneway_edges[a_to_b][0], oneway_edges[a_to_b][1]))
+    for a_to_b in twoway_edges:
+        write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)

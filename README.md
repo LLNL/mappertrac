@@ -1,15 +1,15 @@
 # TRACK TBI
-
 Parallel EDI tractography workflow
+  
+  
+### Setup
 
 Requirements:
 * Python 3.5+
 * Parsl (http://parsl-project.org/)
 * SLURM job scheduling on a multi-node system
 
-It can be run two ways:
-
-### Using local libraries
+1. Using local libraries
 
 Requirements:
 * FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
@@ -20,10 +20,10 @@ Optional:
 * CUDA 8.0, for Bedpostx GPU
 * CUDA 5.0, for Freesurfer GPU
 * VTK 8.2 compiled with OSMesa and Python 3.5 wrappers, for image rendering
-
+  
 **OR**
-
-### Using a Singularity container
+  
+2. Using a Singularity container
 
 Requirements:
 * Singularity 3.0+ (https://www.sylabs.io/guides/3.0/user-guide/)
@@ -33,15 +33,17 @@ Building the container:
 1. Obtain root access (you can copy the image to a non-root system afterwards).
 2. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
 3. `./container/build.sh`
-
-### Running the scripts
+  
+  
+### Launch
 
 `./s_run_all.py <config_file>`
 
 **OR**
 
 `./s_run_all.py <arg1> <arg2> etc...`
-
+  
+  
 ### File Overview
 
 ```

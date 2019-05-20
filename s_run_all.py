@@ -52,7 +52,6 @@ else:
     parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', nargs='+')
     parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', nargs='+')
     parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
-    # parser.add_argument('--volume_list', help='Text file list of volumes processed by s3_probtrackx')
     parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
     parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps')
     parser.add_argument('--unix_username', help='Unix username for Parsl job requests')
@@ -66,6 +65,7 @@ else:
     parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_false')
     parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx')
     parser.add_argument('--pbtx_random_seed', help='Random seed in s3_probtrackx')
+    parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
 
     # Site-specific machine settings
@@ -129,6 +129,7 @@ parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 200, args)
 parse_default('pbtx_random_seed', random.randint(0, 999999), args)
+parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
 parse_default('histogram_bin_count', 256, args)
 parse_default('s1_job_time', "00:15:00", args)
 parse_default('s2a_job_time', "00:45:00", args)
@@ -210,6 +211,7 @@ if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
 edge_list = abspath(args.edge_list)
 render_list = abspath(args.render_list)
+connectome_idx_list = abspath(args.connectome_idx_list)
 
 if hasattr(args, 'subject_list'):
     input_dirs = open(args.subject_list, 'r').readlines()
@@ -248,13 +250,13 @@ for input_dir in input_dirs:
             'container': container,
             'checksum': checksum,
             'edge_list': edge_list,
-            # 'volumes': volumes,
             'group': args.unix_group,
             'global_timing_log': global_timing_log,
             'use_gpu': step in gpu_steps,
             'step': step,
             'work_sdir': work_sdir,
             'render_list': render_list,
+            'connectome_idx_list': connectome_idx_list,
             'pbtx_sample_count': int(args.pbtx_sample_count),
             'pbtx_random_seed': args.pbtx_random_seed,
             'histogram_bin_count': int(args.histogram_bin_count),
