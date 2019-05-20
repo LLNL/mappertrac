@@ -31,7 +31,7 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     config_file = sys.argv[1]
     with open(config_file) as f:
         raw_args = json.load(f)
-    if not ('subject' in raw_args ^ 'subject_list' in raw_args):
+    if not (bool('subject' in raw_args) ^ bool('subject_list' in raw_args)):
         raise Exception('Config file {} must have exactly one of: subject or subject_list'.format(config_file))
     missing_args = []
     for required_arg in ['output_dir', 'slurm_bank', 'slurm_partition']:
@@ -211,7 +211,7 @@ if islink(join(odir,"fsaverage")):
 edge_list = abspath(args.edge_list)
 render_list = abspath(args.render_list)
 
-if args.subject_list:
+if hasattr(args, 'subject_list'):
     input_dirs = open(args.subject_list, 'r').readlines()
 else:
     input_dirs = [args.subject]
