@@ -6,10 +6,13 @@ Parallel EDI tractography workflow
 
 Requirements:
 * Python 3.5+
-* Parsl (http://parsl-project.org/)
 * SLURM job scheduling on a multi-node system
 
-1. Using local libraries
+1. Install NumPy and Parsl (http://parsl-project.org/)
+
+`pip3 install parsl numpy`
+
+2a. Install local libraries
 
 Requirements:
 * FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
@@ -23,16 +26,16 @@ Optional:
   
 **OR**
   
-2. Using a Singularity container
+2b. Load a Singularity container
 
 Requirements:
 * Singularity 3.0+ (https://www.sylabs.io/guides/3.0/user-guide/)
 * Nvidia Tesla GPU hardware
 
 Building the container:
-1. Obtain root access (you can copy the image to a non-root system afterwards).
-2. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
-3. `./container/build.sh`
+i. Obtain root access (you can copy the image to a non-root system afterwards).
+ii. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
+iii. `./container/build.sh`
   
   
 ### Launch

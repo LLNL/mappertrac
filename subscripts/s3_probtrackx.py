@@ -113,6 +113,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 
 @python_app(executors=['s3'], cache=True)
 def s3_3_combine(params, inputs=[]):
+    import numpy as np
     import time
     from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write
     from os.path import join,exists
@@ -124,9 +125,24 @@ def s3_3_combine(params, inputs=[]):
     connectome_dir = join(sdir,"EDI","CNTMresults")
     connectome_oneway = join(sdir, "connectome_oneway.dot")
     connectome_twoway = join(sdir, "connectome_twoway.dot")
+    connectome_oneway_mat = join(sdir, "connectome_oneway.mat")
+    connectome_twoway_mat = join(sdir, "connectome_twoway.mat")
     smart_remove(join(sdir, "connectome_twoway.dot"))
     oneway_edges = {}
     twoway_edges = {}
+
+    vol_idxs = {}
+    with open(connectome_idx_list) as f:
+        lines = [x.strip() for x in f.readlines() if x]
+        max_idx = -1
+        for line in lines:
+            vol, idx = line.split(',', 1)
+            vol_idxs[vol] = int(idx)
+            if idx > max_idx:
+                max_idx = idx
+        oneway_matrix = np.zeros((max_idx+1, max_idx+1))
+        twoway_matrix = np.zeros((max_idx+1, max_idx+1))
+
     with open(edge_list) as f:
         for edge in f.readlines():
             if edge.isspace():
@@ -145,10 +161,31 @@ def s3_3_combine(params, inputs=[]):
                 else:
                     twoway_edges[a_to_b] = [waytotal_count, fdt_count]
                 oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+
     for a_to_b in oneway_edges:
-        write(connectome_oneway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], oneway_edges[a_to_b][0], oneway_edges[a_to_b][1]))
+        a = a_to_b[0]
+        b = a_to_b[1]
+        for vol in a_to_b:
+            if vol not in vol_idxs:
+                write(stdout, 'Error: could not find {} in connectome idxs'.format(vol))
+                break
+        else:
+            write(connectome_oneway, "{} {} {} {}".format(a, b, oneway_edges[a_to_b][0], oneway_edges[a_to_b][1]))
+            oneway_matrix[vol_idxs[a]][vol_idxs[b]] = oneway_edges[a_to_b][1]
+
     for a_to_b in twoway_edges:
-        write(connectome_twoway, "{} {} {} {}".format(a_to_b[0], a_to_b[1], twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
+        a = a_to_b[0]
+        b = a_to_b[1]
+        for vol in a_to_b:
+            if vol not in vol_idxs:
+                write(stdout, 'Error: could not find {} in connectome idxs'.format(vol))
+                break
+        else:
+            write(connectome_twoway, "{} {} {} {}".format(a, b, twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
+            twoway_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][1]
+    np.savetxt(connectome_oneway_mat, oneway_matrix, fmt='%g')
+    np.savetxt(connectome_twoway_mat, twoway_matrix, fmt='%g')
+
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
