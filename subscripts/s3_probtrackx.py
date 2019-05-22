@@ -117,10 +117,12 @@ def s3_3_combine(params, inputs=[]):
     import time
     from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write
     from os.path import join,exists
+    from shutil import copyfile
     sdir = params['sdir']
     stdout = params['stdout']
     edge_list = params['edge_list']
     connectome_idx_list = params['connectome_idx_list']
+    connectome_idx_list_copy = join(sdir, 'connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
     connectome_oneway = join(sdir, "connectome_oneway.dot")
@@ -131,13 +133,16 @@ def s3_3_combine(params, inputs=[]):
     oneway_edges = {}
     twoway_edges = {}
 
+    copyfile(connectome_idx_list, connectome_idx_list_copy) # give each subject a copy for reference
+
     vol_idxs = {}
     with open(connectome_idx_list) as f:
         lines = [x.strip() for x in f.readlines() if x]
         max_idx = -1
         for line in lines:
             vol, idx = line.split(',', 1)
-            vol_idxs[vol] = int(idx)
+            idx = int(idx)
+            vol_idxs[vol] = idx
             if idx > max_idx:
                 max_idx = idx
         oneway_matrix = np.zeros((max_idx+1, max_idx+1))
