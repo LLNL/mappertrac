@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import random
 from os.path import join,exists
 from subscripts.utilities import write,smart_remove,smart_mkdir
 from parsl.app.app import python_app
@@ -16,7 +17,7 @@ def s3_1_start(params, inputs=[]):
 
 @python_app(executors=['s3'], cache=True)
 def s3_2_probtrackx(params, edges, inputs=[]):
-    import time,random
+    import time
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
     from os.path import join,exists,split
     from shutil import copyfile
@@ -26,7 +27,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     container = params['container']
     use_gpu = params['use_gpu']
     pbtx_sample_count = int(params['pbtx_sample_count'])
-    pbtx_random_seed = params['pbtx_random_seed']
+    subject_random_seed = params['subject_random_seed']
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_dir = join(sdir,"EDI","CNTMresults")
@@ -69,7 +70,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
             " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
             " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
-            " --forcedir --opd --rseed={}".format(pbtx_random_seed) +
+            " --forcedir --opd --rseed={}".format(subject_random_seed) +
             " -s {}".format(merged) +
             " -m {}".format(nodif_brain_mask) +
             " --dir={}".format(tmp) +
@@ -200,6 +201,8 @@ def setup_s3(params, inputs):
     sdir = params['sdir']
     stdout = params['stdout']
     edge_list = params['edge_list']
+    pbtx_random_seed = params['pbtx_random_seed']
+    params['subject_random_seed'] = random.randint(0, 999999) if pbtx_random_seed is None else pbtx_random_seed
     s3_1_future = s3_1_start(params, inputs=inputs)
     s3_2_futures = []
     pbtk_dir = join(sdir,"EDI","PBTKresults")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, multiprocessing, parsl, getpass, socket, json, sys, random
+import argparse, multiprocessing, parsl, getpass, socket, json, sys
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -128,7 +128,7 @@ parse_default('work_dir', None, args)
 parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 200, args)
-parse_default('pbtx_random_seed', random.randint(0, 999999), args)
+parse_default('pbtx_random_seed', None, args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
 parse_default('histogram_bin_count', 256, args)
 parse_default('s1_job_time', "00:15:00", args)
@@ -223,16 +223,18 @@ for input_dir in input_dirs:
     input_dir = input_dir.strip()
     if not input_dir or not isdir(input_dir):
         continue
-    bvecs = join(input_dir, "bvecs")
-    bvals = join(input_dir, "bvals")
-    hardi = join(input_dir, "hardi.nii.gz")
-    anat = join(input_dir, "anat.nii.gz")
+    checksum = None
     sname = basename(input_dir)
-    if not exist_all([bvecs, bvals, hardi, anat]):
-        print("Skipping subject {}. Missing input files - must have bvecs, bvals, hardi.nii.gz, and anat.nii.gz.".format(sname))
-        continue
+    if 's1' in steps:
+        bvecs = join(input_dir, "bvecs")
+        bvals = join(input_dir, "bvals")
+        hardi = join(input_dir, "hardi.nii.gz")
+        anat = join(input_dir, "anat.nii.gz")
+        if not exist_all([bvecs, bvals, hardi, anat]):
+            print("Skipping subject {}. Missing input files - must have bvecs, bvals, hardi.nii.gz, and anat.nii.gz.".format(sname))
+            continue
+        checksum = generate_checksum(input_dir) # Ensures recompute if inputs change
 
-    checksum = generate_checksum(input_dir)
     sdir = join(odir, sname)
     log_dir = join(sdir,'log')
     if args.work_dir:
