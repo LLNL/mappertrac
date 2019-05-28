@@ -11,11 +11,16 @@ Requirements:
 <b>1\. Install NumPy and Parsl (http://parsl-project.org/)</b>
 
 `pip3 install parsl numpy`
+(`pip3 install parsl numpy --user` for non-root systems)
 
-<b>2a\. Install local libraries</b>
+<b>2\. Clone repository</b>
+`git clone https://lc.llnl.gov/bitbucket/scm/tbi/tracktographyscripts.git`
+`cd TracktographyScripts`
+
+<b>3a\. Manually install dependencies</b>
 
 Requirements:  
-* FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)  
+* FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
 * Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)  
 Optional:  
 * Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)  
@@ -26,7 +31,7 @@ Optional:
 
 **OR**
 
-<b>2b\. Load a Singularity container</b>
+<b>3b\. Load a Singularity container</b>
 
 Requirements:
 * Singularity 3.0+ (https://www.sylabs.io/guides/3.0/user-guide/)
