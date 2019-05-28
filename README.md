@@ -1,6 +1,7 @@
 # TRACK TBI
 Parallel EDI tractography workflow
 <br></br>
+<br></br>
 ### Setup
 
 Requirements:
@@ -36,6 +37,7 @@ i. Obtain root access (you can copy and run the image in a non-root system after
 ii. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).  
 iii. `./container/build.sh`
 <br></br>
+<br></br>
 ### Launch
 Specify parameters either in a config file or as command line arguments:
 
@@ -44,6 +46,7 @@ Specify parameters either in a config file or as command line arguments:
 **OR**
 
 `./s_run_all.py <arg1> <arg2> etc...`
+<br></br>
 <br></br>
 ### File Overview
 
