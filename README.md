@@ -16,7 +16,7 @@ Requirements:
 <b>2\. Clone repository</b>
 
 `git clone https://lc.llnl.gov/bitbucket/scm/tbi/tracktographyscripts.git`  
-`cd TracktographyScripts`  
+`cd tracktographyscripts`  
 
 <b>3a\. Manually install dependencies</b>
 
