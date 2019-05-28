@@ -8,7 +8,7 @@ Requirements:
 * Python 3.5+
 * SLURM job scheduling on a multi-node system
 
-<b>1\. Install NumPy and Parsl (http://parsl-project.org/)</b>
+<b>1\. Install NumPy and Parsl</b>
 
 `pip3 install parsl numpy`  
 (`pip3 install parsl numpy --user` for non-root systems)  
