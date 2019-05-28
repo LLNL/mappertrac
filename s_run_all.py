@@ -44,8 +44,8 @@ else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
         usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
     subjects_group = parser.add_mutually_exclusive_group(required=True)
-    subjects_group.add_argument('--subject', help='Output subject directory.')
-    subjects_group.add_argument('--subject_list', help='Text file list of subject directories')
+    subjects_group.add_argument('--subject', help='Input subject directory.')
+    subjects_group.add_argument('--subject_list', help='Text file list of input subject directories')
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
     parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
     parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
