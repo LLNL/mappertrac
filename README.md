@@ -1,52 +1,50 @@
 # TRACK TBI
 Parallel EDI tractography workflow
-  
-  
+<br></br>
 ### Setup
 
 Requirements:
 * Python 3.5+
 * SLURM job scheduling on a multi-node system
 
-1. Install NumPy and Parsl (http://parsl-project.org/)
+<b>1\. Install NumPy and Parsl (http://parsl-project.org/)</b>
 
 `pip3 install parsl numpy`
 
-2a. Install local libraries
+<b>2a\. Install local libraries</b>
 
-Requirements:
-* FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
-* Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)
-Optional:
-* Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
-* Freesurfer GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)
-* CUDA 8.0, for Bedpostx GPU
+Requirements:  
+* FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)  
+* Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)  
+Optional:  
+* Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)  
+* Freesurfer GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)  
+* CUDA 8.0, for Bedpostx GPU  
 * CUDA 5.0, for Freesurfer GPU
-* VTK 8.2 compiled with OSMesa and Python 3.5 wrappers, for image rendering
-  
+* VTK 8.2 compiled with OSMesa and Python 3.5 wrappers, for image rendering  
+
 **OR**
-  
-2b. Load a Singularity container
+
+<b>2b\. Load a Singularity container</b>
 
 Requirements:
 * Singularity 3.0+ (https://www.sylabs.io/guides/3.0/user-guide/)
 * Nvidia Tesla GPU hardware
 
-Building the container:
-i. Obtain root access (you can copy the image to a non-root system afterwards).
-ii. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).
+Building the container:  
+i. Obtain root access (you can copy and run the image in a non-root system afterwards).  
+ii. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).  
 iii. `./container/build.sh`
-  
-  
+<br></br>
 ### Launch
+Specify parameters either in a config file or as command line arguments:
 
 `./s_run_all.py <config_file>`
 
 **OR**
 
 `./s_run_all.py <arg1> <arg2> etc...`
-  
-  
+<br></br>
 ### File Overview
 
 ```
