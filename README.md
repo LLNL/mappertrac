@@ -10,12 +10,13 @@ Requirements:
 
 <b>1\. Install NumPy and Parsl (http://parsl-project.org/)</b>
 
-`pip3 install parsl numpy`
-(`pip3 install parsl numpy --user` for non-root systems)
+`pip3 install parsl numpy`  
+(`pip3 install parsl numpy --user` for non-root systems)  
 
 <b>2\. Clone repository</b>
-`git clone https://lc.llnl.gov/bitbucket/scm/tbi/tracktographyscripts.git`
-`cd TracktographyScripts`
+
+`git clone https://lc.llnl.gov/bitbucket/scm/tbi/tracktographyscripts.git`  
+`cd TracktographyScripts`  
 
 <b>3a\. Manually install dependencies</b>
 
