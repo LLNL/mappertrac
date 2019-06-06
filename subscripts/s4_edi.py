@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from parsl.app.app import python_app
+from os.path import join,exists
+from subscripts.utilities import write,smart_remove,smart_mkdir
 
 @python_app(executors=['s4'], cache=True)
 def s4_1_start(params, inputs=[]):
@@ -17,8 +19,7 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     start_time = time.time()
     a_to_b = "{}_to_{}".format(a, b)
     pbtk_dir = join(sdir,"EDI","PBTKresults")
-    # a_to_b_file = join(pbtk_dir,"{}to{}.nii.gz".format(a,b))
-    # b_to_a_file = join(pbtk_dir,"{}to{}.nii.gz".format(b,a))
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
     a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
     b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
     if not exists(a_to_b_file):
@@ -27,8 +28,7 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
     if not exists(b_to_a_file):
         write(stdout, "Error: cannot find {}".format(b_to_a_file))
         return
-    smart_mkdir(join(pbtk_dir,"twoway_consensus_edges"))
-    consensus = join(pbtk_dir,"twoway_consensus_edges",a_to_b)
+    consensus = join(consensus_dir, a_to_b + '.nii.gz')
     amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), params).strip()
     if not is_float(amax):
         write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
@@ -66,12 +66,12 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
     container = params['container']
     start_time = time.time()
     pbtk_dir = join(sdir,"EDI","PBTKresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
     edi_maps = join(sdir,"EDI","EDImaps")
     total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
-    smart_mkdir(edi_maps)
 
     for a_to_b in processed_edges:
-        consensus = join(pbtk_dir, "twoway_consensus_edges", a_to_b + ".nii.gz")
+        consensus = join(consensus_dir, a_to_b + ".nii.gz")
         if not exists(consensus):
             write(stdout,"{} has been thresholded. See {} for details".format(a_to_b, join(pbtk_dir, "zerosl.txt")))
             continue
@@ -87,6 +87,14 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
 
 def setup_s4(params, inputs):
     edge_list = params['edge_list']
+    sdir = params['sdir']
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
+    smart_remove(consensus_dir)
+    smart_remove(edi_maps)
+    smart_mkdir(consensus_dir)
+    smart_mkdir(edi_maps)
     s4_1_future = s4_1_start(params, inputs=inputs)
     s4_2_futures = []
     processed_edges = []
