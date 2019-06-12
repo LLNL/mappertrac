@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import random
 from os.path import join,exists
-from subscripts.utilities import write,smart_remove,smart_mkdir
+from subscripts.utilities import write,smart_remove,smart_mkdir,get_edges_from_file
 from parsl.app.app import python_app
 
 @python_app(executors=['s3'], cache=True)
@@ -116,7 +116,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 def s3_3_combine(params, inputs=[]):
     import numpy as np
     import time
-    from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write
+    from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write,get_edges_from_file
     from os.path import join,exists
     from shutil import copyfile
     sdir = params['sdir']
@@ -149,24 +149,21 @@ def s3_3_combine(params, inputs=[]):
         oneway_matrix = np.zeros((max_idx+1, max_idx+1))
         twoway_matrix = np.zeros((max_idx+1, max_idx+1))
 
-    with open(edge_list) as f:
-        for edge in f.readlines():
-            if edge.isspace():
-                continue
-            a, b = edge.replace("_s2fa", "").strip().split(',', 1)
-            edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
-            with open(edge_file) as f:
-                chunks = [x.strip() for x in f.read().strip().split(' ') if x]
-                a_to_b = (chunks[0], chunks[1])
-                b_to_a = (chunks[1], chunks[0])
-                waytotal_count = float(chunks[2])
-                fdt_count = float(chunks[3])
-                if b_to_a in twoway_edges:
-                    twoway_edges[b_to_a][0] += waytotal_count
-                    twoway_edges[b_to_a][1] += fdt_count
-                else:
-                    twoway_edges[a_to_b] = [waytotal_count, fdt_count]
-                oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+    for edge in get_edges_from_file(edge_list):
+        a, b = edge
+        edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+        with open(edge_file) as f:
+            chunks = [x.strip() for x in f.read().strip().split(' ') if x]
+            a_to_b = (chunks[0], chunks[1])
+            b_to_a = (chunks[1], chunks[0])
+            waytotal_count = float(chunks[2])
+            fdt_count = float(chunks[3])
+            if b_to_a in twoway_edges:
+                twoway_edges[b_to_a][0] += waytotal_count
+                twoway_edges[b_to_a][1] += fdt_count
+            else:
+                twoway_edges[a_to_b] = [waytotal_count, fdt_count]
+            oneway_edges[a_to_b] = [waytotal_count, fdt_count]
 
     for a_to_b in oneway_edges:
         a = a_to_b[0]
@@ -197,7 +194,7 @@ def s3_3_combine(params, inputs=[]):
     record_finish(params)
 
 def setup_s3(params, inputs):
-    edge_chunk_size = 1 # help with edge case, where number of jobs causes log output to crash
+    edge_chunk_size = 8 # set to >1, if number of jobs causes log output to crash
     sdir = params['sdir']
     stdout = params['stdout']
     edge_list = params['edge_list']
@@ -214,16 +211,12 @@ def setup_s3(params, inputs):
     smart_mkdir(tmp_dir)
     smart_mkdir(pbtk_dir)
     smart_mkdir(connectome_dir)
-    with open(edge_list) as f:
-        edges = []
-        for edge in f.readlines():
-            if edge.isspace():
-                continue
-            a, b = edge.replace("_s2fa", "").strip().split(',', 1)
-            edges.append([a, b])
-            if len(edges) >= edge_chunk_size:
-                s3_2_futures.append(s3_2_probtrackx(params, edges, inputs=[s3_1_future]))
-                edges = []
-        if edges:
-            s3_2_futures.append(s3_2_probtrackx(params, edges, inputs=[s3_1_future]))
+    edges_chunk = []
+    for edge in get_edges_from_file(edge_list):
+        edges_chunk.append(edge)
+        if len(edges_chunk) >= edge_chunk_size:
+            s3_2_futures.append(s3_2_probtrackx(params, edges_chunk, inputs=[s3_1_future]))
+            edges_chunk = []
+    if edges_chunk: # run last chunk if it's not empty
+        s3_2_futures.append(s3_2_probtrackx(params, edges_chunk, inputs=[s3_1_future]))
     return s3_3_combine(params, inputs=s3_2_futures)

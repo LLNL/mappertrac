@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from parsl.app.app import python_app
 from os.path import join,exists
-from subscripts.utilities import write,smart_remove,smart_mkdir
+from subscripts.utilities import write,smart_remove,smart_mkdir,get_edges_from_file
 
 @python_app(executors=['s4'], cache=True)
 def s4_1_start(params, inputs=[]):
@@ -58,9 +58,10 @@ def s4_2_edi_consensus(params, a, b, inputs=[]):
 @python_app(executors=['s4'], cache=True)
 def s4_3_edi_combine(params, processed_edges, inputs=[]):
     import time
-    from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish,update_permissions
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish,update_permissions,get_edges_from_file
     from os.path import join,exists
     from shutil import copyfile
+    edge_list = params['edge_list']
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
@@ -68,19 +69,31 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
     edi_maps = join(sdir,"EDI","EDImaps")
-    total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
 
+    # Collect raw probtrackx values per voxel
+    for edge in get_edges_from_file(edge_list):
+        a, b = edge
+        a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
+        a_to_b_file = join(pbtk_dir,a_to_b_formatted)
+        if not exists(tract_total):
+            copyfile(a_to_b_file, tract_total)
+        else:
+            run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
+
+    # Collect number of parcel-to-parcel edges per voxel
     for a_to_b in processed_edges:
         consensus = join(consensus_dir, a_to_b + ".nii.gz")
         if not exists(consensus):
             write(stdout,"{} has been thresholded. See {} for details".format(a_to_b, join(pbtk_dir, "zerosl.txt")))
             continue
-        if not exists(total):
-            copyfile(consensus, total)
+        if not exists(edge_total):
+            copyfile(consensus, edge_total)
         else:
-            run("fslmaths {0} -add {1} {1}".format(consensus, total), params)
-    if not exists(total):
-        raise Exception("Error: Failed to generate {}".format(total))
+            run("fslmaths {0} -add {1} {1}".format(consensus, edge_total), params)
+    if not exists(edge_total):
+        raise Exception("Error: Failed to generate {}".format(edge_total))
     update_permissions(params)
     record_apptime(params, start_time, 2)
     record_finish(params)
@@ -98,16 +111,13 @@ def setup_s4(params, inputs):
     s4_1_future = s4_1_start(params, inputs=inputs)
     s4_2_futures = []
     processed_edges = []
-    with open(edge_list) as f:
-        for edge in f.readlines():
-            if edge.isspace():
-                continue
-            a, b = edge.replace("_s2fa", "").strip().split(',', 1)
-            a_to_b = "{}_to_{}".format(a, b)
-            b_to_a = "{}_to_{}".format(b, a)
-            if a_to_b not in processed_edges and b_to_a not in processed_edges:
-                s4_2_futures.append(s4_2_edi_consensus(params, a, b, inputs=[s4_1_future]))
-                processed_edges.append(a_to_b)
+    for edge in get_edges_from_file(edge_list):
+        a, b = edge
+        a_to_b = "{}_to_{}".format(a, b)
+        b_to_a = "{}_to_{}".format(b, a)
+        if a_to_b not in processed_edges and b_to_a not in processed_edges:
+            s4_2_futures.append(s4_2_edi_consensus(params, a, b, inputs=[s4_1_future]))
+            processed_edges.append(a_to_b)
     if not processed_edges:
         raise Exception("Error: Edge list is empty")
     return s4_3_edi_combine(params, processed_edges, inputs=s4_2_futures)

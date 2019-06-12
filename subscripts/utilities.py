@@ -307,6 +307,15 @@ def sub_binary_vol(src, target, params={}):
     run("fslmaths {} -sub {} {}".format(target, intersection, target), params)
     run("fslmaths {} -bin {}".format(target, target), params)
 
+def get_edges_from_file(file):
+    edges = []
+    with open(file) as f:
+        for edge in f.readlines():
+            if edge.isspace():
+                continue
+            edges.append(edge.replace("_s2fa", "").strip().split(',', 1))
+    return edges
+
 def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
     """Not used during runtime. Generates a list of all possible edges from Freesurfer output.
     """

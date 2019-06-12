@@ -20,3 +20,4 @@ __pycache__
 lists/subject*.txt
 cmd_parsl.auto*
 test*
+redo*
