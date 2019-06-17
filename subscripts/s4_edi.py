@@ -72,7 +72,7 @@ def s4_3_edi_combine(params, processed_edges, inputs=[]):
     edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
     tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
 
-    # Collect raw probtrackx values per voxel
+    # Collect number of probtrackx tracts per voxel
     for edge in get_edges_from_file(edge_list):
         a, b = edge
         a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)

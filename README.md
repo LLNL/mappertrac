@@ -45,7 +45,7 @@ iii. `./container/build.sh`
 <br></br>
 <br></br>
 ### Launch
-Specify parameters either in a config file or as command line arguments:
+Specify parameters either in a config file or as command line arguments. See <b>s_run_all.py</b> for parameter details.
 
 `./s_run_all.py <config_file>`
 
@@ -88,4 +88,27 @@ TracktographyScripts/
    +- s4_edi.py
    +- s5_render.py
    +- utilities.py              # General utility functions
+```
+<br></br>
+<br></br>
+### Output Overview
+The following are the most important output files. This list is not comprehensive.
+
+```
+<OUTPUT DIRECTORY>/
++- <SUBJECT NAME>/
+   +- connectome_idxs.txt             # Brain region indices for .mat connectome files
+   +- connectome_oneway.dot           # Oneway connectome in list form
+   +- connectome_oneway.mat           # Oneway connectome in matrix form
+   +- connectome_twoway.dot           # Bidirectional connectome in list form
+   +- connectome_twoway.mat           # Bidirectional connectome in matrix form
+   |
+   +- EDI/
+   |  +- EDImaps/
+   |     +- FAtractsumsRaw.nii.gz     # NiFTI image of total streamline density
+   |     +- FAtractsumsTwoway.nii.gz  # NiFTI image of edge density (EDI)
+   |
+   +- log/                            # Directory containing stdout and performance logs
+   |
+   +- render/                         # Directory containing NiFTI image renders from step s5_render
 ```
