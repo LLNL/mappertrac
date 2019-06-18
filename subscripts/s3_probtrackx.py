@@ -115,6 +115,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 @python_app(executors=['s3'], cache=True)
 def s3_3_combine(params, inputs=[]):
     import numpy as np
+    import scipy.io
     import time
     from subscripts.utilities import record_apptime,record_finish,update_permissions,is_float,write,get_edges_from_file
     from os.path import join,exists
@@ -186,8 +187,8 @@ def s3_3_combine(params, inputs=[]):
         else:
             write(connectome_twoway, "{} {} {} {}".format(a, b, twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
             twoway_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][1]
-    np.savetxt(connectome_oneway_mat, oneway_matrix, fmt='%g')
-    np.savetxt(connectome_twoway_mat, twoway_matrix, fmt='%g')
+    scipy.io.savemat(connectome_oneway_mat, oneway_matrix)
+    scipy.io.savemat(connectome_twoway_mat, twoway_matrix)
 
     update_permissions(params)
     record_apptime(params, start_time, 2)

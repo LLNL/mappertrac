@@ -10,8 +10,8 @@ Requirements:
 
 <b>1\. Install NumPy and Parsl</b>
 
-`pip3 install parsl numpy`  
-(`pip3 install parsl numpy --user` for non-root systems)  
+`pip3 install parsl numpy scipy`  
+(`pip3 install parsl numpy scipy --user` for non-root systems)
 
 <b>2\. Clone repository</b>
 
