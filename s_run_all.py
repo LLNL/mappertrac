@@ -42,14 +42,14 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     args = ArgsObject(**raw_args)
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
-        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
+        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --subject SUBJECT_DIR --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
     subjects_group = parser.add_mutually_exclusive_group(required=True)
     subjects_group.add_argument('--subject', help='Input subject directory.')
     subjects_group.add_argument('--subject_list', help='Text file list of input subject directories')
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
     parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
     parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
-    parser.add_argument('--steps', type=str.lower, help='Steps to run with this script', nargs='+')
+    parser.add_argument('--steps', type=str.lower, help='Steps to run with this workflow', nargs='+')
     parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', nargs='+')
     parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
     parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
@@ -213,7 +213,7 @@ edge_list = abspath(args.edge_list)
 render_list = abspath(args.render_list)
 connectome_idx_list = abspath(args.connectome_idx_list)
 
-if hasattr(args, 'subject_list'):
+if hasattr(args, 'subject_list') and args.subject_list is not None:
     input_dirs = open(args.subject_list, 'r').readlines()
 else:
     input_dirs = [args.subject]
@@ -407,7 +407,7 @@ for step in steps:
         channel = LocalChannel()
     else:
         if hostnames[step] is None:
-            raise Exception('To run step {} on a remote machine, please set the argument --{}_hostname'.format(step))
+            raise Exception('To run step {} on a remote host, please set the argument --{}_hostname'.format(step))
         channel = SSHChannel(
                 hostname=hostnames[step],
                 username=args.unix_username,
