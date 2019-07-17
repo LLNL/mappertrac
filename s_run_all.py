@@ -220,16 +220,28 @@ else:
 subject_dict = {}
 for input_dir in input_dirs:
     # Make sure input files exist for each subject
-    input_dir = input_dir.strip()
+    input_dir = abspath(input_dir.strip())
     if not input_dir or not isdir(input_dir):
+        print("Invalid input dir {}".format(input_dir))
         continue
     checksum = None
     sname = basename(input_dir)
     if 's1' in steps:
+
+
         bvecs = join(input_dir, "bvecs")
         bvals = join(input_dir, "bvals")
         hardi = join(input_dir, "hardi.nii.gz")
         anat = join(input_dir, "anat.nii.gz")
+
+        data = join(input_dir, "data.nii.gz")
+        if not exists(hardi) and exists(data):
+            smart_copy(data, hardi)
+
+        T1 = join(input_dir, "T1.nii.gz")
+        if not exists(anat) and exists(T1):
+            smart_copy(T1, anat)
+
         if not exist_all([bvecs, bvals, hardi, anat]):
             print("Skipping subject {}. Missing input files - must have bvecs, bvals, hardi.nii.gz, and anat.nii.gz.".format(sname))
             continue

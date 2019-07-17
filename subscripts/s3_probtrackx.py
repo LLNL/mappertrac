@@ -187,8 +187,8 @@ def s3_3_combine(params, inputs=[]):
         else:
             write(connectome_twoway, "{} {} {} {}".format(a, b, twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
             twoway_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][1]
-    scipy.io.savemat(connectome_oneway_mat, oneway_matrix)
-    scipy.io.savemat(connectome_twoway_mat, twoway_matrix)
+    scipy.io.savemat(connectome_oneway_mat, {'data': oneway_matrix})
+    scipy.io.savemat(connectome_twoway_mat, {'data': twoway_matrix})
 
     update_permissions(params)
     record_apptime(params, start_time, 2)
