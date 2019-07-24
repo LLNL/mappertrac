@@ -69,12 +69,6 @@ else:
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
 
     # Site-specific machine settings
-    parser.add_argument('--s1_job_time', help='Max time to finish s1 on a single subject with a single node')
-    parser.add_argument('--s2a_job_time', help='Max time to finish s2a on a single subject with a single node')
-    parser.add_argument('--s2b_job_time', help='Max time to finish s2b on a single subject with a single node')
-    parser.add_argument('--s3_job_time', help='Max time to finish s3 on a single subject with a single node')
-    parser.add_argument('--s4_job_time', help='Max time to finish s4 on a single subject with a single node')
-    parser.add_argument('--s5_job_time', help='Max time to finish s5 on a single subject with a single node')
     parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
     parser.add_argument('--s2a_hostname', help='Hostname of machine to run step s2a_bedpostx')
     parser.add_argument('--s2b_hostname', help='Hostname of machine to run step s2b_freesurfer')
@@ -87,14 +81,23 @@ else:
     parser.add_argument('--s3_cores_per_task', help='Number of cores to assign each task for step s3_probtrackx')
     parser.add_argument('--s4_cores_per_task', help='Number of cores to assign each task for step s4_edi')
     parser.add_argument('--s5_cores_per_task', help='Number of cores to assign each task for step s5_render')
+    parser.add_argument('--s1_walltime', help='Walltime for step s1.')
+    parser.add_argument('--s2a_walltime', help='Walltime for step s2a.')
+    parser.add_argument('--s2b_walltime', help='Walltime for step s2b.')
+    parser.add_argument('--s3_walltime', help='Walltime for step s3.')
+    parser.add_argument('--s4_walltime', help='Walltime for step s4.')
+    parser.add_argument('--s5_walltime', help='Walltime for step s5.')
+
+    # Dynamic walltime
+    parser.add_argument('--dynamic_walltime', help='Request dynamically shortened walltimes, to gain priority on job queue', action='store_true')
+    parser.add_argument('--s1_job_time', help='If using dynamic walltime, duration of s1 on a single subject with a single node')
+    parser.add_argument('--s2a_job_time', help='If using dynamic walltime, duration of s2a on a single subject with a single node')
+    parser.add_argument('--s2b_job_time', help='If using dynamic walltime, duration of s2b on a single subject with a single node')
+    parser.add_argument('--s3_job_time', help='If using dynamic walltime, duration of s3 on a single subject with a single node')
+    parser.add_argument('--s4_job_time', help='If using dynamic walltime, duration of s4 on a single subject with a single node')
+    parser.add_argument('--s5_job_time', help='If using dynamic walltime, duration of s5 on a single subject with a single node')
 
     # Override auto-generated machine settings
-    parser.add_argument('--s1_walltime', help='Override total walltime for step s1.')
-    parser.add_argument('--s2a_walltime', help='Override total walltime for step s2a.')
-    parser.add_argument('--s2b_walltime', help='Override total walltime for step s2b.')
-    parser.add_argument('--s3_walltime', help='Override total walltime for step s3.')
-    parser.add_argument('--s4_walltime', help='Override total walltime for step s4.')
-    parser.add_argument('--s5_walltime', help='Override total walltime for step s5.')
     parser.add_argument('--s1_nodes', help='Override recommended node count for step s1.')
     parser.add_argument('--s2a_nodes', help='Override recommended node count for step s2a.')
     parser.add_argument('--s2b_nodes', help='Override recommended node count for step s2b.')
@@ -131,12 +134,6 @@ parse_default('pbtx_sample_count', 200, args)
 parse_default('pbtx_random_seed', None, args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
 parse_default('histogram_bin_count', 256, args)
-parse_default('s1_job_time', "00:15:00", args)
-parse_default('s2a_job_time', "00:45:00", args)
-parse_default('s2b_job_time', "10:00:00", args)
-parse_default('s3_job_time', "23:59:00", args)
-parse_default('s4_job_time', "00:45:00", args)
-parse_default('s5_job_time', "00:15:00", args)
 parse_default('s1_cores_per_task', 1, args)
 parse_default('s2a_cores_per_task', head_node_cores, args)
 parse_default('s2b_cores_per_task', head_node_cores, args)
@@ -144,10 +141,22 @@ parse_default('s3_cores_per_task', 3, args)
 parse_default('s4_cores_per_task', 1, args)
 parse_default('s5_cores_per_task', 1, args)
 parse_default('s5_cores_per_task', 1, args)
+parse_default('s1_walltime', "23:59:00", args)
+parse_default('s2a_walltime', "23:59:00", args)
+parse_default('s2b_walltime', "23:59:00", args)
+parse_default('s3_walltime', "23:59:00", args)
+parse_default('s4_walltime', "23:59:00", args)
+parse_default('s5_walltime', "23:59:00", args)
+parse_default('dynamic_walltime', False, args)
+parse_default('s1_job_time', "00:15:00", args)
+parse_default('s2a_job_time', "00:45:00", args)
+parse_default('s2b_job_time', "10:00:00", args)
+parse_default('s3_job_time', "23:59:00", args)
+parse_default('s4_job_time', "00:45:00", args)
+parse_default('s5_job_time', "00:15:00", args)
 
 for step in ['s1','s2a','s2b','s3','s4','s5']:
     parse_default(step + '_hostname', None, args)
-    parse_default(step + '_walltime', None, args)
     parse_default(step + '_nodes', None, args)
     parse_default(step + '_cores', None, args)
 
@@ -354,12 +363,12 @@ job_times = {
 }
 walltimes = {
     'debug': "00:05:00",
-    's1': get_walltime(num_subjects['s1'], job_times['s1'], node_counts['s1']) if args.s1_walltime is None else args.s1_walltime,
-    's2a': get_walltime(num_subjects['s2a'], job_times['s2a'], node_counts['s2a']) if args.s2a_walltime is None else args.s2a_walltime,
-    's2b': get_walltime(num_subjects['s2b'], job_times['s2b'], node_counts['s2b']) if args.s2b_walltime is None else args.s2b_walltime,
-    's3': get_walltime(num_subjects['s3'], job_times['s3'], node_counts['s3']) if args.s3_walltime is None else args.s3_walltime,
-    's4': get_walltime(num_subjects['s4'], job_times['s4'], node_counts['s4']) if args.s4_walltime is None else args.s4_walltime,
-    's5': get_walltime(num_subjects['s5'], job_times['s5'], node_counts['s5']) if args.s5_walltime is None else args.s5_walltime,
+    's1': get_walltime(num_subjects['s1'], job_times['s1'], node_counts['s1']) if args.dynamic_walltime else args.s1_walltime,
+    's2a': get_walltime(num_subjects['s2a'], job_times['s2a'], node_counts['s2a']) if args.dynamic_walltime else args.s2a_walltime,
+    's2b': get_walltime(num_subjects['s2b'], job_times['s2b'], node_counts['s2b']) if args.dynamic_walltime else args.s2b_walltime,
+    's3': get_walltime(num_subjects['s3'], job_times['s3'], node_counts['s3']) if args.dynamic_walltime else args.s3_walltime,
+    's4': get_walltime(num_subjects['s4'], job_times['s4'], node_counts['s4']) if args.dynamic_walltime else args.s4_walltime,
+    's5': get_walltime(num_subjects['s5'], job_times['s5'], node_counts['s5']) if args.dynamic_walltime else args.s5_walltime,
 }
 hostnames = {
     'debug': args.s1_hostname,
