@@ -63,7 +63,8 @@ def s1_3_dti_fit(params, inputs=[]):
     start_time = time.time()
     output_prefix = join(sdir,"data_eddy")
     output_data = join(sdir,"data_eddy.nii.gz")
-    timeslices = glob("{}_tmp????.*".format(output_prefix))
+    timeslices = glob("{}_tmp????.nii.gz".format(output_prefix))
+    timeslices.sort()
     bet = join(sdir,"data_bet.nii.gz")
     bvecs = join(sdir,"bvecs")
     bvals = join(sdir,"bvals")
@@ -100,8 +101,6 @@ def setup_s1(params, inputs):
     sdir = params['sdir']
     input_data = join(sdir, "hardi.nii.gz")
     smart_copy(join(input_dir, "hardi.nii.gz"), input_data)
-    # run("chmod 770 {}".format(input_data)) # fix edge cases where permissions aren't applied
-    # run("chgrp tbidata {}".format(input_data))
     timeslices = run("fslinfo {} | sed -n -e '/^dim4/p'".format(input_data), params).split()
     if not timeslices or not is_integer(timeslices[-1]):
         write(stdout, "Failed to read timeslices from {}".format(input_data))
