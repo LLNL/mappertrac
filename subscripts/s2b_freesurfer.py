@@ -35,6 +35,7 @@ def s2b_1_recon_all(params, inputs=[]):
     if use_gpu:
         write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
         freesurfer_sh = join(sdir, "freesurfer.sh")
+        smart_remove(freesurfer_sh)
         write(freesurfer_sh, "export CUDA_LIB_DIR=$CUDA_5_LIB_DIR\n" +
                   "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
                   "recon-all -s {} -all -no-isrunning -use-gpu -parallel -openmp {}".format(subject, cores_per_task))
