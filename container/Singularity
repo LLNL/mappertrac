@@ -133,6 +133,7 @@ From: ubuntu:16.04
     wget --no-check-certificate $FREESURFER
     tar -xzf $FREESURFER_GZ -C /opt
     cp license.txt /opt/freesurfer/license.txt
+    chmod a+r /opt/freesurfer/license.txt
 
     # Cleanup
     rm -rf $TESLA_RUN
