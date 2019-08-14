@@ -227,6 +227,9 @@ if hasattr(args, 'subject_list') and args.subject_list is not None:
 else:
     input_dirs = [args.subject]
 subject_dict = {}
+
+
+
 for input_dir in input_dirs:
     # Make sure input files exist for each subject
     input_dir = abspath(input_dir.strip())
@@ -335,6 +338,9 @@ if total_num_steps == 0:
 else:
     print("In total, running {} steps across {} subjects".format(total_num_steps, len(subject_dict)))
 
+if len(subject_dict) > 100:
+    raise Exception("Workflow is unstable for large numbers of subjects. Please specify fewer than 100.")
+
 ############################
 # Node Settings
 ############################
@@ -406,10 +412,6 @@ if not args.local_host_only:
     if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
         raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
 
-executors = [IPyParallelExecutor(label='head',
-             provider=LocalProvider(
-             init_blocks=head_node_cores,
-             max_blocks=head_node_cores))]
 
 base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.slurm_bank)
 if args.scheduler_options is not None:
@@ -418,6 +420,7 @@ if args.scheduler_options is not None:
 if args.parsl_path is not None:
     base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
 
+executors = []
 for step in steps:
     node_count = int(node_counts[step])
     print("Requesting {} nodes for step \"{}\"".format(node_count, step))
