@@ -51,7 +51,7 @@ else:
     parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
     parser.add_argument('--steps', type=str.lower, help='Steps to run with this workflow', nargs='+')
     parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', nargs='+')
-    parser.add_argument('--edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
+    parser.add_argument('--pbtx_edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
     parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
     parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps')
     parser.add_argument('--unix_username', help='Unix username for Parsl job requests')
@@ -67,6 +67,7 @@ else:
     parser.add_argument('--pbtx_random_seed', help='Random seed in s3_probtrackx')
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
+    parser.add_argument('--compress_pbtx_results', help='Compress probtrackx outputs to reduce inode and disk space usage', action='store_false')
 
     # Site-specific machine settings
     parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
@@ -118,7 +119,7 @@ else:
 
 parse_default('steps', "s1 s2a s2b s3 s4 s5", args)
 parse_default('gpu_steps', "s2a s2b s3", args)
-parse_default('edge_list', join("lists","list_edges_reduced.txt"), args)
+parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
 parse_default('scheduler_options', "", args)
 parse_default('gpu_options', "module load cuda/8.0;", args)
 parse_default('container_path', "container/image.simg", args)
@@ -127,6 +128,7 @@ parse_default('unix_group', None, args)
 parse_default('force', False, args)
 parse_default('gssapi', False, args)
 parse_default('local_host_only', True, args)
+parse_default('compress_pbtx_results', True, args)
 parse_default('work_dir', None, args)
 parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
@@ -218,7 +220,7 @@ if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
 if islink(join(odir,"fsaverage")):
     run("unlink {}".format(join(odir,"fsaverage")))
-edge_list = abspath(args.edge_list)
+pbtx_edge_list = abspath(args.pbtx_edge_list)
 render_list = abspath(args.render_list)
 connectome_idx_list = abspath(args.connectome_idx_list)
 
@@ -275,7 +277,7 @@ for input_dir in input_dirs:
             'sdir': sdir,
             'container': container,
             'checksum': checksum,
-            'edge_list': edge_list,
+            'pbtx_edge_list': pbtx_edge_list,
             'group': args.unix_group,
             'global_timing_log': global_timing_log,
             'use_gpu': step in gpu_steps,
@@ -286,6 +288,7 @@ for input_dir in input_dirs:
             'pbtx_sample_count': int(args.pbtx_sample_count),
             'pbtx_random_seed': args.pbtx_random_seed,
             'histogram_bin_count': int(args.histogram_bin_count),
+            'compress_pbtx_results': args.compress_pbtx_results,
         }
         stdout_template = join(log_dir, "{}.stdout".format(step))
         new_stdout, prev_stdout, idx = get_log_path(stdout_template)
@@ -338,8 +341,8 @@ if total_num_steps == 0:
 else:
     print("In total, running {} steps across {} subjects".format(total_num_steps, len(subject_dict)))
 
-if len(subject_dict) > 100:
-    raise Exception("Workflow is unstable for large numbers of subjects. Please specify fewer than 100.")
+# if len(subject_dict) > 100:
+    # raise Exception("Workflow is unstable for large numbers of subjects. Please specify fewer than 100.")
 
 ############################
 # Node Settings
