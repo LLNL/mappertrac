@@ -307,6 +307,11 @@ def sub_binary_vol(src, target, params={}):
     run("fslmaths {} -sub {} {}".format(target, intersection, target), params)
     run("fslmaths {} -bin {}".format(target, target), params)
 
+def strip_trailing_slash(path):
+    if path.endswith('/') or path.endswith('\\'):
+        path = path[:-1]
+    return path
+
 def get_edges_from_file(file):
     edges = []
     with open(file) as f:

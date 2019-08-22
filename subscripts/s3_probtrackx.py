@@ -122,16 +122,23 @@ def s3_3_combine(params, inputs=[]):
     from shutil import copyfile
     sdir = params['sdir']
     stdout = params['stdout']
-    edge_list = params['edge_list']
+    pbtx_edge_list = params['pbtx_edge_list']
     connectome_idx_list = params['connectome_idx_list']
     connectome_idx_list_copy = join(sdir, 'connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
-    connectome_oneway = join(sdir, "connectome_oneway.dot")
-    connectome_twoway = join(sdir, "connectome_twoway.dot")
-    connectome_oneway_mat = join(sdir, "connectome_oneway.mat")
-    connectome_twoway_mat = join(sdir, "connectome_twoway.mat")
-    smart_remove(join(sdir, "connectome_twoway.dot"))
+    oneway_list = join(sdir, "connectome_oneway.txt")
+    twoway_list = join(sdir, "connectome_twoway.txt")
+    oneway_nof = join(sdir, "connectome_oneway_nof.mat")
+    twoway_nof = join(sdir, "connectome_twoway_nof.mat")
+    oneway_nof_normalized = join(sdir, "connectome_oneway_nof_normalized.mat")
+    twoway_nof_normalized = join(sdir, "connectome_twoway_nof_normalized.mat")
+    smart_remove(oneway_list)
+    smart_remove(twoway_list)
+    smart_remove(oneway_nof_normalized)
+    smart_remove(twoway_nof_normalized)
+    smart_remove(oneway_nof)
+    smart_remove(twoway_nof)
     oneway_edges = {}
     twoway_edges = {}
 
@@ -147,10 +154,12 @@ def s3_3_combine(params, inputs=[]):
             vol_idxs[vol] = idx
             if idx > max_idx:
                 max_idx = idx
-        oneway_matrix = np.zeros((max_idx+1, max_idx+1))
-        twoway_matrix = np.zeros((max_idx+1, max_idx+1))
+        oneway_nof_normalized_matrix = np.zeros((max_idx+1, max_idx+1))
+        oneway_nof_matrix = np.zeros((max_idx+1, max_idx+1))
+        twoway_nof_normalized_matrix = np.zeros((max_idx+1, max_idx+1))
+        twoway_nof_matrix = np.zeros((max_idx+1, max_idx+1))
 
-    for edge in get_edges_from_file(edge_list):
+    for edge in get_edges_from_file(pbtx_edge_list):
         a, b = edge
         edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
         with open(edge_file) as f:
@@ -174,8 +183,9 @@ def s3_3_combine(params, inputs=[]):
                 write(stdout, 'Error: could not find {} in connectome idxs'.format(vol))
                 break
         else:
-            write(connectome_oneway, "{} {} {} {}".format(a, b, oneway_edges[a_to_b][0], oneway_edges[a_to_b][1]))
-            oneway_matrix[vol_idxs[a]][vol_idxs[b]] = oneway_edges[a_to_b][1]
+            write(oneway_list, "{} {} {} {}".format(a, b, oneway_edges[a_to_b][0], oneway_edges[a_to_b][1]))
+            oneway_nof_matrix[vol_idxs[a]][vol_idxs[b]] = oneway_edges[a_to_b][0]
+            oneway_nof_normalized_matrix[vol_idxs[a]][vol_idxs[b]] = oneway_edges[a_to_b][1]
 
     for a_to_b in twoway_edges:
         a = a_to_b[0]
@@ -185,10 +195,13 @@ def s3_3_combine(params, inputs=[]):
                 write(stdout, 'Error: could not find {} in connectome idxs'.format(vol))
                 break
         else:
-            write(connectome_twoway, "{} {} {} {}".format(a, b, twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
-            twoway_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][1]
-    scipy.io.savemat(connectome_oneway_mat, {'data': oneway_matrix})
-    scipy.io.savemat(connectome_twoway_mat, {'data': twoway_matrix})
+            write(twoway_list, "{} {} {} {}".format(a, b, twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
+            twoway_nof_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][0]
+            twoway_nof_normalized_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][1]
+    scipy.io.savemat(oneway_nof, {'data': oneway_nof_matrix})
+    scipy.io.savemat(oneway_nof_normalized, {'data': oneway_nof_normalized_matrix})
+    scipy.io.savemat(twoway_nof, {'data': twoway_nof_matrix})
+    scipy.io.savemat(twoway_nof_normalized, {'data': twoway_nof_normalized_matrix})
 
     update_permissions(params)
     record_apptime(params, start_time, 2)
@@ -198,7 +211,7 @@ def setup_s3(params, inputs):
     edge_chunk_size = 8 # set to >1, if number of jobs causes log output to crash
     sdir = params['sdir']
     stdout = params['stdout']
-    edge_list = params['edge_list']
+    pbtx_edge_list = params['pbtx_edge_list']
     pbtx_random_seed = params['pbtx_random_seed']
     params['subject_random_seed'] = random.randint(0, 999999) if pbtx_random_seed is None else pbtx_random_seed
     s3_1_future = s3_1_start(params, inputs=inputs)
@@ -213,7 +226,7 @@ def setup_s3(params, inputs):
     smart_mkdir(pbtk_dir)
     smart_mkdir(connectome_dir)
     edges_chunk = []
-    for edge in get_edges_from_file(edge_list):
+    for edge in get_edges_from_file(pbtx_edge_list):
         edges_chunk.append(edge)
         if len(edges_chunk) >= edge_chunk_size:
             s3_2_futures.append(s3_2_probtrackx(params, edges_chunk, inputs=[s3_1_future]))
