@@ -148,12 +148,13 @@ The following are the most important output files. This list is not comprehensiv
 | histogram_bin_count   | 256                             | Number of bins in NiFTI image histograms |
 | pbtx_edge_list        | lists/list_edges_reduced.txt    | Text file list of edges for steps s3_probtrackx and s4_edi |
 | compress_pbtx_results | True                            | Compress probtrackx outputs to reduce inode and disk space usage |
-| s1_job_time           | 00:15:00                        | Max time to finish s1 on a single subject with a single node |
-| s2a_job_time          | 00:45:00                        | Max time to finish s2a on a single subject with a single node |
-| s2b_job_time          | 10:00:00                        | Max time to finish s2b on a single subject with a single node |
-| s3_job_time           | 23:59:00                        | Max time to finish s3 on a single subject with a single node |
-| s4_job_time           | 00:45:00                        | Max time to finish s4 on a single subject with a single node |
-| s5_job_time           | 00:15:00                        | Max time to finish s5 on a single subject with a single node |
+| dynamic_walltime      | False                           | Request dynamically shortened walltimes, to gain priority on job queue |
+| s1_job_time           | 00:15:00                        | Max time to finish s1 on 1 subject with 1 node, if dynamic_walltime is true |
+| s2a_job_time          | 00:45:00                        | Max time to finish s2a on 1 subject with 1 node, if dynamic_walltime is true |
+| s2b_job_time          | 10:00:00                        | Max time to finish s2b on 1 subject with 1 node, if dynamic_walltime is true |
+| s3_job_time           | 23:59:00                        | Max time to finish s3 on 1 subject with 1 node, if dynamic_walltime is true |
+| s4_job_time           | 00:45:00                        | Max time to finish s4 on 1 subject with 1 node, if dynamic_walltime is true |
+| s5_job_time           | 00:15:00                        | Max time to finish s5 on 1 subject with 1 node, if dynamic_walltime is true |
 | s1_cores_per_task     | 1                               | Number of cores to assign each task for step s1_dti_preproc |
 | s2a_cores_per_task    | [[core count on head node]]     | Number of cores to assign each task for step s2a_bedpostx |
 | s2b_cores_per_task    | [[core count on head node]]     | Number of cores to assign each task for step s2b_freesurfer |
@@ -166,12 +167,12 @@ The following are the most important output files. This list is not comprehensiv
 | s3_hostname           |                                 | Hostname of machine to run step s3_probtrackx, if local_host_only is false |
 | s4_hostname           |                                 | Hostname of machine to run step s4_edi, if local_host_only is false |
 | s5_hostname           |                                 | Hostname of machine to run step s5_render, if local_host_only is false |
-| s1_walltime           | [[num_subjects * s1_job_time]]  | Walltime for step s1 |
-| s2a_walltime          | [[num_subjects * s2a_job_time]] | Walltime for step s2a |
-| s2b_walltime          | [[num_subjects * s2b_job_time]] | Walltime for step s2b |
-| s3_walltime           | [[num_subjects * s3_job_time]]  | Walltime for step s3 |
-| s4_walltime           | [[num_subjects * s4_job_time]]  | Walltime for step s4 |
-| s5_walltime           | [[num_subjects * s5_job_time]]  | Walltime for step s5 |
+| s1_walltime           | 23:59:00                        | Walltime for step s1 |
+| s2a_walltime          | 23:59:00                        | Walltime for step s2a |
+| s2b_walltime          | 23:59:00                        | Walltime for step s2b |
+| s3_walltime           | 23:59:00                        | Walltime for step s3 |
+| s4_walltime           | 23:59:00                        | Walltime for step s4 |
+| s5_walltime           | 23:59:00                        | Walltime for step s5 |
 | s1_nodes              | [[floor(0.2 * num_subjects)]]   | Node count for step s1 |
 | s2a_nodes             | [[floor(1.0 * num_subjects)]]   | Node count for step s2a |
 | s2b_nodes             | [[floor(1.0 * num_subjects)]]   | Node count for step s2b |
