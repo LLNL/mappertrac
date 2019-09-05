@@ -18,6 +18,7 @@ from subscripts.s1_dti_preproc import setup_s1
 from subscripts.s2a_bedpostx import setup_s2a
 from subscripts.s2b_freesurfer import setup_s2b
 from subscripts.s3_probtrackx import setup_s3
+from subscripts.s3_probtrackx_alt import setup_s3_alt
 from subscripts.s4_edi import setup_s4
 from subscripts.s5_render import setup_s5
 
@@ -58,7 +59,7 @@ else:
     parser.add_argument('--unix_group', help='Unix group to assign file permissions')
     parser.add_argument('--container_path', help='Path to Singularity container image')
     parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
-    parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
+    # parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
     parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s5_render (relative to each subject output directory).')
     parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
     parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
@@ -68,6 +69,7 @@ else:
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
     parser.add_argument('--compress_pbtx_results', help='Compress probtrackx outputs to reduce inode and disk space usage', action='store_false')
+    parser.add_argument('--fast_pbtx', help='Use 1-to-N instead of N-to-N probtrackx script', action='store_false')
 
     # Site-specific machine settings
     parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
@@ -129,7 +131,8 @@ parse_default('force', False, args)
 parse_default('gssapi', False, args)
 parse_default('local_host_only', True, args)
 parse_default('compress_pbtx_results', True, args)
-parse_default('work_dir', None, args)
+parse_default('fast_pbtx', False, args)
+# parse_default('work_dir', None, args)
 parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 200, args)
@@ -187,7 +190,7 @@ step_setup_functions = {
     's1': setup_s1,
     's2a': setup_s2a,
     's2b': setup_s2b,
-    's3': setup_s3,
+    's3': setup_s3 if args.fast_pbtx else setup_s3_alt,
     's4': setup_s4,
     's5': setup_s5,
 }
@@ -263,10 +266,10 @@ for input_dir in input_dirs:
 
     sdir = join(odir, sname)
     log_dir = join(sdir,'log')
-    if args.work_dir:
-        work_sdir = join(args.work_dir, sname)
-    else:
-        work_sdir = None
+    # if args.work_dir:
+    #     work_sdir = join(args.work_dir, sname)
+    # else:
+    #     work_sdir = None
 
     smart_mkdir(log_dir)
     smart_mkdir(sdir)
@@ -282,7 +285,7 @@ for input_dir in input_dirs:
             'global_timing_log': global_timing_log,
             'use_gpu': step in gpu_steps,
             'step': step,
-            'work_sdir': work_sdir,
+            # 'work_sdir': work_sdir,
             'render_list': render_list,
             'connectome_idx_list': connectome_idx_list,
             'pbtx_sample_count': int(args.pbtx_sample_count),

@@ -8,12 +8,12 @@ def s2b_1_recon_all(params, inputs=[]):
     from subscripts.utilities import run,smart_mkdir,smart_remove,write,record_apptime,record_start,copy_dir
     from os import environ
     from os.path import exists,join,split,basename
-    work_sdir = params['work_sdir']
-    if work_sdir:
-        old_sdir = params['sdir']
-        copy_dir(old_sdir, work_sdir)
-        params = deepcopy(params) # don't modify original param dict
-        params['sdir'] = work_sdir
+    # work_sdir = params['work_sdir']
+    # if work_sdir:
+    #     old_sdir = params['sdir']
+    #     copy_dir(old_sdir, work_sdir)
+    #     params = deepcopy(params) # don't modify original param dict
+    #     params['sdir'] = work_sdir
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
@@ -24,6 +24,8 @@ def s2b_1_recon_all(params, inputs=[]):
     record_start(params)
     start_time = time.time()
     T1 = join(sdir,"T1.nii.gz")
+    if not exists(T1):
+        raise Exception('Missing T1 file at {}'.format(T1))
     mri_out = join(sdir,"mri","orig","001.mgz")
     smart_mkdir(join(sdir,"mri"))
     smart_mkdir(join(sdir,"mri","orig"))
@@ -47,9 +49,9 @@ def s2b_1_recon_all(params, inputs=[]):
         write(stdout, "Running Freesurfer with a single core")
         run("recon-all -s {} -all -no-isrunning".format(subject), params)
     record_apptime(params, start_time, 1)
-    if work_sdir:
-        copy_dir(work_sdir, old_sdir)
-        run("rm -Rf {}".format(work_sdir))
+    # if work_sdir:
+    #     copy_dir(work_sdir, old_sdir)
+    #     run("rm -Rf {}".format(work_sdir))
 
 @python_app(executors=['s2b'], cache=True)
 def s2b_2_process_vols(params, inputs=[]):
