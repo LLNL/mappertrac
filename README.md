@@ -139,10 +139,10 @@ The following are the most important output files. This list is not comprehensiv
 | force                 | False                           | Force re-compute if checkpoints already exist  |
 | gssapi                | False                           | Use Kerberos GSS-API authentication  |
 | local_host_only       | True                            | Request all jobs on local machine, ignoring other hostnames |
-| work_dir              |                                 | Working directory to run certain functions separate from data storage (e.g. using node-local memory) |
 | parsl_path            |                                 | Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin |
 | render_list           | lists/render_targets.txt        | Text file list of NIfTI outputs for s5_render (relative to each subject output directory)  |
-| pbtx_sample_count     | 200                             | Number of streamlines in s3_probtrackx |
+| pbtx_sample_count     | 200                             | Number of streamlines per seed voxel in s3_probtrackx |
+| fast_pbtx             | False                           | Use 1-to-N instead of N-to-N probtrackx script |
 | pbtx_random_seed      | [[random number]]               | Random seed in s3_probtrackx |
 | connectome_idx_list   | lists/connectome_idxs.txt       | Text file with pairs of volumes and connectome indices |
 | histogram_bin_count   | 256                             | Number of bins in NiFTI image histograms |
