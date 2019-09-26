@@ -3,7 +3,11 @@ import argparse, multiprocessing, parsl, getpass, socket, json, sys
 from parsl.app.app import python_app, bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
-from parsl.providers import LocalProvider,SlurmProvider
+from parsl.executors import HighThroughputExecutor
+from parsl.launchers import MpiRunLauncher
+from parsl.launchers import SimpleLauncher
+from parsl.addresses import address_by_hostname
+from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider
 from parsl.channels import SSHInteractiveLoginChannel, LocalChannel, SSHChannel
 from parsl.launchers import SrunLauncher
 from parsl.utils import get_all_checkpoints
@@ -48,6 +52,7 @@ else:
     subjects_group.add_argument('--subject', help='Input subject directory.')
     subjects_group.add_argument('--subject_list', help='Text file list of input subject directories')
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
+    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Values slurm for LLNL, cobalt for ANL', required=True)
     parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
     parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
     parser.add_argument('--steps', type=str.lower, help='Steps to run with this workflow', nargs='+')
@@ -123,7 +128,7 @@ parse_default('steps', "s1 s2a s2b s3 s4 s5", args)
 parse_default('gpu_steps', "s2a s2b s3", args)
 parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
 parse_default('scheduler_options', "", args)
-parse_default('gpu_options', "module load cuda/8.0;", args)
+parse_default('gpu_options', " ", args)
 parse_default('container_path', "container/image.simg", args)
 parse_default('unix_username', getpass.getuser(), args)
 parse_default('unix_group', None, args)
@@ -443,23 +448,43 @@ for step in steps:
                 username=args.unix_username,
                 gssapi_auth=args.gssapi,
                 )
-    executors.append(IPyParallelExecutor(
-        label=step,
-        workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
-        provider=SlurmProvider(
-            args.slurm_partition,
-            channel=channel,
-            launcher=SrunLauncher(),
-            nodes_per_block=node_count,
-            init_blocks=1,
-            max_blocks=1,
-            walltime=walltimes[step],
-            scheduler_options=options,
-            move_files=False,
-            ),
-        controller=Controller(public_ip=address_by_route()),
-        )
-    )
+    if(args.scheduler_name is 'slurm'):
+        executors.append(IPyParallelExecutor(
+                    label=step,
+                    workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
+                    provider=SlurmProvider(
+                        args.slurm_partition,
+                        channel=channel,
+                        launcher=SrunLauncher(),
+                        nodes_per_block=node_count,
+                        init_blocks=1,
+                        max_blocks=1,
+                        walltime=walltimes[step],
+                        scheduler_options=options,
+                        move_files=False,
+                        ),
+                    controller=Controller(public_ip=address_by_route()),
+                    )
+                )
+    else:
+        executors.append(HighThroughputExecutor(
+                    label=step,
+                    worker_debug=False,
+                    address=address_by_hostname(),
+                    provider=CobaltProvider(
+                        queue=args.slurm_partition,
+                        account='CSC249ADOA01',  # project name to submit the job
+                        channel=channel,
+                        launcher=SimpleLauncher(),
+                        scheduler_options=options,  # string to prepend to #COBALT blocks in the submit script to the scheduler
+                        worker_init='source /home/madduri/setup_cooley_env.sh',  # command to run before starting a worker, such as 'source activate env'
+                        init_blocks=1,
+                        max_blocks=1,
+                        nodes_per_block=node_count,
+                        walltime=walltimes[step],
+                        ),
+                    )
+                )
 print("===================================================\n")
 
 config = Config(executors=executors)
