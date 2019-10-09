@@ -39,7 +39,7 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     if not (bool('subject' in raw_args) ^ bool('subject_list' in raw_args)):
         raise Exception('Config file {} must have exactly one of: subject or subject_list'.format(config_file))
     missing_args = []
-    for required_arg in ['output_dir', 'slurm_bank', 'slurm_partition']:
+    for required_arg in ['output_dir', 'scheduler_name', 'scheduler_bank', 'scheduler_partition']:
         if required_arg not in raw_args:
             missing_args.append(required_arg)
     if missing_args:
@@ -47,19 +47,20 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     args = ArgsObject(**raw_args)
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
-        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --subject SUBJECT_DIR --output_dir OUTPUT_DIR --slurm_bank SLURM_BANK --slurm_partition SLURM_PARTITION\n(see optional arguments with --help)\n')
+        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --subject SUBJECT_DIR --output_dir OUTPUT_DIR --scheduler_name SCHEDULER --scheduler_bank BANK --scheduler_partition PARTITION\n(see optional arguments with --help)\n')
     subjects_group = parser.add_mutually_exclusive_group(required=True)
     subjects_group.add_argument('--subject', help='Input subject directory.')
     subjects_group.add_argument('--subject_list', help='Text file list of input subject directories')
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
     parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Values slurm for LLNL, cobalt for ANL', required=True, choices=['slurm', 'cobalt'])
-    parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
-    parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
+    parser.add_argument('--scheduler_bank', help='Scheduler scheduler_bank to charge for jobs', required=True)
+    parser.add_argument('--scheduler_partition', help='Scheduler partition to assign jobs', required=True)
+    parser.add_argument('--scheduler_options', help='Command to prepend to the submit script to the scheduler')
+    parser.add_argument('--gpu_options', help='String to prepend to the submit blocks for GPU-enabled steps')
+    parser.add_argument('--worker_init', help="Command to be run before starting a worker, such as ‘module load Anaconda; source activate env’.")
     parser.add_argument('--steps', type=str.lower, help='Steps to run with this workflow', nargs='+')
     parser.add_argument('--gpu_steps', type=str.lower, help='Steps to run using CUDA-enabled binaries', nargs='+')
     parser.add_argument('--pbtx_edge_list', help='Text file list of edges processed by s3_probtrackx and s4_edi')
-    parser.add_argument('--scheduler_options', help='String to append to the #SBATCH blocks in the submit script to the scheduler')
-    parser.add_argument('--gpu_options', help='String to append to the #SBATCH blocks for GPU-enabled steps')
     parser.add_argument('--unix_username', help='Unix username for Parsl job requests')
     parser.add_argument('--unix_group', help='Unix group to assign file permissions')
     parser.add_argument('--container_path', help='Path to Singularity container image')
@@ -125,9 +126,10 @@ else:
 ############################
 
 parse_default('steps', "s1 s2a s2b s3 s4 s5", args)
-parse_default('gpu_steps', "s2a s2b s3", args)
+parse_default('gpu_steps', "s2a", args)
 parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
 parse_default('scheduler_options', "", args)
+parse_default('worker_init', "", args)
 parse_default('gpu_options', " ", args)
 parse_default('container_path', "container/image.simg", args)
 parse_default('unix_username', getpass.getuser(), args)
@@ -423,11 +425,10 @@ if not args.local_host_only:
     if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
         raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
 
-
-base_options = "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.slurm_bank)
-if args.scheduler_options is not None:
-    base_options += str(args.scheduler_options) + '\n'
-
+base_options = ""
+if args.scheduler_name == 'slurm':
+    base_options += "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.scheduler_bank)
+base_options += str(args.scheduler_options) + '\n'
 if args.parsl_path is not None:
     base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
 
@@ -453,10 +454,11 @@ for step in steps:
                     label=step,
                     workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
                     provider=SlurmProvider(
-                        args.slurm_partition,
+                        args.scheduler_partition,
                         channel=channel,
                         launcher=SrunLauncher(),
                         nodes_per_block=node_count,
+                        worker_init=args.worker_init,
                         init_blocks=1,
                         max_blocks=1,
                         walltime=walltimes[step],
@@ -472,12 +474,14 @@ for step in steps:
                     worker_debug=False,
                     address=address_by_hostname(),
                     provider=CobaltProvider(
-                        queue=args.slurm_partition,
-                        account='CSC249ADOA01',  # project name to submit the job
+                        queue=args.scheduler_partition,
+                        account=args.scheduler_bank, # project name to submit the job
+                        # account='CSC249ADOA01',
                         channel=channel,
                         launcher=SimpleLauncher(),
                         scheduler_options=options,  # string to prepend to #COBALT blocks in the submit script to the scheduler
-                        worker_init='source /home/madduri/setup_cooley_env.sh',  # command to run before starting a worker, such as 'source activate env'
+                        worker_init=args.worker_init, # command to run before starting a worker, such as 'source activate env'
+                        # worker_init='source /home/madduri/setup_cooley_env.sh',
                         init_blocks=1,
                         max_blocks=1,
                         nodes_per_block=node_count,
