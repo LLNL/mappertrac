@@ -1,7 +1,8 @@
 {
     "subject_list": "test_subjects.txt",
     "output_dir": "/usr/WS2/tbidata/Container/output",
-    "slurm_bank": "ccp",
-    "slurm_partition": "pbatch",
-    "steps": "debug"
+    "scheduler_name": "slurm",
+    "scheduler_bank": "ccp",
+    "scheduler_partition": "pbatch",
+    "steps": "s1"
 }
