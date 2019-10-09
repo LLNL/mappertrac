@@ -7,7 +7,7 @@ from parsl.executors import HighThroughputExecutor
 from parsl.launchers import MpiRunLauncher
 from parsl.launchers import SimpleLauncher
 from parsl.addresses import address_by_hostname
-from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider
+from parsl.providers import LocalProvider, SlurmProvider, CobaltProvider
 from parsl.channels import SSHInteractiveLoginChannel, LocalChannel, SSHChannel
 from parsl.launchers import SrunLauncher
 from parsl.utils import get_all_checkpoints
@@ -52,7 +52,7 @@ else:
     subjects_group.add_argument('--subject', help='Input subject directory.')
     subjects_group.add_argument('--subject_list', help='Text file list of input subject directories')
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject. Avoid using a Lustre file system.', required=True)
-    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Values slurm for LLNL, cobalt for ANL', required=True)
+    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Values slurm for LLNL, cobalt for ANL', required=True, choices=['slurm', 'cobalt'])
     parser.add_argument('--slurm_bank', help='Slurm bank to charge for jobs', required=True)
     parser.add_argument('--slurm_partition', help='Slurm partition to assign jobs', required=True)
     parser.add_argument('--steps', type=str.lower, help='Steps to run with this workflow', nargs='+')
@@ -448,7 +448,7 @@ for step in steps:
                 username=args.unix_username,
                 gssapi_auth=args.gssapi,
                 )
-    if(args.scheduler_name is 'slurm'):
+    if args.scheduler_name == 'slurm':
         executors.append(IPyParallelExecutor(
                     label=step,
                     workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
