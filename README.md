@@ -119,11 +119,14 @@ The following are the most important output files. This list is not comprehensiv
 
 | Required Parameter  | Description |
 |---------------------|-------------|
-| subject             | Input subject directory |
-| subject_list        | Text file list of input subject directories |
+| subject*            | Input subject directory |
+| subject_list*       | Text file list of input subject directories |
 | output_dir          | The super-directory that will contain output directories for each subject. Avoid using a Lustre file system |
-| slurm_bank          | Slurm bank to charge for jobs |
-| slurm_partiition    | Slurm partition to assign jobs |
+| scheduler_name      | Scheduler to be used for running jobs. Value is slurm at LLNL, cobalt at ANL |
+| scheduler_bank      | Scheduler bank to charge for jobs |
+| scheduler_partition | Scheduler partition to assign jobs |
+
+* Pick one: either subject or subject_list
 
 <br></br>
 
@@ -131,8 +134,9 @@ The following are the most important output files. This list is not comprehensiv
 |-----------------------|---------------------------------|-------------|
 | steps                 | s1 s2a s2b s3 s4 s5             | Steps to run |
 | gpu_steps             | s2a s2b s3                      | Steps to enable CUDA-enabled binaries |
-| scheduler_options     |                                 | String to append to the #SBATCH blocks in the submit script to the scheduler |
-| gpu_options           | module load cuda/8.0;           | String to append to the #SBATCH blocks for GPU-enabled steps |
+| scheduler_options     |                                 | String to prepend to the submit script to the scheduler |
+| gpu_options           |                                 | String to prepend to the submit blocks for GPU-enabled steps, such as 'module load cuda/8.0;' |
+| worker_init           |                                 | String to run before starting a worker, such as ‘module load Anaconda; source activate env;’ |
 | container_path        | container/image.simg            | Path to Singularity container image |
 | unix_username         | [[current user]]                | Unix username for Parsl job requests  |
 | unix_group            |                                 | Unix group to assign file permissions  |
