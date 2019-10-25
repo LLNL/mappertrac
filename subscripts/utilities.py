@@ -1,6 +1,7 @@
-import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap
+import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap,fnmatch
 from glob import glob
 from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile
+from shutil import copyfile,copytree,rmtree,ignore_patterns
 from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
 
@@ -12,14 +13,14 @@ def smart_remove(path):
     """Remove all files and directories if they exist
     """
     if isdir(path):
-        shutil.rmtree(path)
+        rmtree(path)
     elif exists(path):
         try:
             remove(path)
         except OSError:
             pass
 
-def smart_copy(src, dest):
+def smart_copy(src, dest, exclude=[]):
     """Copy file or directory, while ignoreing non-existent or equivalent files
     """
     if not exists(src):
@@ -29,9 +30,13 @@ def smart_copy(src, dest):
         return
     smart_remove(dest)
     if isdir(src):
-        shutil.copytree(src, dest)
+        copytree(src, dest, ignore=ignore_patterns(*exclude))
     else:
-        shutil.copyfile(src, dest)
+        for pattern in exclude:
+            if fnmatch.fnmatch(src, pattern):
+                print('Did not copy {} because of exclude={}'.format(src, exclude))
+                return
+        copyfile(src, dest)
 
 def exist_all(paths):
     for path in paths:
@@ -145,6 +150,9 @@ def write(path, output, params={}):
     if params and 'container' in params and 'sdir' in params:
         odir = split(params['sdir'])[0]
         output = output.replace(odir, "/share")
+    # make path to file if not an empty string
+    if dirname(path):
+        smart_mkdir(dirname(path))
     with open(path, 'a') as f:
         f.write(str(output) + "\n")
 
@@ -184,7 +192,7 @@ def record_finish(params):
     cores_per_task = int(params['cores_per_task'])
     use_gpu = params['use_gpu']
     global_timing_log = params['global_timing_log']
-    sname = basename(sdir)
+    sname = params['sname']
     task_start_time = -1
     task_total_time = 0
     max_apptimes = {}
