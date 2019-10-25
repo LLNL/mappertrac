@@ -207,6 +207,117 @@ def s3_3_combine(params, inputs=[]):
     record_apptime(params, start_time, 2)
     record_finish(params)
 
+@python_app(executors=['s3'], cache=True)
+def s3_4_edi_consensus(params, edges, inputs=[]):
+    import time
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,record_apptime
+    from os.path import join,exists,split
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    start_time = time.time()
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+
+    for edge in edges:
+        a, b = edge
+        a_to_b = "{}_to_{}".format(a, b)
+        a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+        b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
+        if not exists(a_to_b_file):
+            write(stdout, "Error: cannot find {}".format(a_to_b_file))
+            return
+        if not exists(b_to_a_file):
+            write(stdout, "Error: cannot find {}".format(b_to_a_file))
+            return
+        consensus = join(consensus_dir, a_to_b + '.nii.gz')
+        amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), params).strip()
+        if not is_float(amax):
+            write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
+            return
+        amax = int(float(amax))
+        bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), params).strip()
+        if not is_float(bmax):
+            write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
+            return
+        bmax = int(float(bmax))
+        write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
+        if amax > 0 and bmax > 0:
+            tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
+            tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
+            run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
+            run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
+            run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
+            smart_remove(tmp1)
+            smart_remove(tmp2)
+        else:
+            with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
+                log.write("For edge {}:\n".format(a_to_b))
+                log.write("{} is thresholded to {}\n".format(a, amax))
+                log.write("{} is thresholded to {}\n".format(b, bmax))
+    record_apptime(params, start_time, 3)
+
+@python_app(executors=['s3'], cache=True)
+def s3_5_edi_combine(params, consensus_edges, inputs=[]):
+    import time,tarfile
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,record_apptime,record_finish, \
+                                     update_permissions,get_edges_from_file,strip_trailing_slash
+    from os.path import join,exists,basename
+    from shutil import copyfile
+    pbtx_edge_list = params['pbtx_edge_list']
+    sdir = params['sdir']
+    stdout = params['stdout']
+    container = params['container']
+    start_time = time.time()
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    connectome_dir = join(sdir,"EDI","CNTMresults")
+    compress_pbtx_results = params['compress_pbtx_results']
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
+    edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
+
+    # Collect number of probtrackx tracts per voxel
+    for edge in get_edges_from_file(pbtx_edge_list):
+        a, b = edge
+        a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
+        a_to_b_file = join(pbtk_dir,a_to_b_formatted)
+        if not exists(tract_total):
+            copyfile(a_to_b_file, tract_total)
+        else:
+            run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
+
+    # Collect number of parcel-to-parcel edges per voxel
+    for edge in consensus_edges:
+        a, b = edge
+        consensus = join(consensus_dir, "{}_to_{}.nii.gz".format(a,b))
+        if not exists(consensus):
+            write(stdout,"{} has been thresholded. See {} for details".format(edge, join(pbtk_dir, "zerosl.txt")))
+            continue
+        if not exists(edge_total):
+            copyfile(consensus, edge_total)
+        else:
+            run("fslmaths {0} -add {1} {1}".format(consensus, edge_total), params)
+    if not exists(edge_total):
+        raise Exception("Error: Failed to generate {}".format(edge_total))
+
+    if compress_pbtx_results:
+        pbtk_archive = strip_trailing_slash(pbtk_dir) + '.tar.gz'
+        connectome_archive = strip_trailing_slash(connectome_dir) + '.tar.gz'
+        write(stdout,"\nCompressing probtrackx output at {} and {}".format(pbtk_archive, connectome_archive))
+        smart_remove(pbtk_archive)
+        smart_remove(connectome_archive)
+        with tarfile.open(pbtk_archive, mode='w:gz') as archive:
+            archive.add(pbtk_dir, recursive=True, arcname=basename(pbtk_dir))
+        with tarfile.open(connectome_archive, mode='w:gz') as archive:
+            archive.add(connectome_dir, recursive=True, arcname=basename(connectome_dir))
+        smart_remove(pbtk_dir)
+        smart_remove(connectome_dir)
+
+    update_permissions(params)
+    record_apptime(params, start_time, 4)
+    record_finish(params)
+
 def setup_s3(params, inputs):
     edge_chunk_size = 8 # set to >1, if number of jobs causes log output to crash
     sdir = params['sdir']
@@ -214,17 +325,25 @@ def setup_s3(params, inputs):
     pbtx_edge_list = params['pbtx_edge_list']
     pbtx_random_seed = params['pbtx_random_seed']
     params['subject_random_seed'] = random.randint(0, 999999) if pbtx_random_seed is None else pbtx_random_seed
-    s3_1_future = s3_1_start(params, inputs=inputs)
-    s3_2_futures = []
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_dir = join(sdir,"EDI","CNTMresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
     tmp_dir = join(sdir,"tmp")
     smart_remove(tmp_dir)
     smart_remove(pbtk_dir)
     smart_remove(connectome_dir)
+    smart_remove(consensus_dir)
+    smart_remove(edi_maps)
     smart_mkdir(tmp_dir)
     smart_mkdir(pbtk_dir)
     smart_mkdir(connectome_dir)
+    smart_mkdir(consensus_dir)
+    smart_mkdir(edi_maps)
+
+    # Probtrackx
+    s3_1_future = s3_1_start(params, inputs=inputs)
+    s3_2_futures = []
     edges_chunk = []
     for edge in get_edges_from_file(pbtx_edge_list):
         edges_chunk.append(edge)
@@ -233,4 +352,22 @@ def setup_s3(params, inputs):
             edges_chunk = []
     if edges_chunk: # run last chunk if it's not empty
         s3_2_futures.append(s3_2_probtrackx(params, edges_chunk, inputs=[s3_1_future]))
-    return s3_3_combine(params, inputs=s3_2_futures)
+    s3_3_future = s3_3_combine(params, inputs=s3_2_futures)
+
+    # EDI consensus
+    s3_4_futures = []
+    edges_chunk = []
+    consensus_edges = []
+    for edge in get_edges_from_file(pbtx_edge_list):
+        a, b = edge
+        if [a, b] in consensus_edges or [b, a] in consensus_edges:
+            continue
+        edges_chunk.append(edge)
+        consensus_edges.append(edge)
+        if len(edges_chunk) >= edge_chunk_size:
+            s3_4_futures.append(s3_4_edi_consensus(params, edges_chunk, inputs=[s3_3_future]))
+            edges_chunk = []
+    if edges_chunk: # run last chunk if it's not empty
+        s3_4_futures.append(s3_4_edi_consensus(params, edges_chunk, inputs=[s3_3_future]))
+
+    return s3_5_edi_combine(params, consensus_edges, inputs=s3_4_futures)
