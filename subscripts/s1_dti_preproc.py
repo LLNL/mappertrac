@@ -6,9 +6,10 @@ from shutil import copyfile
 
 @python_app(executors=['s1'], cache=True)
 def s1_1_dicom_preproc(params, inputs=[]):
-    import time
-    from subscripts.utilities import run,record_apptime,record_start,smart_remove,smart_copy,smart_mkdir,write
-    from os.path import join,split,exists
+    import time,tarfile
+    from subscripts.utilities import run,record_apptime,record_start,smart_remove,smart_copy, \
+                                     smart_mkdir,write,strip_trailing_slash
+    from os.path import join,split,exists,basename
     from shutil import copyfile
     from glob import glob
     import numpy as np
@@ -19,11 +20,12 @@ def s1_1_dicom_preproc(params, inputs=[]):
     nifti_dir = params['nifti_dir']
     odir = split(sdir)[0]
     container = params['container']
-
     DTI_dicom_dir = params['DTI_dicom_dir']
-    DTI_dicom_sdir = join(sdir, 'raw_dicom_inputs', 'DTI')
     T1_dicom_dir = params['T1_dicom_dir']
-    T1_dicom_sdir = join(sdir, 'raw_dicom_inputs', 'T1')
+
+    dicom_tmp_dir = join(sdir, 'raw_dicom_inputs')
+    DTI_dicom_tmp_dir = join(dicom_tmp_dir, 'DTI')
+    T1_dicom_tmp_dir = join(dicom_tmp_dir, 'T1')
 
     hardi_file = join(nifti_dir, "hardi.nii.gz")
     T1_file = join(nifti_dir, "anat.nii.gz")
@@ -35,21 +37,22 @@ def s1_1_dicom_preproc(params, inputs=[]):
 
     if T1_dicom_dir and DTI_dicom_dir:
         smart_remove(nifti_dir)
-        smart_remove(DTI_dicom_sdir)
-        smart_remove(T1_dicom_sdir)
-        smart_copy(T1_dicom_dir, T1_dicom_sdir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
-        smart_copy(DTI_dicom_dir, DTI_dicom_sdir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
+        smart_remove(DTI_dicom_tmp_dir)
+        smart_remove(T1_dicom_tmp_dir)
+        smart_copy(T1_dicom_dir, T1_dicom_tmp_dir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
+        smart_copy(DTI_dicom_dir, DTI_dicom_tmp_dir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
         smart_mkdir(nifti_dir)
 
+        # Run dcm2nii in script to ensure Singularity container finds the right paths
         dicom_sh = join(sdir, "dicom.sh")
         smart_remove(dicom_sh)
 
         dicom_sh_contents = "dcm2nii -4 N"
-        for file in glob(join(DTI_dicom_sdir, '*.dcm')):
+        for file in glob(join(DTI_dicom_tmp_dir, '*.dcm')):
             dicom_sh_contents += " " + file
 
         dicom_sh_contents += "\ndcm2nii"
-        for file in glob(join(T1_dicom_sdir, '*.dcm')):
+        for file in glob(join(T1_dicom_tmp_dir, '*.dcm')):
             dicom_sh_contents += " " + file
 
         if container:
@@ -63,26 +66,28 @@ def s1_1_dicom_preproc(params, inputs=[]):
         normal_slices = []
         all_slices = {}
 
-        found_bvals = glob(join(DTI_dicom_sdir, '*.bval'))
-        found_bvecs = glob(join(DTI_dicom_sdir, '*.bvec'))
-        found_T1 = glob(join(T1_dicom_sdir, 'co*.nii.gz'))
+        # Check that dcm2nii outputs exist
+        found_bvals = glob(join(DTI_dicom_tmp_dir, '*.bval'))
+        found_bvecs = glob(join(DTI_dicom_tmp_dir, '*.bvec'))
+        found_T1 = glob(join(T1_dicom_tmp_dir, 'co*.nii.gz'))
 
         if len(found_bvals) != 1:
-            raise Exception('Did not find exactly one bvals output in {}'.format(DTI_dicom_sdir))
+            raise Exception('Did not find exactly one bvals output in {}'.format(DTI_dicom_tmp_dir))
         else:
             copyfile(found_bvals[0], bvals_file)
 
         if len(found_bvecs) != 1:
-            raise Exception('Did not find exactly one bvecs output in {}'.format(DTI_dicom_sdir))
+            raise Exception('Did not find exactly one bvecs output in {}'.format(DTI_dicom_tmp_dir))
         else:
             copyfile(found_bvecs[0], bvecs_file)
 
         if len(found_T1) != 1:
-            raise Exception('Did not find exactly one T1 output in {}'.format(T1_dicom_sdir))
+            raise Exception('Did not find exactly one T1 output in {}'.format(T1_dicom_tmp_dir))
         else:
             copyfile(found_T1[0], T1_file)
 
-        for file in glob(join(DTI_dicom_sdir, '*.nii.gz')):
+        # Find and average the B0 values in DTI files
+        for file in glob(join(DTI_dicom_tmp_dir, '*.nii.gz')):
             slice_val = run("fslmeants -i {} | head -n 1".format(file), params) # based on getconnectome script
             all_slices[file] = float(slice_val)
         slice_vals = list(all_slices.values())
@@ -103,9 +108,10 @@ def s1_1_dicom_preproc(params, inputs=[]):
         if not b0_slices:
             raise Exception('Failed to find B0 values in {}'.format(T1_dicom_dir))
 
-        avg_b0 = join(DTI_dicom_sdir, 'avg_b0.nii.gz')
+        avg_b0 = join(DTI_dicom_tmp_dir, 'avg_b0.nii.gz')
         smart_remove(avg_b0)
 
+        # Concatenate DTI files into a single hardi.nii.gz, with averaged B0 values as first timeslice
         for file in b0_slices:
             if not exists(avg_b0):
                 copyfile(file, avg_b0)
@@ -113,6 +119,15 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 run("fslmaths {0} -add {1} {1}".format(file, avg_b0), params)
         run("fslmaths {0} -div {1} {0}".format(avg_b0, len(b0_slices)), params)
         run("fslmerge -t {} {}".format(hardi_file, " ".join([avg_b0] + normal_slices)), params)
+
+        # Compress DICOM inputs
+        dicom_tmp_archive = strip_trailing_slash(dicom_tmp_dir) + '.tar.gz'
+        write(stdout,"\nCompressing dicom inputs at {}".format(dicom_tmp_archive))
+        smart_remove(dicom_tmp_archive)
+        with tarfile.open(dicom_tmp_archive, mode='w:gz') as archive:
+            archive.add(dicom_tmp_dir, recursive=True, arcname=basename(dicom_tmp_dir))
+        smart_remove(dicom_tmp_dir)
+
     record_apptime(params, start_time, 1)
 
 ### The following three functions parallelize FSL's "eddy_correct"
