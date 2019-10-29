@@ -1,5 +1,5 @@
 {
-    "subjects_json": "test.json",
+    "subjects_json": "example_subjects.json",
     "output_dir": "output",
     "scheduler_name": "slurm",
     "scheduler_bank": "ccp",

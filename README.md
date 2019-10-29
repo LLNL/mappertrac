@@ -44,13 +44,13 @@ iii. `./container/build.sh`
 <br></br>
 <br></br>
 ### Launch
-Specify parameters either in a config file or as command line arguments. See <b>s_run_all.py</b> for parameter details.
+Specify parameters either in a config JSON file or as command line arguments. See <b>s_run_all.py</b> for parameter details.
 
-`./s_run_all.py <config_file>`
+`./s_run_all.py <config_json>`
 
 **OR**
 
-`./s_run_all.py <arg1> <arg2> etc...`
+`./s_run_all.py <arg1>=val1 <arg2>=val2 etc...`
 <br></br>
 <br></br>
 ### File Overview
@@ -122,7 +122,7 @@ The following are the most important output files. This list is not comprehensiv
 
 | Required Parameter  | Description |
 |---------------------|-------------|
-| subjects_yaml        | YAML file with input directories for each subject |
+| subjects_json       | JSON file with input directories for each subject |
 | output_dir          | The super-directory that will contain output directories for each subject. Avoid using a Lustre file system |
 | scheduler_name      | Scheduler to be used for running jobs. Value is slurm at LLNL, cobalt at ANL |
 | scheduler_bank      | Scheduler bank to charge for jobs |

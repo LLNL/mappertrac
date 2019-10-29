@@ -1,0 +1,7 @@
+{
+    "01_1401": {
+        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/01_1401/20171002/MP-RAGE",
+        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/01_1401/20171002/DTI_64_dir,_b=1300",
+        "nifti_dir": "/usr/WS2/tbidata/ContainerPreproc/input/01_1401"
+    }
+}
