@@ -1,6 +1,6 @@
 {
-    "subject_list": "test_subjects.txt",
-    "output_dir": "/usr/WS2/tbidata/Container/output",
+    "subjects_json": "test.json",
+    "output_dir": "output",
     "scheduler_name": "slurm",
     "scheduler_bank": "ccp",
     "scheduler_partition": "pbatch",

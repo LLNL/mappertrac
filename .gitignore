@@ -2,6 +2,7 @@
 *.stdout
 *.simg
 *.json
+!example_config.json
 *.qsub
 *.core
 *.out

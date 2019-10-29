@@ -7,8 +7,11 @@ from shutil import copyfile
 @python_app(executors=['s1'], cache=True)
 def s1_1_dicom_preproc(params, inputs=[]):
     import time
-    from subscripts.utilities import run,record_apptime,record_start,smart_remove,smart_copy
-    from os.path import join
+    from subscripts.utilities import run,record_apptime,record_start,smart_remove,smart_copy,smart_mkdir,write
+    from os.path import join,split,exists
+    from shutil import copyfile
+    from glob import glob
+    import numpy as np
     sdir = params['sdir']
     stdout = params['stdout']
     T1_dicom_dir = params['T1_dicom_dir']
@@ -65,17 +68,17 @@ def s1_1_dicom_preproc(params, inputs=[]):
         found_T1 = glob(join(T1_dicom_sdir, 'co*.nii.gz'))
 
         if len(found_bvals) != 1:
-            write(stdout, 'Error: did not find exactly one bvals file in {}'.format(DTI_dicom_sdir))
+            raise Exception('Did not find exactly one bvals output in {}'.format(DTI_dicom_sdir))
         else:
             copyfile(found_bvals[0], bvals_file)
 
         if len(found_bvecs) != 1:
-            write(stdout, 'Error: did not find exactly one bvecs file in {}'.format(DTI_dicom_sdir))
+            raise Exception('Did not find exactly one bvecs output in {}'.format(DTI_dicom_sdir))
         else:
             copyfile(found_bvecs[0], bvecs_file)
 
         if len(found_T1) != 1:
-            write(stdout, 'Error: did not find exactly one bvecs file in {}'.format(T1_dicom_sdir))
+            raise Exception('Did not find exactly one T1 output in {}'.format(T1_dicom_sdir))
         else:
             copyfile(found_T1[0], T1_file)
 
@@ -95,10 +98,10 @@ def s1_1_dicom_preproc(params, inputs=[]):
         normal_slices.sort()
 
         if b0_slice_vals and np.std(b0_slice_vals) > 0.2 * median:
-            write(stdout, 'Error: standard deviation of B0 values is greater than 20\% of the median slice value. ' +
+            raise Exception('Standard deviation of B0 values is greater than 20\% of the median slice value. ' +
                   'This probably means that this script has incorrectly identified B0 slices.')
         if not b0_slices:
-            write(stdout, 'Error: failed to find B0 values in {}'.format(T1_dicom_dir))
+            raise Exception('Failed to find B0 values in {}'.format(T1_dicom_dir))
 
         avg_b0 = join(DTI_dicom_sdir, 'avg_b0.nii.gz')
         smart_remove(avg_b0)

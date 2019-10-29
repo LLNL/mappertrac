@@ -122,7 +122,7 @@ The following are the most important output files. This list is not comprehensiv
 
 | Required Parameter  | Description |
 |---------------------|-------------|
-| subjects_csv        | CSV file with input directories for each subject |
+| subjects_yaml        | YAML file with input directories for each subject |
 | output_dir          | The super-directory that will contain output directories for each subject. Avoid using a Lustre file system |
 | scheduler_name      | Scheduler to be used for running jobs. Value is slurm at LLNL, cobalt at ANL |
 | scheduler_bank      | Scheduler bank to charge for jobs |

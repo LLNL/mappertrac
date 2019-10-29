@@ -31,20 +31,20 @@ class ArgsObject:
         self.__dict__.update(entries)
 
 if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
-    config_file = sys.argv[1]
-    with open(config_file) as f:
+    config_json = sys.argv[1]
+    with open(config_json) as f:
         raw_args = json.load(f)
     missing_args = []
-    for required_arg in ['subjects_csv', 'output_dir', 'scheduler_name', 'scheduler_bank', 'scheduler_partition']:
+    for required_arg in ['subjects_json', 'output_dir', 'scheduler_name', 'scheduler_bank', 'scheduler_partition']:
         if required_arg not in raw_args:
             missing_args.append(required_arg)
     if missing_args:
-        raise Exception('Config file {} is missing required arguments: {}'.format(config_file, missing_args))
+        raise Exception('Config file {} is missing required arguments: {}'.format(config_json, missing_args))
     args = ArgsObject(**raw_args)
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
-        usage='%(prog)s [config_file]\n\n<< OR >>\n\nusage: %(prog)s --subjects_csv SUBJECTS_CSV --scheduler_name SCHEDULER --scheduler_bank BANK --scheduler_partition PARTITION\n(see optional arguments with --help)\n')
-    parser.add_argument('--subjects_csv', help='CSV file with input directories for each subject', required=True)
+        usage='%(prog)s [config_json]\n\n<< OR >>\n\nusage: %(prog)s --subjects_json SUBJECTS_JSON --scheduler_name SCHEDULER --scheduler_bank BANK --scheduler_partition PARTITION\n(see optional arguments with --help)\n')
+    parser.add_argument('--subjects_json', help='JSON file with input directories for each subject', required=True)
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject.', required=True)
     parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Values slurm for LLNL, cobalt for ANL', required=True, choices=['slurm', 'cobalt'])
     parser.add_argument('--scheduler_bank', help='Scheduler scheduler_bank to charge for jobs', required=True)
@@ -223,27 +223,18 @@ connectome_idx_list = abspath(args.connectome_idx_list)
 #     input_dirs = [args.subject]
 subject_dict = {}
 
-with open(args.subjects_csv, newline='') as csvfile:
-    csvreader = csv.reader(csvfile, skipinitialspace=True, delimiter=',', quoting=csv.QUOTE_NONE)
-    for row in csvreader:
-        if len(row) != 4:
-            print('Invalid row {} in {}.\n\nMust have 4 columns: subject, T1_dicom_dir, DTI_dicom_dir, and nifti_dir'.format(row, args.subjects_csv))
-            continue
-
-        sname = row[0].strip()
-        T1_dicom_dir = row[1].strip()
-        DTI_dicom_dir = row[2].strip()
-        nifti_dir = row[3].strip()
-
-        # Skip header row
-        if sname == 'subject':
-            continue
+with open(args.subjects_json, newline='') as json_file:
+    json_data = json.load(json_file)
+    for sname in json_data:
+        T1_dicom_dir = json_data[sname]['T1_dicom_dir'] if 'T1_dicom_dir' in json_data[sname] else ''
+        DTI_dicom_dir = json_data[sname]['DTI_dicom_dir'] if 'DTI_dicom_dir' in json_data[sname] else ''
+        nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else ''
 
         if 's1' in steps:
             # Make sure input files exist for each subject
             if not T1_dicom_dir or not isdir(T1_dicom_dir) or not DTI_dicom_dir or not isdir(DTI_dicom_dir):
                 if not nifti_dir or not isdir(nifti_dir):
-                    print('Invalid row {} in {}.\n\nWhen running s1_dti_preproc, either T1_dicom_dir + DTI_dicom_dir or nifti_dir must be specified'.format(row, args.subjects_csv))
+                    print('Invalid subject {} in {}.\n\nWhen running s1_dti_preproc, either T1_dicom_dir + DTI_dicom_dir or nifti_dir must be specified'.format(row, args.subjects_json))
                     continue
 
                 bvecs = join(nifti_dir, "bvecs")
@@ -260,10 +251,8 @@ with open(args.subjects_csv, newline='') as csvfile:
                     smart_copy(T1, anat)
 
                 if not exist_all([bvecs, bvals, hardi, anat]):
-                    print('Invalid row {} in {}.\n\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(row, args.subjects_csv))
+                    print('Invalid subject {} in {}.\n\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(row, args.subjects_json))
                     continue
-
-        checksum = generate_checksum(nifti_dir) # Ensures recompute if inputs change
 
         sdir = join(odir, sname)
         log_dir = join(sdir,'log')
@@ -279,7 +268,6 @@ with open(args.subjects_csv, newline='') as csvfile:
                 'nifti_dir': nifti_dir,
                 'sdir': sdir,
                 'container': container,
-                'checksum': checksum,
                 'pbtx_edge_list': pbtx_edge_list,
                 'group': args.unix_group,
                 'global_timing_log': global_timing_log,
