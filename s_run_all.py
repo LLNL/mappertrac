@@ -226,15 +226,21 @@ subject_dict = {}
 with open(args.subjects_json, newline='') as json_file:
     json_data = json.load(json_file)
     for sname in json_data:
+        sdir = join(odir, sname)
+        log_dir = join(sdir,'log')
+        smart_mkdir(log_dir)
+        smart_mkdir(sdir)
+
         T1_dicom_dir = json_data[sname]['T1_dicom_dir'] if 'T1_dicom_dir' in json_data[sname] else ''
         DTI_dicom_dir = json_data[sname]['DTI_dicom_dir'] if 'DTI_dicom_dir' in json_data[sname] else ''
-        nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else ''
+        nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else join(sdir, 'inputs')
 
         if 's1' in steps:
             # Make sure input files exist for each subject
             if not T1_dicom_dir or not isdir(T1_dicom_dir) or not DTI_dicom_dir or not isdir(DTI_dicom_dir):
                 if not nifti_dir or not isdir(nifti_dir):
-                    print('Invalid subject {} in {}.\n\nWhen running s1_dti_preproc, either T1_dicom_dir + DTI_dicom_dir or nifti_dir must be specified'.format(row, args.subjects_json))
+                    print('Invalid subject {} in {}.\n\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(row, args.subjects_json) +
+                        ' Or specify nifti_dir with bvecs, bvals, hardi.nii.gz, and anat.nii.gz already in place.')
                     continue
 
                 bvecs = join(nifti_dir, "bvecs")
@@ -253,12 +259,8 @@ with open(args.subjects_json, newline='') as json_file:
                 if not exist_all([bvecs, bvals, hardi, anat]):
                     print('Invalid subject {} in {}.\n\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(row, args.subjects_json))
                     continue
-
-        sdir = join(odir, sname)
-        log_dir = join(sdir,'log')
-
-        smart_mkdir(log_dir)
-        smart_mkdir(sdir)
+        smart_mkdir(nifti_dir)
+        
         subject = {}
         for step in steps:
             params = {

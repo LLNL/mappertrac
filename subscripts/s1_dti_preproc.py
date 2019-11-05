@@ -47,6 +47,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
         dicom_sh = join(sdir, "dicom.sh")
         smart_remove(dicom_sh)
 
+        # Convert DTI dicom to many individual NiFTI files
         dicom_sh_contents = "dcm2nii -4 N"
         for file in glob(join(DTI_dicom_tmp_dir, '*.dcm')):
             dicom_sh_contents += " " + file
@@ -106,7 +107,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             raise Exception('Standard deviation of B0 values is greater than 20\% of the median slice value. ' +
                   'This probably means that this script has incorrectly identified B0 slices.')
         if not b0_slices:
-            raise Exception('Failed to find B0 values in {}'.format(T1_dicom_dir))
+            raise Exception('Failed to find B0 values in {}'.format(DTI_dicom_dir))
 
         avg_b0 = join(DTI_dicom_tmp_dir, 'avg_b0.nii.gz')
         smart_remove(avg_b0)
@@ -119,6 +120,40 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 run("fslmaths {0} -add {1} {1}".format(file, avg_b0), params)
         run("fslmaths {0} -div {1} {0}".format(avg_b0, len(b0_slices)), params)
         run("fslmerge -t {} {}".format(hardi_file, " ".join([avg_b0] + normal_slices)), params)
+
+        # Clean extra zeroes from bvals and bvecs files
+        num_slices = len(normal_slices)
+        with open(bvals_file, 'r+') as f:
+            entries = [x.strip() for x in f.read().split() if x]
+            while len(entries) > num_slices:
+                if entries[0] == "0":
+                    entries.pop(0)
+                elif entries[-1] == "0":
+                    entries.pop(-1)
+                else:
+                    raise Exception('Failed to clean bvals file {}. Since {} has {} slices, bvals must have {} columns'.
+                        format(bvals_file, hardi_file, num_slices, num_slices))
+            f.seek(0)
+            f.write("0 " + " ".join(entries) + "\n")
+            f.truncate()
+        with open(bvecs_file, 'r+') as f:
+            text = ""
+            for line in f.readlines():
+                if not line:
+                    continue
+                entries = [x.strip() for x in line.split() if x]
+                while len(entries) > num_slices:
+                    if entries[0] == "0":
+                        entries.pop(0)
+                    elif entries[-1] == "0":
+                        entries.pop(-1)
+                    else:
+                        raise Exception('Failed to clean bvecs file {}. Since {} has {} slices, bvecs must have {} columns'.
+                            format(bvecs_file, hardi_file, num_slices, num_slices))
+                text += "0 " + " ".join(entries) + "\n"
+            f.seek(0)
+            f.write(text)
+            f.truncate()
 
         # Compress DICOM inputs
         dicom_tmp_archive = strip_trailing_slash(dicom_tmp_dir) + '.tar.gz'
