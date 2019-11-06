@@ -17,6 +17,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
     stdout = params['stdout']
     T1_dicom_dir = params['T1_dicom_dir']
     DTI_dicom_dir = params['DTI_dicom_dir']
+    extra_b0_dirs = params['extra_b0_dirs']
     nifti_dir = params['nifti_dir']
     odir = split(sdir)[0]
     container = params['container']
@@ -26,6 +27,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
     dicom_tmp_dir = join(sdir, 'raw_dicom_inputs')
     DTI_dicom_tmp_dir = join(dicom_tmp_dir, 'DTI')
     T1_dicom_tmp_dir = join(dicom_tmp_dir, 'T1')
+    extra_b0_tmp_dirs = [join(dicom_tmp_dir, basename(dirname)) for dirname in extra_b0_dirs]
 
     hardi_file = join(nifti_dir, "hardi.nii.gz")
     T1_file = join(nifti_dir, "anat.nii.gz")
@@ -37,11 +39,19 @@ def s1_1_dicom_preproc(params, inputs=[]):
 
     if T1_dicom_dir and DTI_dicom_dir:
         smart_remove(nifti_dir)
+        smart_mkdir(nifti_dir)
         smart_remove(DTI_dicom_tmp_dir)
         smart_remove(T1_dicom_tmp_dir)
+
+        # copy everything from DICOM dir except old NiFTI outputs
         smart_copy(T1_dicom_dir, T1_dicom_tmp_dir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
+        write(stdout, 'Copied {} to {}'.format(T1_dicom_dir, T1_dicom_tmp_dir))
         smart_copy(DTI_dicom_dir, DTI_dicom_tmp_dir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
-        smart_mkdir(nifti_dir)
+        write(stdout, 'Copied {} to {}'.format(DTI_dicom_dir, DTI_dicom_tmp_dir))
+        for (extra_b0_dir, extra_b0_tmp_dir) in zip(extra_b0_dirs, extra_b0_tmp_dirs):
+            smart_remove(extra_b0_tmp_dir)
+            smart_copy(extra_b0_dir, extra_b0_tmp_dir, ['*.nii', '*.nii.gz', '*.bval', '*.bvec'])
+            write(stdout, 'Copied {} to {}'.format(extra_b0_dir, extra_b0_tmp_dir))
 
         # Run dcm2nii in script to ensure Singularity container finds the right paths
         dicom_sh = join(sdir, "dicom.sh")
@@ -52,7 +62,12 @@ def s1_1_dicom_preproc(params, inputs=[]):
         for file in glob(join(DTI_dicom_tmp_dir, '*.dcm')):
             dicom_sh_contents += " " + file
 
-        dicom_sh_contents += "\ndcm2nii"
+        for extra_b0_tmp_dir in extra_b0_tmp_dirs:
+            dicom_sh_contents += "\ndcm2nii -4 N"
+            for file in glob(join(extra_b0_tmp_dir, '*.dcm')):
+                dicom_sh_contents += " " + file
+
+        dicom_sh_contents += "\ndcm2nii -4 N"
         for file in glob(join(T1_dicom_tmp_dir, '*.dcm')):
             dicom_sh_contents += " " + file
 
@@ -60,10 +75,10 @@ def s1_1_dicom_preproc(params, inputs=[]):
             write(dicom_sh, dicom_sh_contents.replace(odir, "/share"))
         else:
             write(dicom_sh, dicom_sh_contents)
+        write(stdout, 'Running dcm2nii with script {}'.format(dicom_sh))
         run("sh " + dicom_sh, params)
 
-        b0_slices = []
-        b0_slice_vals = []
+        b0_slices = {}
         normal_slices = []
         all_slices = {}
 
@@ -82,44 +97,64 @@ def s1_1_dicom_preproc(params, inputs=[]):
         else:
             copyfile(found_bvecs[0], bvecs_file)
 
-        if len(found_T1) != 1:
-            raise Exception('Did not find exactly one T1 output in {}'.format(T1_dicom_tmp_dir))
-        else:
-            copyfile(found_T1[0], T1_file)
+        found_T1.sort()
+        if len(found_T1) == 0:
+            raise Exception('Did not find T1 output in {}'.format(T1_dicom_tmp_dir))
+        elif len(found_T1) > 1:
+            write(stdout, 'Warning: Found more than one T1 output in {}'.format(T1_dicom_tmp_dir))
+        copyfile(found_T1[0], T1_file)
 
-        # Find and average the B0 values in DTI files
+        # Copy extra b0 values to DTI temp dir
+        for extra_b0_tmp_dir in extra_b0_tmp_dirs:
+            for file in glob(join(extra_b0_tmp_dir, "*.nii.gz")):
+                copyfile(file, join(DTI_dicom_tmp_dir, "extra_b0_" + basename(file)))
+            write(stdout, 'Copied NiFTI outputs from {} to {}'.format(extra_b0_tmp_dir, DTI_dicom_tmp_dir))
+
+        # Sort slices into DTI and b0
         for file in glob(join(DTI_dicom_tmp_dir, '*.nii.gz')):
             slice_val = run("fslmeants -i {} | head -n 1".format(file), params) # based on getconnectome script
             all_slices[file] = float(slice_val)
-        slice_vals = list(all_slices.values())
-        median = np.median(slice_vals)
-        for key in all_slices.keys():
-            slice_val = all_slices[key]
-            # mark as B0 if difference from median is greater than 20% of the median slice value
-            if abs(slice_val - median) > 0.2 * median:
-                b0_slices.append(key)
-                b0_slice_vals.append(slice_val)
+        normal_median = np.median(list(all_slices.values()))
+        for file in all_slices:
+            slice_val = all_slices[file]
+            # mark as b0 if more than 20% from normal slice median
+            if abs(slice_val - normal_median) > 0.2 * normal_median:
+                b0_slices[file] = slice_val
             else:
-                normal_slices.append(key)
-        normal_slices.sort()
-
-        if b0_slice_vals and np.std(b0_slice_vals) > 0.2 * median:
-            raise Exception('Standard deviation of B0 values is greater than 20\% of the median slice value. ' +
-                  'This probably means that this script has incorrectly identified B0 slices.')
+                normal_slices.append(file)
         if not b0_slices:
-            raise Exception('Failed to find B0 values in {}'.format(DTI_dicom_dir))
+            raise Exception('Failed to find b0 values in {}'.format(DTI_dicom_dir))
+        write(stdout, 'Found {} normal DTI slices'.format(len(normal_slices)))
 
+        # Remove outliers from b0 values
+        max_outliers = 1
+        if len(b0_slices) > max_outliers:
+            num_outliers = 0
+            b0_median = np.median(list(b0_slices.values()))
+            for file in b0_slices:
+                slice_val = b0_slices[file]
+                # remove outlier if more than 20% from b0 median
+                if abs(slice_val - b0_median) > 0.2 * b0_median:
+                    b0_slices.pop(file)
+                    num_outliers += 1
+            if num_outliers > max_outliers:
+                raise Exception('Found more than {} outliers in b0 values. This probably means that this script has incorrectly identified b0 slices.'.format(max_outliers))
+        write(stdout, 'Found {} b0 slices'.format(len(b0_slices)))
+
+        # Average b0 slices into a single image
         avg_b0 = join(DTI_dicom_tmp_dir, 'avg_b0.nii.gz')
         smart_remove(avg_b0)
-
-        # Concatenate DTI files into a single hardi.nii.gz, with averaged B0 values as first timeslice
-        for file in b0_slices:
+        for file in b0_slices.keys():
             if not exists(avg_b0):
                 copyfile(file, avg_b0)
             else:
                 run("fslmaths {0} -add {1} {1}".format(file, avg_b0), params)
         run("fslmaths {0} -div {1} {0}".format(avg_b0, len(b0_slices)), params)
+
+        # Concatenate average b0 and DTI slices into a single hardi.nii.gz
+        normal_slices.sort()
         run("fslmerge -t {} {}".format(hardi_file, " ".join([avg_b0] + normal_slices)), params)
+        write(stdout, 'Concatenated b0 and DTI slices into {}'.format(hardi_file))
 
         # Clean extra zeroes from bvals and bvecs files
         num_slices = len(normal_slices)
@@ -133,9 +168,11 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 else:
                     raise Exception('Failed to clean bvals file {}. Since {} has {} slices, bvals must have {} columns'.
                         format(bvals_file, hardi_file, num_slices, num_slices))
+            text = "0 " + " ".join(entries) + "\n"
             f.seek(0)
-            f.write("0 " + " ".join(entries) + "\n")
+            f.write(text)
             f.truncate()
+            write(stdout, 'Generated bvals file with values:\n{}'.format(text))
         with open(bvecs_file, 'r+') as f:
             text = ""
             for line in f.readlines():
@@ -154,6 +191,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             f.seek(0)
             f.write(text)
             f.truncate()
+            write(stdout, 'Generated bvecs file with values:\n{}'.format(text))
 
         # Compress DICOM inputs
         dicom_tmp_archive = strip_trailing_slash(dicom_tmp_dir) + '.tar.gz'
@@ -162,6 +200,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
         with tarfile.open(dicom_tmp_archive, mode='w:gz') as archive:
             archive.add(dicom_tmp_dir, recursive=True, arcname=basename(dicom_tmp_dir))
         smart_remove(dicom_tmp_dir)
+        write(stdout, 'Compressed temporary DICOM files to {}'.format(dicom_tmp_archive))
 
     record_apptime(params, start_time, 1)
 

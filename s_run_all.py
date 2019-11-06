@@ -233,6 +233,7 @@ with open(args.subjects_json, newline='') as json_file:
 
         T1_dicom_dir = json_data[sname]['T1_dicom_dir'] if 'T1_dicom_dir' in json_data[sname] else ''
         DTI_dicom_dir = json_data[sname]['DTI_dicom_dir'] if 'DTI_dicom_dir' in json_data[sname] else ''
+        extra_b0_dirs = json_data[sname]['extra_b0_dirs'] if 'extra_b0_dirs' in json_data[sname] else []
         nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else join(sdir, 'inputs')
 
         if 's1' in steps:
@@ -267,6 +268,7 @@ with open(args.subjects_json, newline='') as json_file:
                 'sname': sname,
                 'T1_dicom_dir': T1_dicom_dir,
                 'DTI_dicom_dir': DTI_dicom_dir,
+                'extra_b0_dirs': extra_b0_dirs,
                 'nifti_dir': nifti_dir,
                 'sdir': sdir,
                 'container': container,
