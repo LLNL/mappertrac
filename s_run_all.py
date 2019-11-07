@@ -69,7 +69,8 @@ else:
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
     parser.add_argument('--compress_pbtx_results', help='Compress probtrackx outputs to reduce inode and disk space usage', action='store_false')
-    parser.add_argument('--fast_pbtx', help='Use 1-to-N instead of N-to-N probtrackx script', action='store_false')
+    # parser.add_argument('--fast_pbtx', help='Use 1-to-N instead of N-to-N probtrackx script', action='store_true')
+    # parser.add_argument('--ignore_warnings', help='Print non-critical warnings to stdout rather than raising an exception', action='store_true')
 
     # Site-specific machine settings
     parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
@@ -126,6 +127,7 @@ parse_default('force', False, args)
 parse_default('gssapi', False, args)
 parse_default('local_host_only', True, args)
 parse_default('compress_pbtx_results', True, args)
+# parse_default('ignore_warnings', False, args)
 # parse_default('fast_pbtx', False, args)
 # parse_default('work_dir', None, args)
 parse_default('parsl_path', None, args)
@@ -284,6 +286,7 @@ with open(args.subjects_json, newline='') as json_file:
                 'pbtx_random_seed': args.pbtx_random_seed,
                 'histogram_bin_count': int(args.histogram_bin_count),
                 'compress_pbtx_results': args.compress_pbtx_results,
+                # 'ignore_warnings': args.ignore_warnings,
             }
             stdout_template = join(log_dir, "{}.stdout".format(step))
             new_stdout, prev_stdout, idx = get_log_path(stdout_template)

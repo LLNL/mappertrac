@@ -115,7 +115,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             slice_val = run("fslmeants -i {} | head -n 1".format(file), params) # based on getconnectome script
             all_slices[file] = float(slice_val)
         normal_median = np.median(list(all_slices.values()))
-        for file in all_slices:
+        for file in list(all_slices.keys()):
             slice_val = all_slices[file]
             # mark as b0 if more than 20% from normal slice median
             if abs(slice_val - normal_median) > 0.2 * normal_median:
@@ -131,7 +131,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
         if len(b0_slices) > max_outliers:
             num_outliers = 0
             b0_median = np.median(list(b0_slices.values()))
-            for file in b0_slices:
+            for file in list(b0_slices.keys()):
                 slice_val = b0_slices[file]
                 # remove outlier if more than 20% from b0 median
                 if abs(slice_val - b0_median) > 0.2 * b0_median:
@@ -144,7 +144,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
         # Average b0 slices into a single image
         avg_b0 = join(DTI_dicom_tmp_dir, 'avg_b0.nii.gz')
         smart_remove(avg_b0)
-        for file in b0_slices.keys():
+        for file in list(b0_slices.keys()):
             if not exists(avg_b0):
                 copyfile(file, avg_b0)
             else:
@@ -160,15 +160,27 @@ def s1_1_dicom_preproc(params, inputs=[]):
         num_slices = len(normal_slices)
         with open(bvals_file, 'r+') as f:
             entries = [x.strip() for x in f.read().split() if x]
-            while len(entries) > num_slices:
-                if entries[0] == "0":
-                    entries.pop(0)
-                elif entries[-1] == "0":
-                    entries.pop(-1)
-                else:
-                    raise Exception('Failed to clean bvals file {}. Since {} has {} slices, bvals must have {} columns'.
-                        format(bvals_file, hardi_file, num_slices, num_slices))
-            text = "0 " + " ".join(entries) + "\n"
+            entries.pop(0) # strip leading zero
+
+            # remove zero sequences
+            min_sequence_length = 3
+            if all(x == "0" for x in entries[0:min_sequence_length]):
+                write(stdout, "Stripped leading zero sequence from {}".format(bvals_file))
+                while len(entries) > num_slices:
+                    extra_zero = entries.pop(0)
+                    if extra_zero != "0":
+                        raise Exception("Failed to clean extra zeros from {}".format(bvals_file))
+            elif all(x == "0" for x in entries[-1:-min_sequence_length-1:-1]):
+                write(stdout, "Stripped trailing zero sequence from {}".format(bvals_file))
+                while len(entries) > num_slices:
+                    extra_zero = entries.pop(-1)
+                    if extra_zero != "0":
+                        raise Exception("Failed to clean extra zeros from {}".format(bvals_file))
+
+            if len(entries) > num_slices:
+                raise Exception('Failed to clean bvals file {}. Since {} has {} slices, bvals must have {} columns'.
+                    format(bvals_file, hardi_file, num_slices, num_slices))
+            text = "0 " + " ".join(entries) + "\n" # restore leading zero
             f.seek(0)
             f.write(text)
             f.truncate()
@@ -179,15 +191,27 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 if not line:
                     continue
                 entries = [x.strip() for x in line.split() if x]
-                while len(entries) > num_slices:
-                    if entries[0] == "0":
-                        entries.pop(0)
-                    elif entries[-1] == "0":
-                        entries.pop(-1)
-                    else:
-                        raise Exception('Failed to clean bvecs file {}. Since {} has {} slices, bvecs must have {} columns'.
-                            format(bvecs_file, hardi_file, num_slices, num_slices))
-                text += "0 " + " ".join(entries) + "\n"
+                entries.pop(0) # strip leading zero
+
+                # remove zero sequences
+                min_sequence_length = 3
+                if all(x == "0" for x in entries[0:min_sequence_length]):
+                    write(stdout, "Stripped leading zero sequence from {}".format(bvecs_file))
+                    while len(entries) > num_slices:
+                        extra_zero = entries.pop(0)
+                        if extra_zero != "0":
+                            raise Exception("Failed to clean extra zeros from {}".format(bvecs_file))
+                elif all(x == "0" for x in entries[-1:-min_sequence_length-1:-1]):
+                    write(stdout, "Stripped trailing zero sequence from {}".format(bvecs_file))
+                    while len(entries) > num_slices:
+                        extra_zero = entries.pop(-1)
+                        if extra_zero != "0":
+                            raise Exception("Failed to clean extra zeros from {}".format(bvecs_file))
+
+                if len(entries) > num_slices:
+                    raise Exception('Failed to clean bvecs file {}. Since {} has {} slices, bvecs must have {} columns'.
+                        format(bvecs_file, hardi_file, num_slices, num_slices))
+                text += "0 " + " ".join(entries) + "\n" # restore leading zero
             f.seek(0)
             f.write(text)
             f.truncate()
@@ -195,7 +219,6 @@ def s1_1_dicom_preproc(params, inputs=[]):
 
         # Compress DICOM inputs
         dicom_tmp_archive = strip_trailing_slash(dicom_tmp_dir) + '.tar.gz'
-        write(stdout,"\nCompressing dicom inputs at {}".format(dicom_tmp_archive))
         smart_remove(dicom_tmp_archive)
         with tarfile.open(dicom_tmp_archive, mode='w:gz') as archive:
             archive.add(dicom_tmp_dir, recursive=True, arcname=basename(dicom_tmp_dir))
