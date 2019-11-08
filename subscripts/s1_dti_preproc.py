@@ -160,10 +160,12 @@ def s1_1_dicom_preproc(params, inputs=[]):
         num_slices = len(normal_slices)
         with open(bvals_file, 'r+') as f:
             entries = [x.strip() for x in f.read().split() if x]
-            entries.pop(0) # strip leading zero
+            extra_zero = entries.pop(0) # strip leading zero
+            if extra_zero != "0":
+                raise Exception("{} should begin with zero, as a placeholder for the averaged b0 slice".format(bvals_file))
 
             # remove zero sequences
-            min_sequence_length = 3
+            min_sequence_length = 5
             if all(x == "0" for x in entries[0:min_sequence_length]):
                 write(stdout, "Stripped leading zero sequence from {}".format(bvals_file))
                 while len(entries) > num_slices:
@@ -191,10 +193,12 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 if not line:
                     continue
                 entries = [x.strip() for x in line.split() if x]
-                entries.pop(0) # strip leading zero
+                extra_zero = entries.pop(0) # strip leading zero
+                if extra_zero != "0":
+                    raise Exception("Each line in {} should begin with zero, as a placeholder for the averaged b0 slice".format(bvecs_file))
 
                 # remove zero sequences
-                min_sequence_length = 3
+                min_sequence_length = 5
                 if all(x == "0" for x in entries[0:min_sequence_length]):
                     write(stdout, "Stripped leading zero sequence from {}".format(bvecs_file))
                     while len(entries) > num_slices:

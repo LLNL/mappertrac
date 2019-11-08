@@ -242,7 +242,7 @@ with open(args.subjects_json, newline='') as json_file:
             # Make sure input files exist for each subject
             if not T1_dicom_dir or not isdir(T1_dicom_dir) or not DTI_dicom_dir or not isdir(DTI_dicom_dir):
                 if not nifti_dir or not isdir(nifti_dir):
-                    print('Invalid subject {} in {}.\n\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(row, args.subjects_json) +
+                    print('Invalid subject {} in {}.\n\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(sname, args.subjects_json) +
                         ' Or specify nifti_dir with bvecs, bvals, hardi.nii.gz, and anat.nii.gz already in place.')
                     continue
 
@@ -260,7 +260,7 @@ with open(args.subjects_json, newline='') as json_file:
                     smart_copy(T1, anat)
 
                 if not exist_all([bvecs, bvals, hardi, anat]):
-                    print('Invalid subject {} in {}.\n\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(row, args.subjects_json))
+                    print('Invalid subject {} in {}.\n\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(sname, args.subjects_json))
                     continue
         smart_mkdir(nifti_dir)
         
@@ -353,7 +353,7 @@ def get_walltime(_num_subjects, job_time_string, node_count):
 # Set recommended or overriden node counts
 node_counts = {
     'debug': 1,
-    's1': max(floor(0.2 * num_subjects['s1']), 1) if args.s1_nodes is None else int(args.s1_nodes),
+    's1': max(floor(0.1 * num_subjects['s1']), 1) if args.s1_nodes is None else int(args.s1_nodes),
     's2a': max(floor(1.0 * num_subjects['s2a']), 1) if args.s2a_nodes is None else int(args.s2a_nodes),
     's2b': max(floor(1.0 * num_subjects['s2b']), 1) if args.s2b_nodes is None else int(args.s2b_nodes),
     's3': max(floor(1.0 * num_subjects['s3']), 1) if args.s3_nodes is None else int(args.s3_nodes),
