@@ -242,7 +242,7 @@ with open(args.subjects_json, newline='') as json_file:
             # Make sure input files exist for each subject
             if not T1_dicom_dir or not isdir(T1_dicom_dir) or not DTI_dicom_dir or not isdir(DTI_dicom_dir):
                 if not nifti_dir or not isdir(nifti_dir):
-                    print('Invalid subject {} in {}.\n\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(sname, args.subjects_json) +
+                    print('Invalid subject {} in {}\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(sname, args.subjects_json) +
                         ' Or specify nifti_dir with bvecs, bvals, hardi.nii.gz, and anat.nii.gz already in place.')
                     continue
 
@@ -260,7 +260,7 @@ with open(args.subjects_json, newline='') as json_file:
                     smart_copy(T1, anat)
 
                 if not exist_all([bvecs, bvals, hardi, anat]):
-                    print('Invalid subject {} in {}.\n\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(sname, args.subjects_json))
+                    print('Invalid subject {} in {}\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(sname, args.subjects_json))
                     continue
         smart_mkdir(nifti_dir)
         
@@ -474,7 +474,7 @@ for step in steps:
 print("===================================================\n")
 
 config = Config(executors=executors)
-config.retries = 5
+config.retries = 3
 config.checkpoint_mode = 'task_exit'
 if not args.force:
     config.checkpoint_files = get_all_checkpoints()

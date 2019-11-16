@@ -4,5 +4,6 @@
     "scheduler_name": "slurm",
     "scheduler_bank": "ccp",
     "scheduler_partition": "pbatch",
-    "steps": "s1"
+    "steps": "s1",
+    "force": "true"
 }

@@ -97,11 +97,14 @@ def s1_1_dicom_preproc(params, inputs=[]):
         else:
             copyfile(found_bvecs[0], bvecs_file)
 
-        found_T1.sort()
+        # If we don't find the usual T1 file name, just try any NifTI file in the T1 directory
+        if len(found_T1) == 0:
+            found_T1 = glob(join(T1_dicom_tmp_dir, '*.nii.gz'))
         if len(found_T1) == 0:
             raise Exception('Did not find T1 output in {}'.format(T1_dicom_tmp_dir))
         elif len(found_T1) > 1:
             write(stdout, 'Warning: Found more than one T1 output in {}'.format(T1_dicom_tmp_dir))
+        found_T1.sort()
         copyfile(found_T1[0], T1_file)
 
         # Copy extra b0 values to DTI temp dir
