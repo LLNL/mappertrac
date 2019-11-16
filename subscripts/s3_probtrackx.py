@@ -122,17 +122,18 @@ def s3_3_combine(params, inputs=[]):
     from shutil import copyfile
     sdir = params['sdir']
     stdout = params['stdout']
+    pbtx_sample_count = int(params['pbtx_sample_count'])
     pbtx_edge_list = params['pbtx_edge_list']
     connectome_idx_list = params['connectome_idx_list']
     connectome_idx_list_copy = join(sdir, 'connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
-    oneway_list = join(sdir, "connectome_oneway.txt")
-    twoway_list = join(sdir, "connectome_twoway.txt")
-    oneway_nof = join(sdir, "connectome_oneway_nof.mat")
-    twoway_nof = join(sdir, "connectome_twoway_nof.mat")
-    oneway_nof_normalized = join(sdir, "connectome_oneway_nof_normalized.mat")
-    twoway_nof_normalized = join(sdir, "connectome_twoway_nof_normalized.mat")
+    oneway_list = join(sdir, "connectome_{}samples_oneway.txt".format(pbtx_sample_count))
+    twoway_list = join(sdir, "connectome_{}samples_twoway.txt".format(pbtx_sample_count))
+    oneway_nof = join(sdir, "connectome_{}samples_oneway_nof.mat".format(pbtx_sample_count)) # nof = number of fibers
+    twoway_nof = join(sdir, "connectome_{}samples_twoway_nof.mat".format(pbtx_sample_count))
+    oneway_nof_normalized = join(sdir, "connectome_{}samples_oneway_nofn.mat".format(pbtx_sample_count)) # nofn = number of fibers, normalized
+    twoway_nof_normalized = join(sdir, "connectome_{}samples_twoway_nofn.mat".format(pbtx_sample_count))
     smart_remove(oneway_list)
     smart_remove(twoway_list)
     smart_remove(oneway_nof_normalized)
