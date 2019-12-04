@@ -11,30 +11,95 @@ def s3_1_start(params, inputs=[]):
     stdout = params['stdout']
     record_start(params)
     if use_gpu:
-        write(stdout, "Running Probtrackx with GPU")
+        write(stdout, "Initializing Probtrackx with GPU")
     else:
-        write(stdout, "Running Probtrackx without GPU")
+        write(stdout, "Initializing Probtrackx without GPU")
 
 @python_app(executors=['s3'], cache=True)
 def s3_2_probtrackx(params, edges, inputs=[]):
-    import time
-    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime
-    from os.path import join,exists,split
+    import time,platform,json,random,tempfile,os
+    from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime,is_integer
+    from os.path import join,exists,split,dirname
     from shutil import copyfile
     start_time = time.time()
     sdir = params['sdir']
+    odir = split(sdir)[0]
+    tmp_odir = join(odir, "tmp")
+    tmp_sdir = join(sdir, "tmp")
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
     pbtx_sample_count = int(params['pbtx_sample_count'])
+    pbtx_max_memory = float(params['pbtx_max_memory'])
     subject_random_seed = params['subject_random_seed']
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_dir = join(sdir,"EDI","CNTMresults")
     bedpostxResults = join(sdir,"bedpostx_b1000.bedpostX")
+    merged = join(bedpostxResults,"merged")
+    nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
     allvoxelscortsubcort = join(sdir,"allvoxelscortsubcort.nii.gz")
     terminationmask = join(sdir,"terminationmask.nii.gz")
     bs = join(sdir,"bs.nii.gz")
+
+    # Keep record to avoid overusing node memory
+    node_name = platform.uname().node.strip()
+    assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
+    mem_record = join(tmp_odir, node_name + '.json')
+    smart_mkdir(tmp_sdir)
+
+    def get_total_memory_usage():
+        if not exists(mem_record):
+            return 0.0
+        with open(mem_record, newline='') as f:
+            mem_dict = json.load(f)
+            mem_sum = 0.0
+            for task_mem in mem_dict.values():
+                mem_sum += float(task_mem)
+            return mem_sum
+
+    def get_subject_memory_usage():
+        du_out = run("du -sh --block-size=1K {}".format(bedpostxResults))
+        mem_blocks = du_out.strip().split()[0]
+        assert is_integer(mem_blocks), "Failed to find memory usage from du command. Output was: {}".format(du_out)
+        return float(mem_blocks) / 100000.0
+
+    total_sleep = 0
+    # Memory record is atomic, but might not be updated on time
+    # So we start with random sleep to discourage multiple tasks hitting at once
+    init_sleep = random.randrange(0, 60)
+    write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
+    total_sleep += init_sleep
+    time.sleep(init_sleep)
+
+    sleep_interval = 30
+    mem_usage = get_total_memory_usage()
+    # Then we sleep until memory usage is low enough
+    while mem_usage > pbtx_max_memory:
+        write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, mem_usage, pbtx_max_memory))
+        total_sleep += sleep_interval
+        time.sleep(sleep_interval)
+        mem_usage = get_total_memory_usage()
+    write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
+
+    # Insert task and memory usage into record
+    task_id = '0'
+    if not exists(mem_record):
+        with open(mem_record, 'w', newline='') as f:
+            json.dump({task_id:get_subject_memory_usage()}, f)
+    else:
+        f = open(mem_record, newline='')
+        mem_dict = json.load(f)
+        f.close()
+        task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
+        task_id = str(max(task_ids) + 1) # generate incremental task_id
+        mem_dict[task_id] = get_subject_memory_usage()
+
+        tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
+        # file pointer not consistent, so we open using the pathname
+        with open(tmp_path, 'w', newline='') as f:
+            json.dump(mem_dict, f)
+        os.replace(tmp_path, mem_record) # atomic on POSIX systems
 
     for edge in edges:
         a, b = edge
@@ -43,12 +108,9 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         tmp = join(sdir, "tmp", "{}_to_{}".format(a, b))
         a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
         a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-        merged = join(bedpostxResults,"merged")
-        nodif_brain_mask = join(bedpostxResults,"nodif_brain_mask.nii.gz")
         waypoints = join(tmp,"waypoint.txt")
         waytotal = join(tmp, "waytotal")
-        if not exists(a_file) or not exists(b_file):
-            raise Exception("Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file))
+        assert exists(a_file) and exists(b_file), "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file)
         smart_remove(a_to_b_file)
         smart_remove(tmp)
         smart_mkdir(tmp)
@@ -91,25 +153,32 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             with open(waytotal, 'r') as f:
                 waytotal_count = f.read().strip()
                 fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
-                if not is_float(waytotal_count):
-                    raise Exception("Failed to read waytotal_count value {}".format(waytotal_count))
-                if not is_float(fdt_count):
-                    raise Exception("Failed to read fdt_count value {}".format(fdt_count))
+                assert is_float(waytotal_count), "Failed to read waytotal_count value {}".format(waytotal_count)
+                assert is_float(fdt_count), "Failed to read fdt_count value {}".format(fdt_count)
                 edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
                 write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
 
                 # Error check edge file
-                if not exists(edge_file):
-                    raise Exception("Failed to find connectome for edge {} to {}".format(a, b))
+                assert exists(edge_file), "Failed to find connectome for edge {} to {}".format(a, b)
                 with open(edge_file) as f:
                     chunks = [x.strip() for x in f.read().strip().split(' ') if x]
-                    if len(chunks) != 4 or not is_float(chunks[2]) or not is_float(chunks[3]):
-                        raise Exception('Connectome edge {} to {} has invalid line {}'.format(a, b, f.read().strip()))
+                    assert len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3]), "Connectome edge {} to {} has invalid line {}".format(a, b, f.read().strip())
         else:
             write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
         if not a == "lh.paracentral": # discard all temp files except these for debugging
             smart_remove(tmp)
+
+    # Delete task and memory usage from record
+    f = open(mem_record, newline='')
+    mem_dict = json.load(f)
+    f.close()
+    mem_dict.pop(task_id)
+    tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
+    with open(tmp_path, 'w', newline='') as f:
+        json.dump(mem_dict, f)
+    os.replace(tmp_path, mem_record)
+
     record_apptime(params, start_time, 1)
 
 @python_app(executors=['s3'], cache=True)
@@ -299,8 +368,7 @@ def s3_5_edi_combine(params, consensus_edges, inputs=[]):
             copyfile(consensus, edge_total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, edge_total), params)
-    if not exists(edge_total):
-        raise Exception("Error: Failed to generate {}".format(edge_total))
+    assert exists(edge_total), "Failed to generate {}".format(edge_total)
 
     if compress_pbtx_results:
         pbtk_archive = strip_trailing_slash(pbtk_dir) + '.tar.gz'
@@ -320,7 +388,7 @@ def s3_5_edi_combine(params, consensus_edges, inputs=[]):
     record_finish(params)
 
 def setup_s3(params, inputs):
-    edge_chunk_size = 8 # set to >1, if number of jobs causes log output to crash
+    edge_chunk_size = 32 # set to >1, if number of jobs causes log output to crash
     sdir = params['sdir']
     stdout = params['stdout']
     pbtx_edge_list = params['pbtx_edge_list']

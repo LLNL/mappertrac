@@ -6,6 +6,8 @@ from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
 
 def smart_mkdir(path):
+    if exists(path):
+        return
     if not isdir(path):
         makedirs(path)
 

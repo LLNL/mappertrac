@@ -63,9 +63,10 @@ else:
     parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s4_render (relative to each subject output directory).')
     parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
     parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
-    parser.add_argument('--local_host_only', help='Request all jobs on local machine, ignoring other hostnames.', action='store_false')
+    parser.add_argument('--local_host_only', help='Request all jobs on same host as strategy node, ignoring other hostnames.', action='store_false')
     parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx')
     parser.add_argument('--pbtx_random_seed', help='Random seed in s3_probtrackx')
+    parser.add_argument('--pbtx_max_memory', help='Maximum memory per node (in GB) for s3_probtrackx')
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
     parser.add_argument('--compress_pbtx_results', help='Compress probtrackx outputs to reduce inode and disk space usage', action='store_false')
@@ -134,6 +135,7 @@ parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 200, args)
 parse_default('pbtx_random_seed', None, args)
+parse_default('pbtx_max_memory', 64, args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
 parse_default('histogram_bin_count', 256, args)
 parse_default('s1_cores_per_task', 1, args)
@@ -211,6 +213,9 @@ container = abspath(args.container_path) if args.container_path else None
 global_timing_log = join(odir, 'global_timing', 'timing.csv')
 smart_mkdir(odir)
 smart_mkdir(join(odir, 'global_timing'))
+tmp_odir = join(odir, 'tmp')
+smart_remove(tmp_odir)
+smart_mkdir(tmp_odir)
 if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
 if islink(join(odir,"fsaverage")):
@@ -284,6 +289,7 @@ with open(args.subjects_json, newline='') as json_file:
                 'connectome_idx_list': connectome_idx_list,
                 'pbtx_sample_count': int(args.pbtx_sample_count),
                 'pbtx_random_seed': args.pbtx_random_seed,
+                'pbtx_max_memory': args.pbtx_max_memory,
                 'histogram_bin_count': int(args.histogram_bin_count),
                 'compress_pbtx_results': args.compress_pbtx_results,
                 # 'ignore_warnings': args.ignore_warnings,
