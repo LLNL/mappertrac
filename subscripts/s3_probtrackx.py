@@ -42,6 +42,8 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     terminationmask = join(sdir,"terminationmask.nii.gz")
     bs = join(sdir,"bs.nii.gz")
 
+    assert exists(bedpostxResults), "Could not find {}".format(bedpostxResults)
+
     # Keep record to avoid overusing node memory
     node_name = platform.uname().node.strip()
     assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
@@ -59,47 +61,51 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             return mem_sum
 
     def get_subject_memory_usage():
-        du_out = run("du -sh --block-size=1K {}".format(bedpostxResults))
-        mem_blocks = du_out.strip().split()[0]
-        assert is_integer(mem_blocks), "Failed to find memory usage from du command. Output was: {}".format(du_out)
-        return float(mem_blocks) / 100000.0
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(bedpostxResults):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+        return float(total_size) * 1.0E-9
 
-    total_sleep = 0
-    # Memory record is atomic, but might not be updated on time
-    # So we start with random sleep to discourage multiple tasks hitting at once
-    init_sleep = random.randrange(0, 60)
-    write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
-    total_sleep += init_sleep
-    time.sleep(init_sleep)
+    if pbtx_max_memory > 0:
+        total_sleep = 0
+        # Memory record is atomic, but might not be updated on time
+        # So we start with random sleep to discourage multiple tasks hitting at once
+        init_sleep = random.randrange(0, 60)
+        write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
+        total_sleep += init_sleep
+        time.sleep(init_sleep)
 
-    sleep_interval = 30
-    mem_usage = get_total_memory_usage()
-    # Then we sleep until memory usage is low enough
-    while mem_usage > pbtx_max_memory:
-        write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, mem_usage, pbtx_max_memory))
-        total_sleep += sleep_interval
-        time.sleep(sleep_interval)
+        sleep_interval = 30
         mem_usage = get_total_memory_usage()
-    write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
+        # Then we sleep until memory usage is low enough
+        while mem_usage > pbtx_max_memory:
+            write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, mem_usage, pbtx_max_memory))
+            total_sleep += sleep_interval
+            time.sleep(sleep_interval)
+            mem_usage = get_total_memory_usage()
+        write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
 
-    # Insert task and memory usage into record
-    task_id = '0'
-    if not exists(mem_record):
-        with open(mem_record, 'w', newline='') as f:
-            json.dump({task_id:get_subject_memory_usage()}, f)
-    else:
-        f = open(mem_record, newline='')
-        mem_dict = json.load(f)
-        f.close()
-        task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
-        task_id = str(max(task_ids) + 1) # generate incremental task_id
-        mem_dict[task_id] = get_subject_memory_usage()
+        # Insert task and memory usage into record
+        task_id = '0'
+        if not exists(mem_record):
+            with open(mem_record, 'w', newline='') as f:
+                json.dump({task_id:get_subject_memory_usage()}, f)
+        else:
+            f = open(mem_record, newline='')
+            mem_dict = json.load(f)
+            f.close()
+            task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
+            task_id = str(max(task_ids) + 1) # generate incremental task_id
+            mem_dict[task_id] = get_subject_memory_usage()
 
-        tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
-        # file pointer not consistent, so we open using the pathname
-        with open(tmp_path, 'w', newline='') as f:
-            json.dump(mem_dict, f)
-        os.replace(tmp_path, mem_record) # atomic on POSIX systems
+            tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
+            # file pointer not consistent, so we open using the pathname
+            with open(tmp_path, 'w', newline='') as f:
+                json.dump(mem_dict, f)
+            os.replace(tmp_path, mem_record) # atomic on POSIX systems
 
     for edge in edges:
         a, b = edge
