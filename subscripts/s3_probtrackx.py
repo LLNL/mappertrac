@@ -17,7 +17,7 @@ def s3_1_start(params, inputs=[]):
 
 @python_app(executors=['s3'], cache=True)
 def s3_2_probtrackx(params, edges, inputs=[]):
-    import time,platform,json,random,tempfile,os
+    import time,platform,json,random,tempfile,os,fcntl
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime,is_integer
     from os.path import join,exists,split,dirname
     from shutil import copyfile
@@ -50,15 +50,32 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     mem_record = join(tmp_odir, node_name + '.json')
     smart_mkdir(tmp_sdir)
 
+    def open_mem_record(mode = 'r'):
+        # read mem_record with file locking to avoid outdated data
+        f = None
+        while True:
+            try:
+                f = open(mem_record, mode, newline='')
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except IOError as e:
+                # raise on unrelated IOErrors
+                if e.errno != errno.EAGAIN:
+                    raise
+                else:
+                    time.sleep(0.1)
+        assert f is not None, "Failed to open mem_record {}".format(mem_record)
+        return f
+
     def get_total_memory_usage():
-        if not exists(mem_record):
-            return 0.0
-        with open(mem_record, newline='') as f:
-            mem_dict = json.load(f)
-            mem_sum = 0.0
-            for task_mem in mem_dict.values():
-                mem_sum += float(task_mem)
-            return mem_sum
+        f = open_mem_record('r')
+        mem_dict = json.load(f)
+        fcntl.flock(f, fcntl.LOCK_UN)
+        f.close()
+        mem_sum = 0.0
+        for task_mem in mem_dict.values():
+            mem_sum += float(task_mem)
+        return mem_sum
 
     def get_subject_memory_usage():
         total_size = 0
@@ -90,22 +107,23 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 
         # Insert task and memory usage into record
         task_id = '0'
+        f = open_mem_record('r')
         if not exists(mem_record):
-            with open(mem_record, 'w', newline='') as f:
-                json.dump({task_id:get_subject_memory_usage()}, f)
+            json.dump({task_id:get_subject_memory_usage()}, f)
         else:
-            f = open(mem_record, newline='')
             mem_dict = json.load(f)
-            f.close()
+
             task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
             task_id = str(max(task_ids) + 1) # generate incremental task_id
             mem_dict[task_id] = get_subject_memory_usage()
 
             tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
             # file pointer not consistent, so we open using the pathname
-            with open(tmp_path, 'w', newline='') as f:
-                json.dump(mem_dict, f)
-            os.replace(tmp_path, mem_record) # atomic on POSIX systems
+            with open(tmp_path, 'w', newline='') as tmp:
+                json.dump(mem_dict, tmp)
+            os.replace(tmp_path, mem_record) # atomic on POSIX systems. flock is advisory, so we can still overwrite.
+        fcntl.flock(f, fcntl.LOCK_UN)
+        f.close()
 
     for edge in edges:
         a, b = edge
@@ -176,14 +194,15 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             smart_remove(tmp)
 
     # Delete task and memory usage from record
-    f = open(mem_record, newline='')
+    f = open_mem_record('r')
     mem_dict = json.load(f)
-    f.close()
     mem_dict.pop(task_id)
     tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
-    with open(tmp_path, 'w', newline='') as f:
-        json.dump(mem_dict, f)
+    with open(tmp_path, 'w', newline='') as tmp:
+        json.dump(mem_dict, tmp)
     os.replace(tmp_path, mem_record)
+    fcntl.flock(f, fcntl.LOCK_UN)
+    f.close()
 
     record_apptime(params, start_time, 1)
 
