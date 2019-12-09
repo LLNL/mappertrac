@@ -456,6 +456,25 @@ for step in steps:
                     controller=Controller(public_ip=address_by_route()),
                     )
                 )
+    elif args.scheduler_name == 'slurm-htx':
+        executors.append(HighThroughputExecutor(
+                    label=step,
+                    worker_debug=False,
+                    address=address_by_hostname(),
+                    provider=SlurmProvider(
+                        args.scheduler_partition,
+                        channel=channel,
+                        launcher=SrunLauncher(),
+                        nodes_per_block=node_count,
+                        worker_init=args.worker_init,
+                        init_blocks=1,
+                        max_blocks=1,
+                        walltime=walltimes[step],
+                        scheduler_options=options,
+                        move_files=False,
+                        ),
+                    )
+                )
     else:
         executors.append(HighThroughputExecutor(
                     label=step,
