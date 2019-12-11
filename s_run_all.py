@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-import argparse, multiprocessing, parsl, getpass, socket, json, sys
-from parsl.app.app import python_app, bash_app
+import argparse,multiprocessing,parsl,getpass,socket,json,sys
+from parsl.app.app import python_app,bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from parsl.executors import HighThroughputExecutor
 from parsl.launchers import MpiRunLauncher
 from parsl.launchers import SimpleLauncher
 from parsl.addresses import address_by_hostname
-from parsl.providers import LocalProvider, SlurmProvider, CobaltProvider
-from parsl.channels import SSHInteractiveLoginChannel, LocalChannel, SSHChannel
+from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider
+from parsl.channels import SSHInteractiveLoginChannel,LocalChannel,SSHChannel
 from parsl.launchers import SrunLauncher
 from parsl.utils import get_all_checkpoints
 from parsl.executors.ipp_controller import Controller
 from parsl.addresses import address_by_route
 from subscripts.utilities import *
-from os.path import exists, join, split, splitext, abspath, basename, islink, isdir
-from os import system,mkdir,remove,environ,makedirs
+from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
+from os import system,mkdir,remove,environ,makedirs,getcwd
 from math import floor, ceil
 from subscripts.s_debug import setup_debug
 from subscripts.s1_dti_preproc import setup_s1
@@ -414,11 +414,14 @@ if not args.local_host_only:
         raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
 
 base_options = ""
-if args.scheduler_name == 'slurm':
+if args.scheduler_name in ['slurm', 'slurm-htx']:
     base_options += "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.scheduler_bank)
 base_options += str(args.scheduler_options) + '\n'
 if args.parsl_path is not None:
     base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
+
+worker_init = args.worker_init
+worker_init += "\nexport PYTHONPATH=$PYTHONPATH:{}".format(getcwd())
 
 executors = []
 for step in steps:
@@ -446,7 +449,7 @@ for step in steps:
                         channel=channel,
                         launcher=SrunLauncher(),
                         nodes_per_block=node_count,
-                        worker_init=args.worker_init,
+                        worker_init=worker_init,
                         init_blocks=1,
                         max_blocks=1,
                         walltime=walltimes[step],
@@ -466,7 +469,7 @@ for step in steps:
                         channel=channel,
                         launcher=SrunLauncher(),
                         nodes_per_block=node_count,
-                        worker_init=args.worker_init,
+                        worker_init=worker_init,
                         init_blocks=1,
                         max_blocks=1,
                         walltime=walltimes[step],
@@ -487,7 +490,7 @@ for step in steps:
                         channel=channel,
                         launcher=SimpleLauncher(),
                         scheduler_options=options,  # string to prepend to #COBALT blocks in the submit script to the scheduler
-                        worker_init=args.worker_init, # command to run before starting a worker, such as 'source activate env'
+                        worker_init=worker_init, # command to run before starting a worker, such as 'source activate env'
                         # worker_init='source /home/madduri/setup_cooley_env.sh',
                         init_blocks=1,
                         max_blocks=1,

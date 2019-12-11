@@ -17,7 +17,7 @@ def s3_1_start(params, inputs=[]):
 
 @python_app(executors=['s3'], cache=True)
 def s3_2_probtrackx(params, edges, inputs=[]):
-    import time,platform,json,random,tempfile,os,fcntl
+    import time,platform,json,random,tempfile,os,fcntl,errno
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime,is_integer
     from os.path import join,exists,split,dirname
     from shutil import copyfile
@@ -87,6 +87,12 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         return float(total_size) * 1.0E-9
 
     if pbtx_max_memory > 0:
+        if not exists(mem_record):
+            f = open_mem_record('w')
+            json.dump({}, f)
+            fcntl.flock(f, fcntl.LOCK_UN)
+            f.close()
+
         total_sleep = 0
         # Memory record is atomic, but might not be updated on time
         # So we start with random sleep to discourage multiple tasks hitting at once
@@ -193,16 +199,17 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         if not a == "lh.paracentral": # discard all temp files except these for debugging
             smart_remove(tmp)
 
-    # Delete task and memory usage from record
-    f = open_mem_record('r')
-    mem_dict = json.load(f)
-    mem_dict.pop(task_id)
-    tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
-    with open(tmp_path, 'w', newline='') as tmp:
-        json.dump(mem_dict, tmp)
-    os.replace(tmp_path, mem_record)
-    fcntl.flock(f, fcntl.LOCK_UN)
-    f.close()
+    if pbtx_max_memory > 0:
+        # Delete task and memory usage from record
+        f = open_mem_record('r')
+        mem_dict = json.load(f)
+        mem_dict.pop(task_id)
+        tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
+        with open(tmp_path, 'w', newline='') as tmp:
+            json.dump(mem_dict, tmp)
+        os.replace(tmp_path, mem_record)
+        fcntl.flock(f, fcntl.LOCK_UN)
+        f.close()
 
     record_apptime(params, start_time, 1)
 
