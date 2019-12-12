@@ -144,10 +144,10 @@ The following are the most important output files. This list is not comprehensiv
 | gssapi                | False                           | Use Kerberos GSS-API authentication  |
 | local_host_only       | True                            | Request all jobs on local machine, ignoring other hostnames |
 | parsl_path            |                                 | Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin |
-| render_list           | lists/render_targets.txt        | Text file list of NIfTI outputs for s4_render (relative to each subject output directory)  |
+| render_list           | lists/render_targets.txt        | Text file list of NIfTI outputs for s4_render (relative to each subject output directory) |
 | pbtx_sample_count     | 200                             | Number of streamlines per seed voxel in s3_probtrackx |
-| fast_pbtx             | False                           | Use 1-to-N instead of N-to-N probtrackx script |
 | pbtx_random_seed      | [[random number]]               | Random seed in s3_probtrackx |
+| pbtx_max_memory       | 0                               | Maximum memory per node (in GB) for s3_probtrackx. Default value of 0 indicates unlimited memory bound |
 | connectome_idx_list   | lists/connectome_idxs.txt       | Text file with pairs of volumes and connectome indices |
 | histogram_bin_count   | 256                             | Number of bins in NiFTI image histograms |
 | pbtx_edge_list        | lists/list_edges_reduced.txt    | Text file list of edges for steps s3_probtrackx |

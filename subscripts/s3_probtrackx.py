@@ -44,14 +44,16 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 
     assert exists(bedpostxResults), "Could not find {}".format(bedpostxResults)
 
-    # Keep record to avoid overusing node memory
+    ### Memory Management ###
+
     node_name = platform.uname().node.strip()
     assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
+    # Keep record to avoid overusing node memory
     mem_record = join(tmp_odir, node_name + '.json')
     smart_mkdir(tmp_sdir)
 
+    # Only access mem_record with file locking to avoid outdated data
     def open_mem_record(mode = 'r'):
-        # read mem_record with file locking to avoid outdated data
         f = None
         while True:
             try:
@@ -67,7 +69,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         assert f is not None, "Failed to open mem_record {}".format(mem_record)
         return f
 
-    def get_total_memory_usage():
+    def estimate_total_memory_usage():
         f = open_mem_record('r')
         mem_dict = json.load(f)
         fcntl.flock(f, fcntl.LOCK_UN)
@@ -77,7 +79,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             mem_sum += float(task_mem)
         return mem_sum
 
-    def get_subject_memory_usage():
+    def estimate_subject_memory_usage():
         total_size = 0
         for dirpath, dirnames, filenames in os.walk(bedpostxResults):
             for f in filenames:
@@ -102,26 +104,26 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         time.sleep(init_sleep)
 
         sleep_interval = 30
-        mem_usage = get_total_memory_usage()
+        mem_usage = estimate_total_memory_usage()
         # Then we sleep until memory usage is low enough
         while mem_usage > pbtx_max_memory:
             write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, mem_usage, pbtx_max_memory))
             total_sleep += sleep_interval
             time.sleep(sleep_interval)
-            mem_usage = get_total_memory_usage()
+            mem_usage = estimate_total_memory_usage()
         write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
 
         # Insert task and memory usage into record
         task_id = '0'
         f = open_mem_record('r')
         if not exists(mem_record):
-            json.dump({task_id:get_subject_memory_usage()}, f)
+            json.dump({task_id:estimate_subject_memory_usage()}, f)
         else:
             mem_dict = json.load(f)
 
             task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
             task_id = str(max(task_ids) + 1) # generate incremental task_id
-            mem_dict[task_id] = get_subject_memory_usage()
+            mem_dict[task_id] = estimate_subject_memory_usage()
 
             tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
             # file pointer not consistent, so we open using the pathname
@@ -130,6 +132,8 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             os.replace(tmp_path, mem_record) # atomic on POSIX systems. flock is advisory, so we can still overwrite.
         fcntl.flock(f, fcntl.LOCK_UN)
         f.close()
+
+    ### Probtrackx Run ###
 
     for edge in edges:
         a, b = edge

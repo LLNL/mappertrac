@@ -462,7 +462,7 @@ for step in steps:
     elif args.scheduler_name == 'slurm-htx':
         executors.append(HighThroughputExecutor(
                     label=step,
-                    worker_debug=False,
+                    worker_debug=True,
                     address=address_by_hostname(),
                     provider=SlurmProvider(
                         args.scheduler_partition,
@@ -481,7 +481,7 @@ for step in steps:
     else:
         executors.append(HighThroughputExecutor(
                     label=step,
-                    worker_debug=False,
+                    worker_debug=True,
                     address=address_by_hostname(),
                     provider=CobaltProvider(
                         queue=args.scheduler_partition,
