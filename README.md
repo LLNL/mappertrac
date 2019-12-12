@@ -18,21 +18,7 @@ Requirements:
 `git clone https://lc.llnl.gov/bitbucket/scm/tbi/tracktographyscripts.git`  
 `cd tracktographyscripts`  
 
-<b>3a\. Manually install dependencies</b>
-
-Requirements:  
-* FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)
-* Freesurfer (https://surfer.nmr.mgh.harvard.edu/fswiki)  
-Optional:  
-* Bedpostx GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)  
-* Freesurfer GPU (https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/index.html)  
-* CUDA 8.0, for Bedpostx GPU  
-* CUDA 5.0, for Freesurfer GPU
-* VTK 8.2 compiled with OSMesa and Python 3.5 wrappers, for image rendering  
-
-**OR**
-
-<b>3b\. Load a Singularity container</b>
+<b>3\. Load a Singularity container</b>
 
 Requirements:
 * Singularity 3.0+ (https://www.sylabs.io/guides/3.0/user-guide/)
@@ -61,15 +47,16 @@ TracktographyScripts/
 |  +- build.sh
 |  +- Singularity               # Singularity build recipe
 |
-+- example_config.txt           # Example of how the config file should look like
++- example_config.json          # Example of the config JSON
++- example_subjects.json        # Example of the subjects JSON
 |
 +- license.txt                  # Not included, required to build Singularity container
 |
 +- lists/
-|  +- example_subjects.txt      # Example of how the subject list should look like
-|  +- list_edges_reduced.txt    # List of default edges to compute with Probtrackx and EDI (930 edges)
-|  +- list_edges_all.txt        # List of all possible edges (6643 edges)
-|  +- render_targets.txt        # List of NiFTI images to visualize with s4_render.py
+|  +- connectome_idxs.txt       # Brain region indices for .mat connectome files
+|  +- list_edges_reduced.txt    # Default edges to compute with Probtrackx and EDI (930 edges)
+|  +- list_edges_all.txt        # All possible edges (6643 edges)
+|  +- render_targets.txt        # NiFTI files to visualize with s4_render
 |
 +- README.md
 |
@@ -79,7 +66,7 @@ TracktographyScripts/
    +- __init__.py
    +- maskseeds.py              # Helper functions for s2b_freesurfer.py
    +- run_vtk.py                # Helper script for s4_render.py
-   +- s_debug.py                # Minimal debug step
+   +- s_debug.py                # For debugging
    +- s1_dti_preproc.py
    +- s2a_bedpostx.py
    +- s2b_freesurfer.py
@@ -95,17 +82,17 @@ The following are the most important output files. This list is not comprehensiv
 ```
 <OUTPUT DIRECTORY>/
 +- <SUBJECT NAME>/
-   +- connectome_idxs.txt                    # Brain region indices for .mat connectome files
-   +- connectome_oneway.txt                  # Oneway connectome in list form. Each edge has four columns:
-                                             Column 1 is the source region
-                                             Column 2 is the destination region
-                                             Column 3 is number of fibers (NOF): the total count of successful streamlines between the two regions
-                                             Column 4 is normalized NOF: the average density of successful streamlines the target region.
-   +- connectome_twoway.txt                  # Twoway connectome in list form
-   +- connectome_oneway_nof.mat              # Oneway NOF connectome in matrix form
-   +- connectome_twoway_nof.mat              # Twoway NOF connectome in matrix form (should be symmetric)
-   +- connectome_oneway_nof_normalized.mat   # Oneway normalized NOF connectome in matrix form
-   +- connectome_twoway_nof_normalized.mat   # Twoway normalized NOF connectome in matrix form (should be symmetric)
+   +- connectome_idxs.txt                             # Brain region indices for .mat connectome files
+   +- connectome_#samples_oneway.txt                  # Oneway connectome in list form. Each edge has four columns:
+                                                            Column 1 is the source region
+                                                            Column 2 is the destination region
+                                                            Column 3 is number of fibers (NOF): the total count of successful streamlines between the two regions
+                                                            Column 4 is normalized NOF: the average density of successful streamlines the target region.
+   +- connectome_#samples_twoway.txt                  # Twoway connectome in list form
+   +- connectome_#samples_oneway_nof.mat              # Oneway NOF connectome in matrix form
+   +- connectome_#samples_twoway_nof.mat              # Twoway NOF connectome in matrix form (should be symmetric)
+   +- connectome_#samples_oneway_nof_normalized.mat   # Oneway normalized NOF connectome in matrix form
+   +- connectome_#samples_twoway_nof_normalized.mat   # Twoway normalized NOF connectome in matrix form (should be symmetric)
    |
    +- EDI/
    |  +- EDImaps/
@@ -123,17 +110,17 @@ The following are the most important output files. This list is not comprehensiv
 | Required Parameter  | Description |
 |---------------------|-------------|
 | subjects_json       | JSON file with input directories for each subject |
-| output_dir          | The super-directory that will contain output directories for each subject. Avoid using a Lustre file system |
-| scheduler_name      | Scheduler to be used for running jobs. Value is slurm at LLNL, cobalt at ANL |
-| scheduler_bank      | Scheduler bank to charge for jobs |
-| scheduler_partition | Scheduler partition to assign jobs |
+| output_dir          | The super-directory that will contain output directories for each subject. |
+| scheduler_name      | Scheduler to be used for running jobs. Value is "slurm" for LLNL, "cobalt" for ANL, and "grid_engine" for UCSF. |
 
 <br></br>
 
 | Optional Parameter    | Default                         | Description |
 |-----------------------|---------------------------------|-------------|
 | steps                 | s1 s2a s2b s3 s4                | Steps to run |
-| gpu_steps             | s2a s2b s3                      | Steps to enable CUDA-enabled binaries |
+| gpu_steps             | s2a s3                          | Steps to enable CUDA-enabled binaries |
+| scheduler_bank        |                                 | Scheduler bank to charge for jobs. Required for slurm and cobalt. |
+| scheduler_partition   |                                 | Scheduler partition to assign jobs. Required for slurm and cobalt. |
 | scheduler_options     |                                 | String to prepend to the submit script to the scheduler |
 | gpu_options           |                                 | String to prepend to the submit blocks for GPU-enabled steps, such as 'module load cuda/8.0;' |
 | worker_init           |                                 | String to run before starting a worker, such as ‘module load Anaconda; source activate env;’ |
@@ -161,7 +148,7 @@ The following are the most important output files. This list is not comprehensiv
 | s1_cores_per_task     | 1                               | Number of cores to assign each task for step s1_dti_preproc |
 | s2a_cores_per_task    | [[core count on head node]]     | Number of cores to assign each task for step s2a_bedpostx |
 | s2b_cores_per_task    | [[core count on head node]]     | Number of cores to assign each task for step s2b_freesurfer |
-| s3_cores_per_task     | 3                               | Number of cores to assign each task for step s3_probtrackx |
+| s3_cores_per_task     | 1                               | Number of cores to assign each task for step s3_probtrackx |
 | s4_cores_per_task     | 1                               | Number of cores to assign each task for step s4_render |
 | s1_hostname           |                                 | Hostname of machine to run step s1_dti_preproc, if local_host_only is false |
 | s2a_hostname          |                                 | Hostname of machine to run step s2a_bedpostx, if local_host_only is false |

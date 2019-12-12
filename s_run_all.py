@@ -4,15 +4,12 @@ from parsl.app.app import python_app,bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
 from parsl.executors import HighThroughputExecutor
-from parsl.launchers import MpiRunLauncher
-from parsl.launchers import SimpleLauncher
-from parsl.addresses import address_by_hostname
+from parsl.launchers import MpiRunLauncher,SingleNodeLauncher,SimpleLauncher,SrunLauncher
+from parsl.addresses import address_by_hostname,address_by_route
 from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider
 from parsl.channels import SSHInteractiveLoginChannel,LocalChannel,SSHChannel
-from parsl.launchers import SrunLauncher
 from parsl.utils import get_all_checkpoints
 from parsl.executors.ipp_controller import Controller
-from parsl.addresses import address_by_route
 from subscripts.utilities import *
 from os.path import exists,join,split,splitext,abspath,basename,islink,isdir
 from os import system,mkdir,remove,environ,makedirs,getcwd
@@ -35,7 +32,7 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     with open(config_json) as f:
         raw_args = json.load(f)
     missing_args = []
-    for required_arg in ['subjects_json', 'output_dir', 'scheduler_name', 'scheduler_bank', 'scheduler_partition']:
+    for required_arg in ['subjects_json', 'output_dir', 'scheduler_name']:
         if required_arg not in raw_args:
             missing_args.append(required_arg)
     if missing_args:
@@ -43,12 +40,12 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     args = ArgsObject(**raw_args)
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
-        usage='%(prog)s [config_json]\n\n<< OR >>\n\nusage: %(prog)s --subjects_json SUBJECTS_JSON --scheduler_name SCHEDULER --scheduler_bank BANK --scheduler_partition PARTITION\n(see optional arguments with --help)\n')
+        usage='%(prog)s [config_json]\n\n<< OR >>\n\nusage: %(prog)s --subjects_json SUBJECTS_JSON --scheduler_name SCHEDULER\n(see optional arguments with --help)\n')
     parser.add_argument('--subjects_json', help='JSON file with input directories for each subject', required=True)
     parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject.', required=True)
-    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Values slurm for LLNL, cobalt for ANL', required=True, choices=['slurm', 'cobalt'])
-    parser.add_argument('--scheduler_bank', help='Scheduler scheduler_bank to charge for jobs', required=True)
-    parser.add_argument('--scheduler_partition', help='Scheduler partition to assign jobs', required=True)
+    parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Value is "slurm" for LLNL, "cobalt" for ANL, and "grid_engine" for UCSF.', required=True, choices=['slurm', 'cobalt', 'grid_engine'])
+    parser.add_argument('--scheduler_partition', help='Scheduler partition to assign jobs. Required for slurm and cobalt.')
+    parser.add_argument('--scheduler_bank', help='Scheduler scheduler_bank to charge for jobs. Required for slurm and cobalt.')
     parser.add_argument('--scheduler_options', help='String to prepend to the submit script to the scheduler')
     parser.add_argument('--gpu_options', help="String to prepend to the submit blocks for GPU-enabled steps, such as 'module load cuda/8.0;'")
     parser.add_argument('--worker_init', help="String to run before starting a worker, such as ‘module load Anaconda; source activate env;’")
@@ -59,19 +56,16 @@ else:
     parser.add_argument('--unix_group', help='Unix group to assign file permissions')
     parser.add_argument('--container_path', help='Path to Singularity container image')
     parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
-    # parser.add_argument('--work_dir', help='Working directory to run certain functions separate from data storage (e.g. using node-local memory)')
     parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s4_render (relative to each subject output directory).')
     parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
     parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
     parser.add_argument('--local_host_only', help='Request all jobs on same host as strategy node, ignoring other hostnames.', action='store_false')
     parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx')
     parser.add_argument('--pbtx_random_seed', help='Random seed in s3_probtrackx')
-    parser.add_argument('--pbtx_max_memory', help='Maximum memory per node (in GB) for s3_probtrackx. Default value of 0 indicates unlimited memory bound.')
+    parser.add_argument('--pbtx_max_memory', help='Maximum memory per node (in GB) for s3_probtrackx. Default value of 0 indicates unlimited memory bound. If you are running into memory limitations, this value should be somewhere between 50-90\% of a single node\'s available RAM (or VRAM when using a gpu)')
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
     parser.add_argument('--compress_pbtx_results', help='Compress probtrackx outputs to reduce inode and disk space usage', action='store_false')
-    # parser.add_argument('--fast_pbtx', help='Use 1-to-N instead of N-to-N probtrackx script', action='store_true')
-    # parser.add_argument('--ignore_warnings', help='Print non-critical warnings to stdout rather than raising an exception', action='store_true')
 
     # Site-specific machine settings
     parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
@@ -90,7 +84,7 @@ else:
     parser.add_argument('--s3_walltime', help='Walltime for step s3.')
     parser.add_argument('--s4_walltime', help='Walltime for step s4.')
 
-    # Dynamic walltime
+    # Dynamic walltime (disabled by default)
     parser.add_argument('--dynamic_walltime', help='Request dynamically shortened walltimes, to gain priority on job queue', action='store_true')
     parser.add_argument('--s1_job_time', help='If using dynamic walltime, duration of s1 on a single subject with a single node')
     parser.add_argument('--s2a_job_time', help='If using dynamic walltime, duration of s2a on a single subject with a single node')
@@ -118,6 +112,8 @@ else:
 parse_default('steps', "s1 s2a s2b s3 s4", args)
 parse_default('gpu_steps', "s2a", args)
 parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
+parse_default('scheduler_partition', "", args)
+parse_default('scheduler_bank', "", args)
 parse_default('scheduler_options', "", args)
 parse_default('worker_init', "", args)
 parse_default('gpu_options', "", args)
@@ -128,9 +124,6 @@ parse_default('force', False, args)
 parse_default('gssapi', False, args)
 parse_default('local_host_only', True, args)
 parse_default('compress_pbtx_results', True, args)
-# parse_default('ignore_warnings', False, args)
-# parse_default('fast_pbtx', False, args)
-# parse_default('work_dir', None, args)
 parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 200, args)
@@ -141,7 +134,7 @@ parse_default('histogram_bin_count', 256, args)
 parse_default('s1_cores_per_task', 1, args)
 parse_default('s2a_cores_per_task', head_node_cores, args)
 parse_default('s2b_cores_per_task', head_node_cores, args)
-parse_default('s3_cores_per_task', 3, args)
+parse_default('s3_cores_per_task', 1, args)
 parse_default('s4_cores_per_task', 1, args)
 parse_default('s1_walltime', "23:59:00", args)
 parse_default('s2a_walltime', "23:59:00", args)
@@ -186,7 +179,6 @@ step_setup_functions = {
     's2a': setup_s2a,
     's2b': setup_s2b,
     's3': setup_s3,
-    # 's3': setup_s3 if args.fast_pbtx else setup_s3_alt,
     's4': setup_s4,
 }
 prereqs = {
@@ -224,10 +216,6 @@ pbtx_edge_list = abspath(args.pbtx_edge_list)
 render_list = abspath(args.render_list)
 connectome_idx_list = abspath(args.connectome_idx_list)
 
-# if hasattr(args, 'subject_list') and args.subject_list is not None:
-#     input_dirs = open(args.subject_list, 'r').readlines()
-# else:
-#     input_dirs = [args.subject]
 subject_dict = {}
 
 with open(args.subjects_json, newline='') as json_file:
@@ -284,7 +272,6 @@ with open(args.subjects_json, newline='') as json_file:
                 'global_timing_log': global_timing_log,
                 'use_gpu': step in gpu_steps,
                 'step': step,
-                # 'work_sdir': work_sdir,
                 'render_list': render_list,
                 'connectome_idx_list': connectome_idx_list,
                 'pbtx_sample_count': int(args.pbtx_sample_count),
@@ -292,7 +279,6 @@ with open(args.subjects_json, newline='') as json_file:
                 'pbtx_max_memory': args.pbtx_max_memory,
                 'histogram_bin_count': int(args.histogram_bin_count),
                 'compress_pbtx_results': args.compress_pbtx_results,
-                # 'ignore_warnings': args.ignore_warnings,
             }
             stdout_template = join(log_dir, "{}.stdout".format(step))
             new_stdout, prev_stdout, idx = get_log_path(stdout_template)
@@ -344,9 +330,6 @@ if total_num_steps == 0:
     exit(0)
 else:
     print("In total, running {} steps across {} subjects".format(total_num_steps, len(subject_dict)))
-
-# if len(subject_dict) > 100:
-    # raise Exception("Workflow is unstable for large numbers of subjects. Please specify fewer than 100.")
 
 ############################
 # Node Settings
@@ -413,8 +396,15 @@ if not args.local_host_only:
     if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
         raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
 
+# Cobalt and Slurm reqire scheduler_bank and scheduler_partition
+if args.scheduler_name in ['slurm', 'cobalt']:
+    if not args.scheduler_bank:
+        raise Exception("Scheduler {} requires config parameter scheduler_bank".format(args.scheduler_name))
+    if not args.scheduler_partition:
+        raise Exception("Scheduler {} requires config parameter scheduler_partition".format(args.scheduler_name))
+
 base_options = ""
-if args.scheduler_name in ['slurm', 'slurm-htx']:
+if args.scheduler_name in ['slurm']:
     base_options += "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.scheduler_bank)
 base_options += str(args.scheduler_options) + '\n'
 if args.parsl_path is not None:
@@ -441,25 +431,6 @@ for step in steps:
                 gssapi_auth=args.gssapi,
                 )
     if args.scheduler_name == 'slurm':
-        executors.append(IPyParallelExecutor(
-                    label=step,
-                    workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
-                    provider=SlurmProvider(
-                        args.scheduler_partition,
-                        channel=channel,
-                        launcher=SrunLauncher(),
-                        nodes_per_block=node_count,
-                        worker_init=worker_init,
-                        init_blocks=1,
-                        max_blocks=1,
-                        walltime=walltimes[step],
-                        scheduler_options=options,
-                        move_files=False,
-                        ),
-                    controller=Controller(public_ip=address_by_route()),
-                    )
-                )
-    elif args.scheduler_name == 'slurm-htx':
         executors.append(HighThroughputExecutor(
                     label=step,
                     worker_debug=True,
@@ -475,10 +446,28 @@ for step in steps:
                         walltime=walltimes[step],
                         scheduler_options=options,
                         move_files=False,
-                        ),
-                    )
+                    ),
                 )
-    else:
+            )
+    elif args.scheduler_name == 'grid_engine':
+        executors.append(HighThroughputExecutor(
+                    label=step,
+                    worker_debug=True,
+                    address=address_by_hostname(),
+                    provider=GridEngineProvider(
+                        channel=channel,
+                        launcher=SingleNodeLauncher(),
+                        nodes_per_block=node_count,
+                        worker_init=worker_init,
+                        init_blocks=1,
+                        max_blocks=1,
+                        walltime=walltimes[step],
+                        scheduler_options=options,
+                        move_files=False,
+                    ),
+                )
+            )
+    elif args.scheduler_name == 'cobalt':
         executors.append(HighThroughputExecutor(
                     label=step,
                     worker_debug=True,
@@ -496,13 +485,15 @@ for step in steps:
                         max_blocks=1,
                         nodes_per_block=node_count,
                         walltime=walltimes[step],
-                        ),
-                    )
+                    ),
                 )
+            )
+    else:
+        raise Exception('Invalid scheduler_name {}. Valid schedulers are slurm, grid_engine, and cobalt.'.format(args.scheduler_name))
 print("===================================================\n")
 
 config = Config(executors=executors)
-config.retries = 3
+config.retries = 5
 config.checkpoint_mode = 'task_exit'
 if not args.force:
     config.checkpoint_files = get_all_checkpoints()

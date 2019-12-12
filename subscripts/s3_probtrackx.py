@@ -79,13 +79,26 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             mem_sum += float(task_mem)
         return mem_sum
 
-    def estimate_subject_memory_usage():
+    def estimate_task_mem_usage():
         total_size = 0
+        total_size += os.path.getsize(allvoxelscortsubcort)
+        total_size += os.path.getsize(terminationmask)
+        total_size += os.path.getsize(bs)
         for dirpath, dirnames, filenames in os.walk(bedpostxResults):
             for f in filenames:
                 fp = os.path.join(dirpath, f)
                 if not os.path.islink(fp):
                     total_size += os.path.getsize(fp)
+
+        max_region_size = 0
+        for edge in edges:
+            a, b = edge
+            a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
+            b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
+            a_size = os.path.getsize(a_file)
+            b_size = os.path.getsize(b_file)
+            max_region_size = max([a_size, b_size, max_region_size])
+        total_size += max_region_size
         return float(total_size) * 1.0E-9
 
     if pbtx_max_memory > 0:
@@ -95,35 +108,36 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             fcntl.flock(f, fcntl.LOCK_UN)
             f.close()
 
+        task_mem_usage = estimate_task_mem_usage()
         total_sleep = 0
         # Memory record is atomic, but might not be updated on time
-        # So we start with random sleep to discourage multiple tasks hitting at once
-        init_sleep = random.randrange(0, 60)
+        # So we randomize sleep to discourage multiple tasks hitting at once
+        init_sleep = random.randrange(0, 120)
         write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
         total_sleep += init_sleep
         time.sleep(init_sleep)
 
-        sleep_interval = 30
-        mem_usage = estimate_total_memory_usage()
+        total_mem_usage = estimate_total_memory_usage()
         # Then we sleep until memory usage is low enough
-        while mem_usage > pbtx_max_memory:
-            write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, mem_usage, pbtx_max_memory))
+        while total_mem_usage + task_mem_usage > pbtx_max_memory:
+            sleep_interval = random.randrange(30, 120)
+            write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, total_mem_usage, pbtx_max_memory))
             total_sleep += sleep_interval
             time.sleep(sleep_interval)
-            mem_usage = estimate_total_memory_usage()
+            total_mem_usage = estimate_total_memory_usage()
         write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
 
         # Insert task and memory usage into record
         task_id = '0'
         f = open_mem_record('r')
         if not exists(mem_record):
-            json.dump({task_id:estimate_subject_memory_usage()}, f)
+            json.dump({task_id:task_mem_usage}, f)
         else:
             mem_dict = json.load(f)
 
             task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
             task_id = str(max(task_ids) + 1) # generate incremental task_id
-            mem_dict[task_id] = estimate_subject_memory_usage()
+            mem_dict[task_id] = task_mem_usage
 
             tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
             # file pointer not consistent, so we open using the pathname
@@ -190,13 +204,15 @@ def s3_2_probtrackx(params, edges, inputs=[]):
                 assert is_float(waytotal_count), "Failed to read waytotal_count value {}".format(waytotal_count)
                 assert is_float(fdt_count), "Failed to read fdt_count value {}".format(fdt_count)
                 edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+                smart_remove(edge_file)
                 write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
 
                 # Error check edge file
-                assert exists(edge_file), "Failed to find connectome for edge {} to {}".format(a, b)
                 with open(edge_file) as f:
-                    chunks = [x.strip() for x in f.read().strip().split(' ') if x]
-                    assert len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3]), "Connectome edge {} to {} has invalid line {}".format(a, b, f.read().strip())
+                    line = f.read().strip()
+                    if len(line) > 0: # ignore empty lines
+                        chunks = [x.strip() for x in line.split(' ') if x]
+                        assert len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3]), "Connectome {} has invalid edge {} to {}".format(edge_file, a, b)
         else:
             write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
         copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
