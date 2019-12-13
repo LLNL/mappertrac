@@ -110,7 +110,7 @@ else:
 ############################
 
 parse_default('steps', "s1 s2a s2b s3 s4", args)
-parse_default('gpu_steps', "s2a", args)
+parse_default('gpu_steps', "s2a s3", args)
 parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
 parse_default('scheduler_partition', "", args)
 parse_default('scheduler_bank', "", args)
@@ -126,7 +126,7 @@ parse_default('local_host_only', True, args)
 parse_default('compress_pbtx_results', True, args)
 parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
-parse_default('pbtx_sample_count', 200, args)
+parse_default('pbtx_sample_count', 1000, args)
 parse_default('pbtx_random_seed', None, args)
 parse_default('pbtx_max_memory', 0, args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
