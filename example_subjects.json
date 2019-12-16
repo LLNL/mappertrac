@@ -1,65 +1,43 @@
 {
     "01_1348": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/01_1348/20170608/DTI_64_dir,_b=1300",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/01_1348/20170608/MP-RAGE",
+        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/01_1348/20170608/DTI_64_dir,_b=1300",
+        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/01_1348/20170608/MP-RAGE",
         "extra_b0_dirs": [
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/01_1348/20170608/DTI_64_dir,_b=0,_8_averages"
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/01_1348/20170608/DTI_64_dir,_b=0,_8_averages"
         ]
     },
     "02_1255": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/02_1255/20180314/DTI_64,_dir_b=1300,_8_b=0",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/02_1255/20180314/SAG_MPRAGE"
-    },
-    "03_1288": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/03_1288/20170720/Ax_DTI__B=1300_DIR=64_",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/03_1288/20170720/3D_SAG_ADNI_IR-SPGR"
-    },
-    "04_1189": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/04_1189/20180503/AX_DTI-ASSET",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/04_1189/20180503/SAG_FSPGR_3D"
-    },
-    "07_1206": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/07_1206/20160923/DTI_64_dir_b=1300",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/07_1206/20160923/SAG_MPRAGE",
-        "extra_b0_dirs": [
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/07_1206/20160923/DTI_64_dir_extra_b=0s"
-        ]
+        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/02_1255/20180314/DTI_64,_dir_b=1300,_8_b=0",
+        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/02_1255/20180314/SAG_MPRAGE"
     },
     "08_1119": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/08_1119/20170223/DTI_64,_dir_b=1300,_8_b=0",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/08_1119/20170223/SAG_MPRAGE"
-    },
-    "09_1151": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/DTI64_b1300_Gmax_1_B0",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/MPRAGE",
-        "extra_b0_dirs": [
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_3",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_4",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_7",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_5",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_2",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_6",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/09_1151/20161103/extra_b0_1"
-        ]
+        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/08_1119/20170223/DTI_64,_dir_b=1300,_8_b=0",
+        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/08_1119/20170223/SAG_MPRAGE"
     },
     "10_1253": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/10_1253/20171010/DTI64_b1300_Gmax",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/10_1253/20171010/MPRAGE",
+        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/10_1253/20171010/DTI64_b1300_Gmax",
+        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/10_1253/20171010/MPRAGE",
         "extra_b0_dirs": [
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/10_1253/20171010/DTI8_b1_Gmax"
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/10_1253/20171010/DTI8_b1_Gmax"
         ]
     },
     "11_1167": {
-        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/DTI64_b1300_Gmax_1_B0",
-        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/MPRAGE",
+        "DTI_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/DTI64_b1300_Gmax_1_B0",
+        "T1_dicom_dir": "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/MPRAGE",
         "extra_b0_dirs": [
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_4",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_3",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_7",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_2",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_5",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_1",
-            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_6"
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_4",
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_3",
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_7",
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_2",
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_5",
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_1",
+            "/p/lustre2/moon15/TRACKTBI_P1Ortho_Final/11_1167/20161122/extra_b0_6"
         ]
+    },
+    "GO-TBI44": {
+        "nifti_dir": "/usr/WS2/tbidata/imaging/TRACKPilotNiiData/GO-TBI44"
+    },
+    "GO-TBI113": {
+        "nifti_dir": "/usr/WS2/tbidata/imaging/TRACKPilotNiiData/GO-TBI113"
     }
 }
