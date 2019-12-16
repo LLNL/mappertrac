@@ -48,8 +48,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 
     node_name = platform.uname().node.strip()
     assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
-    # Keep record to avoid overusing node memory
-    mem_record = join(tmp_odir, node_name + '.json')
+    mem_record = join(tmp_odir, node_name + '.json') # Keep record to avoid overusing node memory
     smart_mkdir(tmp_sdir)
 
     # Only access mem_record with file locking to avoid outdated data
@@ -122,7 +121,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     def remove_task(task_id):
         f = open_mem_record('r')
         mem_dict = json.load(f)
-        mem_dict.pop(task_id)
+        mem_dict.pop(task_id, None)
         tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
         with open(tmp_path, 'w', newline='') as tmp:
             json.dump(mem_dict, tmp)
@@ -232,7 +231,8 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             if not a == "lh.paracentral": # discard all temp files except these for debugging
                 smart_remove(tmp)
     finally:
-        remove_task(task_id)
+        if pbtx_max_memory > 0:
+            remove_task(task_id)
 
     record_apptime(params, start_time, 1)
 
