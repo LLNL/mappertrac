@@ -119,7 +119,7 @@ The following are the most important output files. This list is not comprehensiv
 | Optional Parameter    | Default                         | Description |
 |-----------------------|---------------------------------|-------------|
 | steps                 | s1 s2a s2b s3 s4                | Steps to run |
-| gpu_steps             | s2a s3                          | Steps to enable CUDA-enabled binaries |
+| gpu_steps             | s2a                             | Steps to enable CUDA-enabled binaries |
 | scheduler_bank        |                                 | Scheduler bank to charge for jobs. Required for slurm and cobalt. |
 | scheduler_partition   |                                 | Scheduler partition to assign jobs. Required for slurm and cobalt. |
 | scheduler_options     |                                 | String to prepend to the submit script to the scheduler |

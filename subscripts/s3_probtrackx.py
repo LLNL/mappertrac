@@ -30,8 +30,11 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     container = params['container']
     use_gpu = params['use_gpu']
     pbtx_sample_count = int(params['pbtx_sample_count'])
-    pbtx_max_memory = float(params['pbtx_max_memory'])
     subject_random_seed = params['subject_random_seed']
+    if use_gpu:
+        pbtx_max_memory = float(params['pbtx_max_gpu_memory'])
+    else:
+        pbtx_max_memory = float(params['pbtx_max_memory'])
     EDI_allvols = join(sdir,"EDI","allvols")
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     connectome_dir = join(sdir,"EDI","CNTMresults")
@@ -129,13 +132,9 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         fcntl.flock(f, fcntl.LOCK_UN)
         f.close()
 
-    if pbtx_max_memory > 0:
-        if not exists(mem_record):
-            f = open_mem_record('w')
-            json.dump({}, f)
-            fcntl.flock(f, fcntl.LOCK_UN)
-            f.close()
+    sleep_timeout = 7200
 
+    if pbtx_max_memory > 0:
         task_mem_usage = estimate_task_mem_usage()
         total_sleep = 0
         # Memory record is atomic, but might not be updated on time
@@ -145,12 +144,20 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         total_sleep += init_sleep
         time.sleep(init_sleep)
 
+        if not exists(mem_record):
+            f = open_mem_record('w')
+            json.dump({}, f)
+            fcntl.flock(f, fcntl.LOCK_UN)
+            f.close()
+
         total_mem_usage = estimate_total_memory_usage()
         # Then we sleep until memory usage is low enough
         while total_mem_usage + task_mem_usage > pbtx_max_memory:
             sleep_interval = random.randrange(30, 120)
             write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, total_mem_usage, pbtx_max_memory))
             total_sleep += sleep_interval
+            if total_sleep > sleep_timeout:
+                raise Exception('Retrying task that has slept longer than 2 hours')
             time.sleep(sleep_interval)
             total_mem_usage = estimate_total_memory_usage()
         write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
@@ -443,7 +450,7 @@ def s3_5_edi_combine(params, consensus_edges, inputs=[]):
     record_finish(params)
 
 def setup_s3(params, inputs):
-    edge_chunk_size = 32 # set to >1, if number of jobs causes log output to crash
+    edge_chunk_size = 4 # set to >1, if number of jobs causes log output to crash
     sdir = params['sdir']
     stdout = params['stdout']
     pbtx_edge_list = params['pbtx_edge_list']

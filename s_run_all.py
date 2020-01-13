@@ -62,10 +62,12 @@ else:
     parser.add_argument('--local_host_only', help='Request all jobs on same host as strategy node, ignoring other hostnames.', action='store_false')
     parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx')
     parser.add_argument('--pbtx_random_seed', help='Random seed in s3_probtrackx')
-    parser.add_argument('--pbtx_max_memory', help='Maximum memory per node (in GB) for s3_probtrackx. Default value of 0 indicates unlimited memory bound. If you are running into memory limitations, this value should be somewhere between 50-90\% of a single node\'s available RAM (or VRAM when using a gpu)')
+    parser.add_argument('--pbtx_max_memory', help='Usable memory per node (in GB) for s3_probtrackx without GPU. Default value of 0 indicates unlimited memory bound. If you are running into memory limitations, this value should be somewhere between 50-90\% of a single node\'s available RAM.')
+    parser.add_argument('--pbtx_max_gpu_memory', help='Usable video memory per node (in GB) for s3_probtrackx with GPU. Default value of 0 indicates unlimited memory bound. If you are running into memory limitations, this value should be somewhere between 30-70\% of a single node\'s available VRAM.')
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
     parser.add_argument('--histogram_bin_count', help='Number of bins in NiFTI image histograms')
     parser.add_argument('--compress_pbtx_results', help='Compress probtrackx outputs to reduce inode and disk space usage', action='store_false')
+    parser.add_argument('--retries', help='Number of times to retry failed tasks')
 
     # Site-specific machine settings
     parser.add_argument('--s1_hostname', help='Hostname of machine to run step s1_dti_preproc')
@@ -110,7 +112,7 @@ else:
 ############################
 
 parse_default('steps', "s1 s2a s2b s3 s4", args)
-parse_default('gpu_steps', "s2a s3", args)
+parse_default('gpu_steps', "s2a", args)
 parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
 parse_default('scheduler_partition', "", args)
 parse_default('scheduler_bank', "", args)
@@ -129,8 +131,10 @@ parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 1000, args)
 parse_default('pbtx_random_seed', None, args)
 parse_default('pbtx_max_memory', 0, args)
+parse_default('pbtx_max_gpu_memory', 0, args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
 parse_default('histogram_bin_count', 256, args)
+parse_default('retries', 5, args)
 parse_default('s1_cores_per_task', 1, args)
 parse_default('s2a_cores_per_task', head_node_cores, args)
 parse_default('s2b_cores_per_task', head_node_cores, args)
@@ -277,6 +281,7 @@ with open(args.subjects_json, newline='') as json_file:
                 'pbtx_sample_count': int(args.pbtx_sample_count),
                 'pbtx_random_seed': args.pbtx_random_seed,
                 'pbtx_max_memory': args.pbtx_max_memory,
+                'pbtx_max_gpu_memory': args.pbtx_max_gpu_memory,
                 'histogram_bin_count': int(args.histogram_bin_count),
                 'compress_pbtx_results': args.compress_pbtx_results,
             }
@@ -493,7 +498,7 @@ for step in steps:
 print("===================================================\n")
 
 config = Config(executors=executors)
-config.retries = 5
+config.retries = int(args.retries)
 config.checkpoint_mode = 'task_exit'
 if not args.force:
     config.checkpoint_files = get_all_checkpoints()

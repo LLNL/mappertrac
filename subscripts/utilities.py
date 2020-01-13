@@ -80,7 +80,7 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
         if stdout and not new_line.isspace():
             write(stdout, "Error: non zero return code")
             write(stdout, get_time_date())
-        raise Exception("Non zero return code: {}".format(process.returncode))
+        raise Exception("Non zero return code: {}\nCommand: {}".format(process.returncode, command))
     else:
         tokens = command.split(' ')
         if print_time:
