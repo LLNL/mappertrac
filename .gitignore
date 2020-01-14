@@ -2,9 +2,9 @@
 *.stdout
 *.simg
 *.json
-!example_configs/config.json
-!example_configs/subjects.json
-!example_configs/dataset_description.json
+!examples/config.json
+!examples/subjects.json
+!examples/dataset_description.json
 *.qsub
 *.core
 *.out

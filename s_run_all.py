@@ -119,7 +119,7 @@ else:
     parser.add_argument('--s4_cores', help='Override core count for node running step s4.')
 
     # BIDS specification settings
-    parser.add_argument('--bids_dataset_description_json', help='JSON file describing the dataset.')
+    parser.add_argument('--bids_json', help='Description file dataset_description.json, as specified at https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html')
     parser.add_argument('--bids_readme', help='Free form text file describing the dataset in more detail.')
     parser.add_argument('--bids_session_name', help='Name for the session timepoint (e.g. 2weeks).')
 
@@ -169,7 +169,7 @@ parse_default('s2a_job_time', "00:45:00", args)
 parse_default('s2b_job_time', "10:00:00", args)
 parse_default('s3_job_time', "23:59:00", args)
 parse_default('s4_job_time', "00:45:00", args)
-parse_default('bids_dataset_description_json', "example_configs/dataset_description.json", args)
+parse_default('bids_json', "examples/dataset_description.json", args)
 parse_default('bids_readme', "", args)
 parse_default('bids_session_name', "", args)
 
@@ -245,7 +245,7 @@ if not exists(global_timing_log):
 pbtx_edge_list = abspath(args.pbtx_edge_list)
 render_list = abspath(args.render_list)
 connectome_idx_list = abspath(args.connectome_idx_list)
-smart_copy(args.bids_dataset_description_json, join(rawdata_dir, "dataset_description.json"))
+smart_copy(args.bids_json, join(rawdata_dir, "dataset_description.json"))
 if args.bids_readme:
     smart_copy(args.bids_readme, join(rawdata_dir, "README"))
 
@@ -453,8 +453,8 @@ cores_per_task = {
 ############################
 
 if not args.local_host_only:
-    if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine'):
-        raise Exception("Could not find Parsl system install. Please set --parsl_path to its install location.")
+    if not exists('/usr/bin/ipengine') and not exists('/usr/sbin/ipengine') and not exists(join(args.parsl_path, 'ipengine')):
+        raise Exception("Could not find Parsl system install containing executable \"ipengine\". Please set --parsl_path to its install location.")
 
 # Cobalt and Slurm reqire scheduler_bank and scheduler_partition
 if args.scheduler_name in ['slurm', 'cobalt']:
