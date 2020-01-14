@@ -18,28 +18,44 @@ def s1_1_dicom_preproc(params, inputs=[]):
     T1_dicom_dir = params['T1_dicom_dir']
     DTI_dicom_dir = params['DTI_dicom_dir']
     extra_b0_dirs = params['extra_b0_dirs']
-    nifti_dir = params['nifti_dir']
-    odir = split(sdir)[0]
+    src_nifti_dir = params['src_nifti_dir']
+
+    sourcedata_dir = params['sourcedata_dir']
+    rawdata_dir = params['rawdata_dir']
+    derivatives_dir = params['derivatives_dir']
+    bids_dicom_dir = params['bids_dicom_dir']
+    bids_nifti_dir = params['bids_nifti_dir']
+    subject_name = params['subject_name']
+    session_name = params['session_name']
+
     container = params['container']
     DTI_dicom_dir = params['DTI_dicom_dir']
     T1_dicom_dir = params['T1_dicom_dir']
+    dicom_tmp_dir = join(sdir, 'tmp_dicom')
 
-    dicom_tmp_dir = join(sdir, 'raw_dicom_inputs')
+    smart_remove(dicom_tmp_dir)
+    smart_mkdir(dicom_tmp_dir)
+    
+    smart_mkdir(join(bids_nifti_dir, "dwi"))
+    smart_mkdir(join(bids_nifti_dir, "anat"))
     DTI_dicom_tmp_dir = join(dicom_tmp_dir, 'DTI')
     T1_dicom_tmp_dir = join(dicom_tmp_dir, 'T1')
     extra_b0_tmp_dirs = [join(dicom_tmp_dir, basename(dirname)) for dirname in extra_b0_dirs]
 
-    hardi_file = join(nifti_dir, "hardi.nii.gz")
-    T1_file = join(nifti_dir, "anat.nii.gz")
-    bvals_file = join(nifti_dir, "bvals")
-    bvecs_file = join(nifti_dir, "bvecs")
+    hardi_file = join(bids_nifti_dir, "dwi", "{}_{}_dwi.nii.gz".format(subject_name, session_name))
+    T1_file = join(bids_nifti_dir, "anat", "{}_{}_T1w.nii.gz".format(subject_name, session_name))
+    bvals_file = join(bids_nifti_dir, "dwi", "{}_{}_dwi.bval".format(subject_name, session_name))
+    bvecs_file = join(bids_nifti_dir, "dwi", "{}_{}_dwi.bvec".format(subject_name, session_name))
 
     start_time = time.time()
     record_start(params)
 
-    if T1_dicom_dir and DTI_dicom_dir:
-        smart_remove(nifti_dir)
-        smart_mkdir(nifti_dir)
+    if src_nifti_dir:
+        smart_copy(join(src_nifti_dir, "hardi.nii.gz"), hardi_file)
+        smart_copy(join(src_nifti_dir, "anat.nii.gz"), T1_file)
+        smart_copy(join(src_nifti_dir, "bvals"), bvals_file)
+        smart_copy(join(src_nifti_dir, "bvecs"), bvecs_file)
+    elif T1_dicom_dir and DTI_dicom_dir:
         smart_remove(DTI_dicom_tmp_dir)
         smart_remove(T1_dicom_tmp_dir)
 
@@ -72,6 +88,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             dicom_sh_contents += " " + file
 
         if container:
+            odir = split(sdir)[0]
             write(dicom_sh, dicom_sh_contents.replace(odir, "/share"))
         else:
             write(dicom_sh, dicom_sh_contents)
@@ -156,7 +173,9 @@ def s1_1_dicom_preproc(params, inputs=[]):
 
         # Concatenate average b0 and DTI slices into a single hardi.nii.gz
         normal_slices.sort()
-        run("fslmerge -t {} {}".format(hardi_file, " ".join([avg_b0] + normal_slices)), params)
+        tmp_hardi = join(dicom_tmp_dir, "hardi.nii.gz")
+        run("fslmerge -t {} {}".format(tmp_hardi, " ".join([avg_b0] + normal_slices)), params)
+        copyfile(tmp_hardi, hardi_file)
         write(stdout, 'Concatenated b0 and DTI slices into {}'.format(hardi_file))
 
         # Clean extra zeroes from bvals and bvecs files
@@ -225,13 +244,17 @@ def s1_1_dicom_preproc(params, inputs=[]):
             write(stdout, 'Generated bvecs file with values:\n{}'.format(text))
 
         # Compress DICOM inputs
-        dicom_tmp_archive = strip_trailing_slash(dicom_tmp_dir) + '.tar.gz'
+        dicom_tmp_archive = join(bids_dicom_dir, 'sourcedata.tar.gz')
         smart_remove(dicom_tmp_archive)
         with tarfile.open(dicom_tmp_archive, mode='w:gz') as archive:
             archive.add(dicom_tmp_dir, recursive=True, arcname=basename(dicom_tmp_dir))
         smart_remove(dicom_tmp_dir)
         write(stdout, 'Compressed temporary DICOM files to {}'.format(dicom_tmp_archive))
 
+    smart_copy(hardi_file, join(sdir, "hardi.nii.gz"))
+    smart_copy(T1_file, join(sdir,"T1.nii.gz"))
+    smart_copy(bvecs_file, join(sdir,"bvecs"))
+    smart_copy(bvals_file, join(sdir,"bvals"))
     record_apptime(params, start_time, 1)
 
 ### The following three functions parallelize FSL's "eddy_correct"
@@ -241,7 +264,6 @@ def s1_2_split_timeslices(params, inputs=[]):
     from subscripts.utilities import run,record_apptime,smart_remove,smart_copy
     from os.path import join
     from glob import glob
-    nifti_dir = params['nifti_dir']
     sdir = params['sdir']
     stdout = params['stdout']
     container = params['container']
@@ -253,10 +275,6 @@ def s1_2_split_timeslices(params, inputs=[]):
     for j in glob("{}_ref*".format(output_prefix)):
         smart_remove(j)
     input_data = join(sdir, "hardi.nii.gz")
-    smart_copy(join(nifti_dir,"hardi.nii.gz"),input_data)
-    smart_copy(join(nifti_dir,"bvecs"),join(sdir,"bvecs"))
-    smart_copy(join(nifti_dir,"bvals"),join(sdir,"bvals"))
-    smart_copy(join(nifti_dir,"anat.nii.gz"),join(sdir,"T1.nii.gz"))
     output_prefix = join(sdir,"data_eddy")
     run("fslroi {} {}_ref 0 1".format(input_data, output_prefix), params)
     run("fslsplit {} {}_tmp".format(input_data, output_prefix), params)
@@ -332,7 +350,6 @@ def s1_4_dti_fit(params, inputs=[]):
     record_finish(params)
 
 def setup_s1(params, inputs):
-    nifti_dir = params['nifti_dir']
     stdout = params['stdout']
     container = params['container']
     sdir = params['sdir']

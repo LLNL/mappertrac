@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse,multiprocessing,parsl,getpass,socket,json,sys
+import argparse,multiprocessing,parsl,getpass,socket,json,sys,re
 from parsl.app.app import python_app,bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -41,11 +41,23 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
         usage='%(prog)s [config_json]\n\n<< OR >>\n\nusage: %(prog)s --subjects_json SUBJECTS_JSON --scheduler_name SCHEDULER\n(see optional arguments with --help)\n')
+    
+    ### ==================
+    ### Required arguments
+    ### ==================
+
     parser.add_argument('--subjects_json', help='JSON file with input directories for each subject', required=True)
-    parser.add_argument('--output_dir', help='The super-directory that will contain output directories for each subject.', required=True)
+    parser.add_argument('--output_dir', help='The directory that will contain a BIDS-compliant dataset with all subjects.', required=True)
     parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Value is "slurm" for LLNL, "cobalt" for ANL, and "grid_engine" for UCSF.', required=True, choices=['slurm', 'cobalt', 'grid_engine'])
+    
+    # Required for Slurm and Cobalt
     parser.add_argument('--scheduler_partition', help='Scheduler partition to assign jobs. Required for slurm and cobalt.')
     parser.add_argument('--scheduler_bank', help='Scheduler scheduler_bank to charge for jobs. Required for slurm and cobalt.')
+
+    ### ==================
+    ### Optional arguments
+    ### ==================
+
     parser.add_argument('--scheduler_options', help='String to prepend to the submit script to the scheduler')
     parser.add_argument('--gpu_options', help="String to prepend to the submit blocks for GPU-enabled steps, such as 'module load cuda/8.0;'")
     parser.add_argument('--worker_init', help="String to run before starting a worker, such as ‘module load Anaconda; source activate env;’")
@@ -105,6 +117,12 @@ else:
     parser.add_argument('--s2b_cores', help='Override core count for node running step s2b.')
     parser.add_argument('--s3_cores', help='Override core count for node running step s3.')
     parser.add_argument('--s4_cores', help='Override core count for node running step s4.')
+
+    # BIDS specification settings
+    parser.add_argument('--bids_dataset_description_json', help='JSON file describing the dataset.')
+    parser.add_argument('--bids_readme', help='Free form text file describing the dataset in more detail.')
+    parser.add_argument('--bids_session_name', help='Name for the session timepoint (e.g. 2weeks).')
+
     args = parser.parse_args()
 
 ############################
@@ -151,6 +169,9 @@ parse_default('s2a_job_time', "00:45:00", args)
 parse_default('s2b_job_time', "10:00:00", args)
 parse_default('s3_job_time', "23:59:00", args)
 parse_default('s4_job_time', "00:45:00", args)
+parse_default('bids_dataset_description_json', "example_configs/dataset_description.json", args)
+parse_default('bids_readme', "", args)
+parse_default('bids_session_name', "", args)
 
 for step in ['s1','s2a','s2b','s3','s4']:
     parse_default(step + '_hostname', None, args)
@@ -204,36 +225,57 @@ for step in steps:
 # Inputs
 ############################
 
-odir = abspath(args.output_dir)
+output_dir = abspath(args.output_dir)
+sourcedata_dir = join(output_dir, 'sourcedata')
+rawdata_dir = join(output_dir, 'rawdata')
+derivatives_dir = join(output_dir, 'derivatives')
 container = abspath(args.container_path) if args.container_path else None
-global_timing_log = join(odir, 'global_timing', 'timing.csv')
-smart_mkdir(odir)
-smart_mkdir(join(odir, 'global_timing'))
-tmp_odir = join(odir, 'tmp')
-smart_remove(tmp_odir)
-smart_mkdir(tmp_odir)
+smart_mkdir(sourcedata_dir)
+smart_mkdir(rawdata_dir)
+smart_mkdir(derivatives_dir)
+smart_mkdir(join(derivatives_dir, 'global_timing'))
+derivatives_dir_tmp = join(derivatives_dir, 'tmp')
+smart_remove(derivatives_dir_tmp)
+smart_mkdir(derivatives_dir_tmp)
+global_timing_log = join(derivatives_dir, 'global_timing', 'timing.csv')
 if not exists(global_timing_log):
     write(global_timing_log, "subject,step,ideal_walltime,actual_walltime,total_core_time,use_gpu")
-if islink(join(odir,"fsaverage")):
-    run("unlink {}".format(join(odir,"fsaverage")))
+# if islink(join(derivatives_dir,"fsaverage")):
+    # run("unlink {}".format(join(derivatives_dir,"fsaverage")))
 pbtx_edge_list = abspath(args.pbtx_edge_list)
 render_list = abspath(args.render_list)
 connectome_idx_list = abspath(args.connectome_idx_list)
+smart_copy(args.bids_dataset_description_json, join(rawdata_dir, "dataset_description.json"))
+if args.bids_readme:
+    smart_copy(args.bids_readme, join(rawdata_dir, "README"))
 
 subject_dict = {}
 
 with open(args.subjects_json, newline='') as json_file:
     json_data = json.load(json_file)
     for sname in json_data:
-        sdir = join(odir, sname)
+        regex = re.compile('[^a-zA-Z0-9]')
+        subject_name = 'sub-{}'.format(regex.sub('', sname))
+        if args.bids_session_name:
+            session_name = 'ses-{}'.format(regex.sub('', args.bids_session_name))
+            sdir = join(derivatives_dir, subject_name, session_name)
+            bids_dicom_dir = join(sourcedata_dir, subject_name, session_name)
+            bids_nifti_dir = join(rawdata_dir, subject_name, session_name)
+        else:
+            session_name = ""
+            sdir = join(derivatives_dir, subject_name)
+            bids_dicom_dir = join(sourcedata_dir, subject_name)
+            bids_nifti_dir = join(rawdata_dir, subject_name)
         log_dir = join(sdir,'log')
         smart_mkdir(log_dir)
         smart_mkdir(sdir)
+        smart_mkdir(bids_dicom_dir)
+        smart_mkdir(bids_nifti_dir)
 
         T1_dicom_dir = json_data[sname]['T1_dicom_dir'] if 'T1_dicom_dir' in json_data[sname] else ''
         DTI_dicom_dir = json_data[sname]['DTI_dicom_dir'] if 'DTI_dicom_dir' in json_data[sname] else ''
         extra_b0_dirs = json_data[sname]['extra_b0_dirs'] if 'extra_b0_dirs' in json_data[sname] else []
-        nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else join(sdir, 'inputs')
+        nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else ''
 
         if 's1' in steps:
             # Make sure input files exist for each subject
@@ -257,18 +299,31 @@ with open(args.subjects_json, newline='') as json_file:
                     smart_copy(T1, anat)
 
                 if not exist_all([bvecs, bvals, hardi, anat]):
-                    print('Invalid subject {} in {}\nSince T1_dicom_dir or DTI_dicom_dir is not specified, nifti_dir must already contain bvecs, bvals, hardi.nii.gz, and anat.nii.gz. One or more of these is missing.'.format(sname, args.subjects_json))
+                    print('Invalid subject {} in {}\nSince T1_dicom_dir or DTI_dicom_dir is not specified, you must specify nifti_dir with ' +
+                            'bvecs, bvals, hardi.nii.gz, and anat.nii.gz.'.format(sname, args.subjects_json))
                     continue
-        smart_mkdir(nifti_dir)
         
         subject = {}
         for step in steps:
             params = {
-                'sname': sname,
+                # Preprocessing parameters
                 'T1_dicom_dir': T1_dicom_dir,
                 'DTI_dicom_dir': DTI_dicom_dir,
                 'extra_b0_dirs': extra_b0_dirs,
-                'nifti_dir': nifti_dir,
+                'src_nifti_dir': nifti_dir,
+
+                # BIDS parameters
+                'output_dir': output_dir,
+                'sourcedata_dir': sourcedata_dir,
+                'rawdata_dir': rawdata_dir,
+                'derivatives_dir': derivatives_dir,
+                'bids_dicom_dir': bids_dicom_dir,
+                'bids_nifti_dir': bids_nifti_dir,
+                'subject_name': subject_name,
+                'session_name': session_name,
+
+                # General parameters
+                'sname': sname,
                 'sdir': sdir,
                 'container': container,
                 'pbtx_edge_list': pbtx_edge_list,

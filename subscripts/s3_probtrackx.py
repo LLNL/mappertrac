@@ -24,8 +24,9 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     start_time = time.time()
     sdir = params['sdir']
     odir = split(sdir)[0]
-    tmp_odir = join(odir, "tmp")
-    tmp_sdir = join(sdir, "tmp")
+    derivatives_dir = params['derivatives_dir']
+    derivatives_dir_tmp = join(derivatives_dir, "tmp")
+    sdir_tmp = join(sdir, "tmp")
     stdout = params['stdout']
     container = params['container']
     use_gpu = params['use_gpu']
@@ -51,8 +52,8 @@ def s3_2_probtrackx(params, edges, inputs=[]):
 
     node_name = platform.uname().node.strip()
     assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
-    mem_record = join(tmp_odir, node_name + '.json') # Keep record to avoid overusing node memory
-    smart_mkdir(tmp_sdir)
+    mem_record = join(derivatives_dir_tmp, node_name + '.json') # Keep record to avoid overusing node memory
+    smart_mkdir(sdir_tmp)
 
     # Only access mem_record with file locking to avoid outdated data
     def open_mem_record(mode = 'r'):
@@ -113,7 +114,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
             task_id = str(max(task_ids) + 1) # generate incremental task_id
             mem_dict[task_id] = task_mem_usage
-            tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
+            tmp_fp, tmp_path = tempfile.mkstemp(dir=sdir_tmp)
             with open(tmp_path, 'w', newline='') as tmp: # file pointer not consistent, so we open using the pathname
                 json.dump(mem_dict, tmp)
             os.replace(tmp_path, mem_record) # atomic on POSIX systems. flock is advisory, so we can still overwrite.
@@ -125,7 +126,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         f = open_mem_record('r')
         mem_dict = json.load(f)
         mem_dict.pop(task_id, None)
-        tmp_fp, tmp_path = tempfile.mkstemp(dir=tmp_sdir)
+        tmp_fp, tmp_path = tempfile.mkstemp(dir=sdir_tmp)
         with open(tmp_path, 'w', newline='') as tmp:
             json.dump(mem_dict, tmp)
         os.replace(tmp_path, mem_record)
@@ -183,7 +184,6 @@ def s3_2_probtrackx(params, edges, inputs=[]):
             smart_mkdir(tmp)
             write(stdout, "Running subproc: {} to {}".format(a, b))
             if container:
-                odir = split(sdir)[0]
                 write(waypoints, b_file.replace(odir, "/share"))
             else:
                 write(waypoints, b_file)

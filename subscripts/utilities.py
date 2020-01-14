@@ -241,13 +241,16 @@ def update_permissions(params):
     """
     start_time = time.time()
     sdir = params['sdir']
+    bids_dicom_dir = params['bids_dicom_dir']
+    bids_nifti_dir = params['bids_nifti_dir']
     group = params['group']
     stdout = params['stdout']
-    run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(sdir))
-    run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(sdir))
-    if params['group']:
-        run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
-        run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(sdir, group))
+    for directory in [bids_dicom_dir, bids_nifti_dir, sdir]:
+        run("find {} -type f -print0 | xargs -0 -I _ chmod 770 _".format(directory))
+        run("find {} -type d -print0 | xargs -0 -I _ chmod 2770 _".format(directory))
+        if params['group']:
+            run("find {} -type f -print0 | xargs -0 -I _ chgrp {} _".format(directory, group))
+            run("find {} -type d -print0 | xargs -0 -I _ chgrp {} _".format(directory, group))
     write(stdout, "Updated file permissions, took {} (h:m:s)".format(get_time_string(time.time() - start_time, params)))
 
 def generate_checksum(input_dir):

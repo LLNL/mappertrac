@@ -33,6 +33,8 @@ def s2b_1_recon_all(params, inputs=[]):
 
     if not container:
         environ['SUBJECTS_DIR'] = split(sdir)[0]
+    else:
+        pass # SUBJECTS_DIR already set to /share in recipe at [REPO]/container/Singularity
 
     if use_gpu:
         write(stdout, "Running Freesurfer with GPU and {} cores".format(cores_per_task))
