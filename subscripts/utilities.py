@@ -1,4 +1,4 @@
-import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap,fnmatch
+import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap,fnmatch,gzip
 from glob import glob
 from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile
 from shutil import copyfile,copytree,rmtree,ignore_patterns
@@ -46,11 +46,11 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, time_out=None):
     """Run a command in a subprocess.
     Safer than raw execution. Can also write to logs and utilize a container.
     """
-    start = time.time()
+    start = int(time.time())
     stdout = params['stdout'] if (params and 'stdout' in params) else None
     container = params['container'] if (params and 'container' in params) else None
     use_gpu = params['use_gpu'] if (params and 'use_gpu' in params) else None
@@ -73,10 +73,19 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
             print(new_line)
         if stdout and not new_line.isspace():
             write(stdout, new_line)
+        if time_out and (int(time.time()) - start) > int(time_out):
+            process.kill()
+            break
         if new_line == '' and process.poll() is not None:
             break
         line = new_line
-    if process.returncode != 0 and not ignore_errors:
+    if time_out and (int(time.time()) - start) > int(time_out):
+        time_out_string = get_time_string(int(time_out), params)
+        if stdout:
+            write(stdout, "Error: process exceeded maximum time {}".format(time_out_string))
+            write(stdout, get_time_date())
+        raise Exception("Process exceeded maximum time {}\nCommand: {}".format(time_out_string, command))
+    elif process.returncode != 0 and not ignore_errors:
         if stdout and not new_line.isspace():
             write(stdout, "Error: non zero return code")
             write(stdout, get_time_date())
@@ -346,3 +355,12 @@ def generate_edge_list(vol_dir, path='lists/listEdgesEDIAll.txt'):
                     a1 = splitext(splitext(split(a)[1])[0])[0]
                     b1 = splitext(splitext(split(b)[1])[0])[0]
                     f.write("{},{}\n".format(basename(a1),basename(b1)))
+
+def compress_file(file):
+    compressed_file = file + '.gz'
+    with open(file, 'rb') as f_in:
+        with gzip.open(compressed_file, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    return compressed_file
+
+

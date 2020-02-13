@@ -21,7 +21,6 @@ def s3_2_probtrackx(params, edges, inputs=[]):
     from subscripts.utilities import run,smart_remove,smart_mkdir,write,is_float,is_integer,record_start,record_apptime,is_integer
     from os.path import join,exists,split,dirname
     from shutil import copyfile
-    start_time = time.time()
     sdir = params['sdir']
     odir = split(sdir)[0]
     derivatives_dir = params['derivatives_dir']
@@ -167,7 +166,7 @@ def s3_2_probtrackx(params, edges, inputs=[]):
         task_id = add_task()
 
     ### Probtrackx Run ###
-
+    start_time = time.time()
     try:
         for edge in edges:
             a, b = edge
@@ -450,10 +449,10 @@ def s3_5_edi_combine(params, consensus_edges, inputs=[]):
     record_finish(params)
 
 def setup_s3(params, inputs):
-    edge_chunk_size = 4 # set to >1, if number of jobs causes log output to crash
     sdir = params['sdir']
     stdout = params['stdout']
     pbtx_edge_list = params['pbtx_edge_list']
+    pbtx_edge_chunk_size = params['pbtx_edge_chunk_size']
     pbtx_random_seed = params['pbtx_random_seed']
     params['subject_random_seed'] = random.randint(0, 999999) if pbtx_random_seed is None else pbtx_random_seed
     pbtk_dir = join(sdir,"EDI","PBTKresults")
@@ -478,7 +477,7 @@ def setup_s3(params, inputs):
     edges_chunk = []
     for edge in get_edges_from_file(pbtx_edge_list):
         edges_chunk.append(edge)
-        if len(edges_chunk) >= edge_chunk_size:
+        if len(edges_chunk) >= pbtx_edge_chunk_size:
             s3_2_futures.append(s3_2_probtrackx(params, edges_chunk, inputs=[s3_1_future]))
             edges_chunk = []
     if edges_chunk: # run last chunk if it's not empty
@@ -495,7 +494,7 @@ def setup_s3(params, inputs):
             continue
         edges_chunk.append(edge)
         consensus_edges.append(edge)
-        if len(edges_chunk) >= edge_chunk_size:
+        if len(edges_chunk) >= pbtx_edge_chunk_size:
             s3_4_futures.append(s3_4_edi_consensus(params, edges_chunk, inputs=[s3_3_future]))
             edges_chunk = []
     if edges_chunk: # run last chunk if it's not empty

@@ -49,7 +49,7 @@ def s2b_1_recon_all(params, inputs=[]):
         run("recon-all -s {} -all -no-isrunning -parallel -openmp {}".format(subject, cores_per_task), params)
     else:
         write(stdout, "Running Freesurfer with a single core")
-        run("recon-all -s {} -all -no-isrunning".format(subject), params)
+        run("recon-all -s {} -all -no-isrunning".format(subject), params, time_out=57600)
     record_apptime(params, start_time, 1)
     # if work_sdir:
     #     copy_dir(work_sdir, old_sdir)

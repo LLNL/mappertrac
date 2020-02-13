@@ -70,10 +70,12 @@ else:
     parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
     parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s4_render (relative to each subject output directory).')
     parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
-    parser.add_argument('--force', help='Force re-compute if checkpoints already exist', action='store_true')
+    parser.add_argument('--force', help='Force re-compute', action='store_true')
+    parser.add_argument('--force_params', help='Force re-compute if new parameters do not match previous run', action='store_false')
     parser.add_argument('--local_host_only', help='Request all jobs on same host as strategy node, ignoring other hostnames.', action='store_false')
     parser.add_argument('--pbtx_sample_count', help='Number of streamlines in s3_probtrackx')
     parser.add_argument('--pbtx_random_seed', help='Random seed in s3_probtrackx')
+    parser.add_argument('--pbtx_edge_chunk_size', help='Edges per task in s3_probtrackx. Set high if number of jobs causes log output to crash.')
     parser.add_argument('--pbtx_max_memory', help='Usable memory per node (in GB) for s3_probtrackx without GPU. Default value of 0 indicates unlimited memory bound. If you are running into memory limitations, this value should be somewhere between 50-90\% of a single node\'s available RAM.')
     parser.add_argument('--pbtx_max_gpu_memory', help='Usable video memory per node (in GB) for s3_probtrackx with GPU. Default value of 0 indicates unlimited memory bound. If you are running into memory limitations, this value should be somewhere between 30-70\% of a single node\'s available VRAM.')
     parser.add_argument('--connectome_idx_list', help='Text file with pairs of volumes and connectome indices')
@@ -141,6 +143,7 @@ parse_default('container_path', "container/image.simg", args)
 parse_default('unix_username', getpass.getuser(), args)
 parse_default('unix_group', None, args)
 parse_default('force', False, args)
+parse_default('force_params', True, args)
 parse_default('gssapi', False, args)
 parse_default('local_host_only', True, args)
 parse_default('compress_pbtx_results', True, args)
@@ -148,6 +151,7 @@ parse_default('parsl_path', None, args)
 parse_default('render_list', "lists/render_targets.txt", args)
 parse_default('pbtx_sample_count', 1000, args)
 parse_default('pbtx_random_seed', None, args)
+parse_default('pbtx_edge_chunk_size', 16, args)
 parse_default('pbtx_max_memory', 0, args)
 parse_default('pbtx_max_gpu_memory', 0, args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
@@ -290,16 +294,30 @@ with open(args.subjects_json, newline='') as json_file:
                 hardi = join(nifti_dir, "hardi.nii.gz")
                 anat = join(nifti_dir, "anat.nii.gz")
 
+                # If input files not found, try to substitute alternative files
                 data = join(nifti_dir, "data.nii.gz")
-                if not exists(hardi) and exists(data):
-                    smart_copy(data, hardi)
-
+                nii_data = join(nifti_dir, "data.nii")
+                nii_hardi = join(nifti_dir, "hardi.nii")
+                if not exists(hardi):
+                    if exists(nii_hardi):
+                        smart_copy(compress_file(nii_hardi), hardi)
+                    elif exists(data):
+                        smart_copy(data, hardi)
+                    elif exists(nii_data):
+                        smart_copy(compress_file(nii_data), hardi)
                 T1 = join(nifti_dir, "T1.nii.gz")
-                if not exists(anat) and exists(T1):
-                    smart_copy(T1, anat)
+                nii_T1 = join(nifti_dir, "T1.nii")
+                nii_anat = join(nifti_dir, "anat.nii")
+                if not exists(anat):
+                    if exists(nii_anat):
+                        smart_copy(compress_file(nii_anat), anat)
+                    elif exists(T1):
+                        smart_copy(T1, anat)
+                    elif exists(nii_T1):
+                        smart_copy(compress_file(nii_T1), anat)
 
                 if not exist_all([bvecs, bvals, hardi, anat]):
-                    print('Invalid subject {} in {}\nSince T1_dicom_dir or DTI_dicom_dir is not specified, you must specify nifti_dir with ' +
+                    print('Invalid subject {} in {}\nSince T1_dicom_dir and DTI_dicom_dir are not specified, you must specify nifti_dir with '.format(sname, args.subjects_json) +
                             'bvecs, bvals, hardi.nii.gz, and anat.nii.gz.'.format(sname, args.subjects_json))
                     continue
         
@@ -335,6 +353,7 @@ with open(args.subjects_json, newline='') as json_file:
                 'connectome_idx_list': connectome_idx_list,
                 'pbtx_sample_count': int(args.pbtx_sample_count),
                 'pbtx_random_seed': args.pbtx_random_seed,
+                'pbtx_edge_chunk_size': int(args.pbtx_edge_chunk_size),
                 'pbtx_max_memory': args.pbtx_max_memory,
                 'pbtx_max_gpu_memory': args.pbtx_max_gpu_memory,
                 'histogram_bin_count': int(args.histogram_bin_count),
@@ -347,7 +366,7 @@ with open(args.subjects_json, newline='') as json_file:
                 with open(params_log) as f:
                     old_params = json.load(f)
                     for k in params:
-                        if k not in old_params or str(params[k]) != str(old_params[k]):
+                        if args.force_params and (k not in old_params or str(params[k]) != str(old_params[k])):
                             break
                     else:
                         if is_log_complete(prev_stdout):
@@ -402,11 +421,11 @@ def get_walltime(_num_subjects, job_time_string, node_count):
 # Set recommended or overriden node counts
 node_counts = {
     'debug': 1,
-    's1': max(floor(0.1 * num_subjects['s1']), 1) if args.s1_nodes is None else int(args.s1_nodes),
-    's2a': max(floor(1.0 * num_subjects['s2a']), 1) if args.s2a_nodes is None else int(args.s2a_nodes),
-    's2b': max(floor(1.0 * num_subjects['s2b']), 1) if args.s2b_nodes is None else int(args.s2b_nodes),
-    's3': max(floor(1.0 * num_subjects['s3']), 1) if args.s3_nodes is None else int(args.s3_nodes),
-    's4': max(floor(0.1 * num_subjects['s4']), 1) if args.s4_nodes is None else int(args.s4_nodes),
+    's1': min(max(floor(0.1 * num_subjects['s1']), 1), 8) if args.s1_nodes is None else int(args.s1_nodes),
+    's2a': min(max(floor(1.0 * num_subjects['s2a']), 1), 24) if args.s2a_nodes is None else int(args.s2a_nodes),
+    's2b': min(max(floor(1.0 * num_subjects['s2b']), 1), 24) if args.s2b_nodes is None else int(args.s2b_nodes),
+    's3': min(max(floor(1.0 * num_subjects['s3']), 1), 24) if args.s3_nodes is None else int(args.s3_nodes),
+    's4': min(max(floor(0.1 * num_subjects['s4']), 1), 8) if args.s4_nodes is None else int(args.s4_nodes),
 }
 job_times = {
     's1': args.s1_job_time,
