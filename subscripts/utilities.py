@@ -46,7 +46,7 @@ def exist_all(paths):
             return False
     return True
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, time_out=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None):
     """Run a command in a subprocess.
     Safer than raw execution. Can also write to logs and utilize a container.
     """
@@ -73,19 +73,10 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
             print(new_line)
         if stdout and not new_line.isspace():
             write(stdout, new_line)
-        if time_out and (int(time.time()) - start) > int(time_out):
-            process.kill()
-            break
         if new_line == '' and process.poll() is not None:
             break
         line = new_line
-    if time_out and (int(time.time()) - start) > int(time_out):
-        time_out_string = get_time_string(int(time_out), params)
-        if stdout:
-            write(stdout, "Error: process exceeded maximum time {}".format(time_out_string))
-            write(stdout, get_time_date())
-        raise Exception("Process exceeded maximum time {}\nCommand: {}".format(time_out_string, command))
-    elif process.returncode != 0 and not ignore_errors:
+    if process.returncode != 0 and not ignore_errors:
         if stdout and not new_line.isspace():
             write(stdout, "Error: non zero return code")
             write(stdout, get_time_date())

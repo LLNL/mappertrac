@@ -31,8 +31,12 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     config_json = sys.argv[1]
     with open(config_json) as f:
         raw_args = json.load(f)
+
+    if not (bool('subject' in raw_args) ^ bool('subjects_json' in raw_args)):
+        raise Exception('Config file {} must have exactly one of: subject or subjects_json'.format(config_file))
+
     missing_args = []
-    for required_arg in ['subjects_json', 'output_dir', 'scheduler_name']:
+    for required_arg in ['output_dir', 'scheduler_name']:
         if required_arg not in raw_args:
             missing_args.append(required_arg)
     if missing_args:
@@ -203,6 +207,8 @@ if len(steps) != len(set(steps)):
     raise Exception("Argument \"steps\" has duplicate values")
 if len(gpu_steps) != len(set(gpu_steps)):
     raise Exception("Argument \"gpu_steps\" has duplicate values")
+if hasattr(args, 'subject') and 's1' in steps:
+    raise Exception("Step s1 must be run with argument \"subjects_json\", not \"subject\". This is because you need to specify NiFTI or DICOM directories.")
 step_setup_functions = {
     'debug': setup_debug,
     's1': setup_s1,
@@ -256,142 +262,149 @@ if args.bids_readme:
 
 subject_dict = {}
 
-with open(args.subjects_json, newline='') as json_file:
-    json_data = json.load(json_file)
-    for sname in json_data:
-        regex = re.compile('[^a-zA-Z0-9]')
-        subject_name = 'sub-{}'.format(regex.sub('', sname))
-        if args.bids_session_name:
-            session_name = 'ses-{}'.format(regex.sub('', args.bids_session_name))
-            sdir = join(derivatives_dir, subject_name, session_name)
-            bids_dicom_dir = join(sourcedata_dir, subject_name, session_name)
-            bids_nifti_dir = join(rawdata_dir, subject_name, session_name)
-        else:
-            session_name = ""
-            sdir = join(derivatives_dir, subject_name)
-            bids_dicom_dir = join(sourcedata_dir, subject_name)
-            bids_nifti_dir = join(rawdata_dir, subject_name)
-        log_dir = join(sdir,'log')
-        smart_mkdir(log_dir)
-        smart_mkdir(sdir)
-        smart_mkdir(bids_dicom_dir)
-        smart_mkdir(bids_nifti_dir)
+json_data = {}
+if hasattr(args, 'subjects_json') and args.subjects_json is not None:
+    with open(args.subjects_json, newline='') as json_file:
+        json_data = json.load(json_file)
+else:
+    json_data = {args.subject:{}}
 
-        T1_dicom_dir = json_data[sname]['T1_dicom_dir'] if 'T1_dicom_dir' in json_data[sname] else ''
-        DTI_dicom_dir = json_data[sname]['DTI_dicom_dir'] if 'DTI_dicom_dir' in json_data[sname] else ''
-        extra_b0_dirs = json_data[sname]['extra_b0_dirs'] if 'extra_b0_dirs' in json_data[sname] else []
-        nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else ''
+for sname in json_data:
+    sname = sname.replace('sub-', '') # make naming consistent
+    regex = re.compile('[^a-zA-Z0-9]')
+    subject_name = 'sub-{}'.format(regex.sub('', sname))
+    if args.bids_session_name:
+        session_name = args.bids_session_name.replace('ses-', '')
+        session_name = 'ses-{}'.format(regex.sub('', session_name))
+        sdir = join(derivatives_dir, subject_name, session_name)
+        bids_dicom_dir = join(sourcedata_dir, subject_name, session_name)
+        bids_nifti_dir = join(rawdata_dir, subject_name, session_name)
+    else:
+        session_name = ""
+        sdir = join(derivatives_dir, subject_name)
+        bids_dicom_dir = join(sourcedata_dir, subject_name)
+        bids_nifti_dir = join(rawdata_dir, subject_name)
+    log_dir = join(sdir,'log')
+    smart_mkdir(log_dir)
+    smart_mkdir(sdir)
+    smart_mkdir(bids_dicom_dir)
+    smart_mkdir(bids_nifti_dir)
 
-        if 's1' in steps:
-            # Make sure input files exist for each subject
-            if not T1_dicom_dir or not isdir(T1_dicom_dir) or not DTI_dicom_dir or not isdir(DTI_dicom_dir):
-                if not nifti_dir or not isdir(nifti_dir):
-                    print('Invalid subject {} in {}\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(sname, args.subjects_json) +
-                        ' Or specify nifti_dir with bvecs, bvals, hardi.nii.gz, and anat.nii.gz already in place.')
-                    continue
+    T1_dicom_dir = json_data[sname]['T1_dicom_dir'] if 'T1_dicom_dir' in json_data[sname] else ''
+    DTI_dicom_dir = json_data[sname]['DTI_dicom_dir'] if 'DTI_dicom_dir' in json_data[sname] else ''
+    extra_b0_dirs = json_data[sname]['extra_b0_dirs'] if 'extra_b0_dirs' in json_data[sname] else []
+    nifti_dir = json_data[sname]['nifti_dir'] if 'nifti_dir' in json_data[sname] else ''
 
-                bvecs = join(nifti_dir, "bvecs")
-                bvals = join(nifti_dir, "bvals")
-                hardi = join(nifti_dir, "hardi.nii.gz")
-                anat = join(nifti_dir, "anat.nii.gz")
+    if 's1' in steps:
+        # Make sure input files exist for each subject
+        if not T1_dicom_dir or not isdir(T1_dicom_dir) or not DTI_dicom_dir or not isdir(DTI_dicom_dir):
+            if not nifti_dir or not isdir(nifti_dir):
+                print('Invalid subject {} in {}\nWhen running s1_dti_preproc, you must specify T1_dicom_dir and DTI_dicom_dir.'.format(sname, args.subjects_json) +
+                    ' Or specify nifti_dir with bvecs, bvals, hardi.nii.gz, and anat.nii.gz already in place.')
+                continue
 
-                # If input files not found, try to substitute alternative files
-                data = join(nifti_dir, "data.nii.gz")
-                nii_data = join(nifti_dir, "data.nii")
-                nii_hardi = join(nifti_dir, "hardi.nii")
-                if not exists(hardi):
-                    if exists(nii_hardi):
-                        smart_copy(compress_file(nii_hardi), hardi)
-                    elif exists(data):
-                        smart_copy(data, hardi)
-                    elif exists(nii_data):
-                        smart_copy(compress_file(nii_data), hardi)
-                T1 = join(nifti_dir, "T1.nii.gz")
-                nii_T1 = join(nifti_dir, "T1.nii")
-                nii_anat = join(nifti_dir, "anat.nii")
-                if not exists(anat):
-                    if exists(nii_anat):
-                        smart_copy(compress_file(nii_anat), anat)
-                    elif exists(T1):
-                        smart_copy(T1, anat)
-                    elif exists(nii_T1):
-                        smart_copy(compress_file(nii_T1), anat)
+            bvecs = join(nifti_dir, "bvecs")
+            bvals = join(nifti_dir, "bvals")
+            hardi = join(nifti_dir, "hardi.nii.gz")
+            anat = join(nifti_dir, "anat.nii.gz")
 
-                if not exist_all([bvecs, bvals, hardi, anat]):
-                    print('Invalid subject {} in {}\nSince T1_dicom_dir and DTI_dicom_dir are not specified, you must specify nifti_dir with '.format(sname, args.subjects_json) +
-                            'bvecs, bvals, hardi.nii.gz, and anat.nii.gz.'.format(sname, args.subjects_json))
-                    continue
-        
-        subject = {}
-        for step in steps:
-            params = {
-                # Preprocessing parameters
-                'T1_dicom_dir': T1_dicom_dir,
-                'DTI_dicom_dir': DTI_dicom_dir,
-                'extra_b0_dirs': extra_b0_dirs,
-                'src_nifti_dir': nifti_dir,
+            # If input files not found, try to substitute alternative files
+            data = join(nifti_dir, "data.nii.gz")
+            nii_data = join(nifti_dir, "data.nii")
+            nii_hardi = join(nifti_dir, "hardi.nii")
+            if not exists(hardi):
+                if exists(nii_hardi):
+                    smart_copy(compress_file(nii_hardi), hardi)
+                elif exists(data):
+                    smart_copy(data, hardi)
+                elif exists(nii_data):
+                    smart_copy(compress_file(nii_data), hardi)
+            T1 = join(nifti_dir, "T1.nii.gz")
+            nii_T1 = join(nifti_dir, "T1.nii")
+            nii_anat = join(nifti_dir, "anat.nii")
+            if not exists(anat):
+                if exists(nii_anat):
+                    smart_copy(compress_file(nii_anat), anat)
+                elif exists(T1):
+                    smart_copy(T1, anat)
+                elif exists(nii_T1):
+                    smart_copy(compress_file(nii_T1), anat)
 
-                # BIDS parameters
-                'output_dir': output_dir,
-                'sourcedata_dir': sourcedata_dir,
-                'rawdata_dir': rawdata_dir,
-                'derivatives_dir': derivatives_dir,
-                'bids_dicom_dir': bids_dicom_dir,
-                'bids_nifti_dir': bids_nifti_dir,
-                'subject_name': subject_name,
-                'session_name': session_name,
+            if not exist_all([bvecs, bvals, hardi, anat]):
+                print('Invalid subject {} in {}\nSince T1_dicom_dir and DTI_dicom_dir are not specified, you must specify nifti_dir with '.format(sname, args.subjects_json) +
+                        'bvecs, bvals, hardi.nii.gz, and anat.nii.gz.'.format(sname, args.subjects_json))
+                continue
+    
+    subject = {}
+    for step in steps:
+        params = {
+            # Preprocessing parameters
+            'T1_dicom_dir': T1_dicom_dir,
+            'DTI_dicom_dir': DTI_dicom_dir,
+            'extra_b0_dirs': extra_b0_dirs,
+            'src_nifti_dir': nifti_dir,
 
-                # General parameters
-                'sname': sname,
-                'sdir': sdir,
-                'container': container,
-                'pbtx_edge_list': pbtx_edge_list,
-                'group': args.unix_group,
-                'global_timing_log': global_timing_log,
-                'use_gpu': step in gpu_steps,
-                'step': step,
-                'render_list': render_list,
-                'connectome_idx_list': connectome_idx_list,
-                'pbtx_sample_count': int(args.pbtx_sample_count),
-                'pbtx_random_seed': args.pbtx_random_seed,
-                'pbtx_edge_chunk_size': int(args.pbtx_edge_chunk_size),
-                'pbtx_max_memory': args.pbtx_max_memory,
-                'pbtx_max_gpu_memory': args.pbtx_max_gpu_memory,
-                'histogram_bin_count': int(args.histogram_bin_count),
-                'compress_pbtx_results': args.compress_pbtx_results,
-            }
-            stdout_template = join(log_dir, "{}.stdout".format(step))
-            new_stdout, prev_stdout, idx = get_log_path(stdout_template)
-            params_log = join(log_dir, step + "_params.txt")
-            if exists(params_log) and not args.force:
-                with open(params_log) as f:
-                    old_params = json.load(f)
-                    for k in params:
-                        if args.force_params and (k not in old_params or str(params[k]) != str(old_params[k])):
-                            break
+            # BIDS parameters
+            'output_dir': output_dir,
+            'sourcedata_dir': sourcedata_dir,
+            'rawdata_dir': rawdata_dir,
+            'derivatives_dir': derivatives_dir,
+            'bids_dicom_dir': bids_dicom_dir,
+            'bids_nifti_dir': bids_nifti_dir,
+            'subject_name': subject_name,
+            'session_name': session_name,
+
+            # General parameters
+            'sname': sname,
+            'sdir': sdir,
+            'container': container,
+            'pbtx_edge_list': pbtx_edge_list,
+            'group': args.unix_group,
+            'global_timing_log': global_timing_log,
+            'use_gpu': step in gpu_steps,
+            'step': step,
+            'render_list': render_list,
+            'connectome_idx_list': connectome_idx_list,
+            'pbtx_sample_count': int(args.pbtx_sample_count),
+            'pbtx_random_seed': args.pbtx_random_seed,
+            'pbtx_edge_chunk_size': int(args.pbtx_edge_chunk_size),
+            'pbtx_max_memory': args.pbtx_max_memory,
+            'pbtx_max_gpu_memory': args.pbtx_max_gpu_memory,
+            'histogram_bin_count': int(args.histogram_bin_count),
+            'compress_pbtx_results': args.compress_pbtx_results,
+        }
+        stdout_template = join(log_dir, "{}.stdout".format(step))
+        new_stdout, prev_stdout, idx = get_log_path(stdout_template)
+        params_log = join(log_dir, step + "_params.txt")
+        if exists(params_log) and not args.force:
+            with open(params_log) as f:
+                old_params = json.load(f)
+                for k in params:
+                    if args.force_params and (k not in old_params or str(params[k]) != str(old_params[k])):
+                        break
+                else:
+                    if is_log_complete(prev_stdout):
+                        print("Skipping step \"{}\" for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
+                        continue
                     else:
-                        if is_log_complete(prev_stdout):
-                            print("Skipping step \"{}\" for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
-                            continue
-                        else:
-                            if exists(prev_stdout):
-                                new_stdout = prev_stdout
-                                idx -= 1
-            timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(step, idx))
-            smart_remove(params_log)
-            smart_remove(timing_log)
-            with open(params_log, 'w') as f:
-                json.dump(params, f)
-            params['stdout'] = new_stdout
-            params['timing_log'] = timing_log
+                        if exists(prev_stdout):
+                            new_stdout = prev_stdout
+                            idx -= 1
+        timing_log = join(log_dir, "{}_{:02d}_timing.txt".format(step, idx))
+        smart_remove(params_log)
+        smart_remove(timing_log)
+        with open(params_log, 'w') as f:
+            json.dump(params, f)
+        params['stdout'] = new_stdout
+        params['timing_log'] = timing_log
 
-            subject[step] = params
-        subject_dict[sname] = subject
-        running_steps = list(subject.keys())
-        if len(running_steps) > 0:
-            print("Running subject {} with steps {}".format(sname, running_steps))
-        else:
-            print("Not running any steps for subject {}".format(sname))
+        subject[step] = params
+    subject_dict[sname] = subject
+    running_steps = list(subject.keys())
+    if len(running_steps) > 0:
+        print("Running subject {} with steps {}".format(sname, running_steps))
+    else:
+        print("Not running any steps for subject {}".format(sname))
 
 num_subjects = {
     'debug': 0,
@@ -510,7 +523,27 @@ for step in steps:
                 username=args.unix_username,
                 gssapi_auth=args.gssapi,
                 )
-    if args.scheduler_name == 'slurm':
+    # Freesurfer runs extremely slow on HighThroughputExecutor for some reason, so we use IPyParallelExecutor
+    if step == 's2b':
+        executors.append(IPyParallelExecutor(
+                    label=step,
+                    workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
+                    provider=SlurmProvider(
+                        args.scheduler_partition,
+                        channel=channel,
+                        launcher=SrunLauncher(),
+                        nodes_per_block=node_count,
+                        worker_init=worker_init,
+                        init_blocks=1,
+                        max_blocks=1,
+                        walltime=walltimes[step],
+                        scheduler_options=options,
+                        move_files=False,
+                        ),
+                    controller=Controller(public_ip=address_by_route()),
+                    )
+                )
+    elif args.scheduler_name == 'slurm':
         executors.append(HighThroughputExecutor(
                     label=step,
                     worker_debug=True,
