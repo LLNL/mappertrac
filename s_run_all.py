@@ -45,8 +45,9 @@ else:
     ### ==================
     ### Required arguments
     ### ==================
-
-    parser.add_argument('--subjects_json', help='JSON file with input directories for each subject', required=True)
+    subjects_group = parser.add_mutually_exclusive_group(required=True)
+    subjects_group.add_argument('--subject', help='Name of single subject.')
+    subjects_group.add_argument('--subjects_json', help='JSON file with input directories for each subject.')
     parser.add_argument('--output_dir', help='The directory that will contain a BIDS-compliant dataset with all subjects.', required=True)
     parser.add_argument('--scheduler_name', help='Scheduler to be used for running jobs. Value is "slurm" for LLNL, "cobalt" for ANL, and "grid_engine" for UCSF.', required=True, choices=['slurm', 'cobalt', 'grid_engine'])
     

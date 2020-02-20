@@ -5,6 +5,9 @@ from os.path import join, split, splitext
 from vtk.util import numpy_support
 
 def render(input_file, output_file, histogram_bin_count):
+    path, output_name = split(output_file)
+    output_root, ext = splitext(output_name)
+
     reader = vtk.vtkNIFTIImageReader()
     reader.SetFileName(input_file)
     reader.Update()
@@ -141,6 +144,18 @@ def render(input_file, output_file, histogram_bin_count):
     writer.SetInputConnection(w2if.GetOutputPort())
     writer.Write()
 
+    marching_cubes = vtk.vtkMarchingCubes()
+    marching_cubes.SetInputConnection(reader.GetOutputPort())
+    marching_cubes.ComputeNormalsOn()
+    marching_cubes.ComputeGradientsOn()
+    marching_cubes.SetValue(0, 0.1 * vrange[1])
+
+    stl_output = join(path, output_root + '_isosurface.stl')
+    stl_writer = vtk.vtkSTLWriter()
+    stl_writer.SetFileName(stl_output)
+    stl_writer.SetInputConnection(marching_cubes.GetOutputPort())
+    stl_writer.Write()
+
     # histogram code:
     num_bins = int(histogram_bin_count)
     histogram = vtk.vtkImageHistogram()
@@ -150,8 +165,7 @@ def render(input_file, output_file, histogram_bin_count):
     histogram.Update()
     origin = histogram.GetBinOrigin()
     spacing = histogram.GetBinSpacing()
-    path, output_name = split(output_file)
-    output_root, ext = splitext(output_name)
+    
     bin_values = np.linspace(0, num_bins * spacing, num=num_bins, endpoint=False)
     hist_output = join(path, output_root + '_hist.txt')
     hist_values = numpy_support.vtk_to_numpy(histogram.GetHistogram())
