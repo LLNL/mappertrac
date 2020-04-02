@@ -21,7 +21,8 @@ from subscripts.s2b_freesurfer import setup_s2b
 from subscripts.s3_probtrackx import setup_s3
 from subscripts.s4_render import setup_s4
 
-head_node_cores = int(floor(multiprocessing.cpu_count() / 2)) # We assume 2 vCPUs per core
+vCPUs_per_core = 2
+head_node_cores = int(floor(multiprocessing.cpu_count() / vCPUs_per_core)) # We assume 2 vCPUs per core
 
 class ArgsObject:
     def __init__(self, **entries):
@@ -136,56 +137,64 @@ else:
 # Defaults for Optional Args
 ############################
 
-parse_default('steps', "s1 s2a s2b s3 s4", args)
-parse_default('gpu_steps', "s2a", args)
-parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args)
-parse_default('scheduler_partition', "", args)
-parse_default('scheduler_bank', "", args)
-parse_default('scheduler_options', "", args)
-parse_default('worker_init', "", args)
-parse_default('gpu_options', "", args)
-parse_default('container_path', "container/image.simg", args)
-parse_default('unix_username', getpass.getuser(), args)
-parse_default('unix_group', None, args)
-parse_default('force', False, args)
-parse_default('force_params', True, args)
-parse_default('gssapi', False, args)
-parse_default('local_host_only', True, args)
-parse_default('compress_pbtx_results', True, args)
-parse_default('parsl_path', None, args)
-parse_default('render_list', "lists/render_targets.txt", args)
-parse_default('pbtx_sample_count', 1000, args)
-parse_default('pbtx_random_seed', None, args)
-parse_default('pbtx_edge_chunk_size', 16, args)
-parse_default('pbtx_max_memory', 0, args)
-parse_default('pbtx_max_gpu_memory', 0, args)
-parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args)
-parse_default('histogram_bin_count', 256, args)
-parse_default('retries', 5, args)
-parse_default('s1_cores_per_task', 1, args)
-parse_default('s2a_cores_per_task', head_node_cores, args)
-parse_default('s2b_cores_per_task', head_node_cores, args)
-parse_default('s3_cores_per_task', 1, args)
-parse_default('s4_cores_per_task', 1, args)
-parse_default('s1_walltime', "23:59:00", args)
-parse_default('s2a_walltime', "23:59:00", args)
-parse_default('s2b_walltime', "23:59:00", args)
-parse_default('s3_walltime', "23:59:00", args)
-parse_default('s4_walltime', "23:59:00", args)
-parse_default('dynamic_walltime', False, args)
-parse_default('s1_job_time', "00:15:00", args)
-parse_default('s2a_job_time', "00:45:00", args)
-parse_default('s2b_job_time', "10:00:00", args)
-parse_default('s3_job_time', "23:59:00", args)
-parse_default('s4_job_time', "00:45:00", args)
-parse_default('bids_json', "examples/dataset_description.json", args)
-parse_default('bids_readme', "", args)
-parse_default('bids_session_name', "", args)
+pending_args = args.__dict__.copy()
+parse_default('steps', "s1 s2a s2b s3 s4", args, pending_args)
+parse_default('gpu_steps', "s2a", args, pending_args)
+parse_default('pbtx_edge_list', join("lists","list_edges_reduced.txt"), args, pending_args)
+parse_default('scheduler_name', "slurm", args, pending_args)
+parse_default('scheduler_partition', "", args, pending_args)
+parse_default('scheduler_bank', "", args, pending_args)
+parse_default('scheduler_options', "", args, pending_args)
+parse_default('worker_init', "", args, pending_args)
+parse_default('gpu_options', "", args, pending_args)
+parse_default('container_path', "container/image.simg", args, pending_args)
+parse_default('unix_username', getpass.getuser(), args, pending_args)
+parse_default('unix_group', None, args, pending_args)
+parse_default('force', False, args, pending_args)
+parse_default('force_params', True, args, pending_args)
+parse_default('gssapi', False, args, pending_args)
+parse_default('local_host_only', True, args, pending_args)
+parse_default('compress_pbtx_results', True, args, pending_args)
+parse_default('parsl_path', None, args, pending_args)
+parse_default('render_list', "lists/render_targets.txt", args, pending_args)
+parse_default('pbtx_sample_count', 200, args, pending_args)
+parse_default('pbtx_random_seed', None, args, pending_args)
+parse_default('pbtx_edge_chunk_size', 4, args, pending_args)
+parse_default('pbtx_max_memory', 0, args, pending_args)
+parse_default('pbtx_max_gpu_memory', 0, args, pending_args)
+parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args, pending_args)
+parse_default('histogram_bin_count', 256, args, pending_args)
+parse_default('retries', 5, args, pending_args)
+parse_default('s1_cores_per_task', 1, args, pending_args)
+parse_default('s2a_cores_per_task', head_node_cores, args, pending_args)
+parse_default('s2b_cores_per_task', head_node_cores, args, pending_args)
+parse_default('s3_cores_per_task', 1, args, pending_args)
+parse_default('s4_cores_per_task', 1, args, pending_args)
+parse_default('s1_walltime', "23:59:00", args, pending_args)
+parse_default('s2a_walltime', "23:59:00", args, pending_args)
+parse_default('s2b_walltime', "23:59:00", args, pending_args)
+parse_default('s3_walltime', "23:59:00", args, pending_args)
+parse_default('s4_walltime', "23:59:00", args, pending_args)
+parse_default('dynamic_walltime', False, args, pending_args)
+parse_default('s1_job_time', "00:15:00", args, pending_args)
+parse_default('s2a_job_time', "00:45:00", args, pending_args)
+parse_default('s2b_job_time', "10:00:00", args, pending_args)
+parse_default('s3_job_time', "23:59:00", args, pending_args)
+parse_default('s4_job_time', "00:45:00", args, pending_args)
+parse_default('bids_json', "examples/dataset_description.json", args, pending_args)
+parse_default('bids_readme', "", args, pending_args)
+parse_default('bids_session_name', "", args, pending_args)
 
 for step in ['s1','s2a','s2b','s3','s4']:
-    parse_default(step + '_hostname', None, args)
-    parse_default(step + '_nodes', None, args)
-    parse_default(step + '_cores', None, args)
+    parse_default(step + '_hostname', None, args, pending_args)
+    parse_default(step + '_nodes', None, args, pending_args)
+    parse_default(step + '_cores', None, args, pending_args)
+
+pending_args.pop('subject', None)
+pending_args.pop('subjects_json', None)
+pending_args.pop('output_dir', None)
+if len(pending_args) != 0:
+    raise Exception("Invalid arguments: {}".format(pending_args))
 
 ############################
 # Steps
@@ -384,7 +393,7 @@ for sname in json_data:
                         break
                 else:
                     if is_log_complete(prev_stdout):
-                        print("Skipping step \"{}\" for subject {} after finding completed log. Use --force to rerun.".format(step, sname))
+                        print("Skipping step \"{}\" for subject {} after finding completed log at {}. Use --force to rerun.".format(step, sname, prev_stdout))
                         continue
                     else:
                         if exists(prev_stdout):
@@ -523,31 +532,12 @@ for step in steps:
                 username=args.unix_username,
                 gssapi_auth=args.gssapi,
                 )
-    # Freesurfer runs extremely slow on HighThroughputExecutor for some reason, so we use IPyParallelExecutor
-    if step == 's2b':
-        executors.append(IPyParallelExecutor(
-                    label=step,
-                    workers_per_node=int(int(cores_per_node[step]) / int(cores_per_task[step])),
-                    provider=SlurmProvider(
-                        args.scheduler_partition,
-                        channel=channel,
-                        launcher=SrunLauncher(),
-                        nodes_per_block=node_count,
-                        worker_init=worker_init,
-                        init_blocks=1,
-                        max_blocks=1,
-                        walltime=walltimes[step],
-                        scheduler_options=options,
-                        move_files=False,
-                        ),
-                    controller=Controller(public_ip=address_by_route()),
-                    )
-                )
-    elif args.scheduler_name == 'slurm':
+    if args.scheduler_name == 'slurm':
         executors.append(HighThroughputExecutor(
                     label=step,
                     worker_debug=True,
                     address=address_by_hostname(),
+                    cores_per_worker=vCPUs_per_core*int(cores_per_task[step]),
                     provider=SlurmProvider(
                         args.scheduler_partition,
                         channel=channel,

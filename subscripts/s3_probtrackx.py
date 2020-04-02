@@ -407,6 +407,8 @@ def s3_5_edi_combine(params, consensus_edges, inputs=[]):
     edi_maps = join(sdir,"EDI","EDImaps")
     edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
     tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
+    smart_remove(edi_maps)
+    smart_mkdir(edi_maps)
 
     # Collect number of probtrackx tracts per voxel
     for edge in get_edges_from_file(pbtx_edge_list):
@@ -464,12 +466,10 @@ def setup_s3(params, inputs):
     smart_remove(pbtk_dir)
     smart_remove(connectome_dir)
     smart_remove(consensus_dir)
-    smart_remove(edi_maps)
     smart_mkdir(tmp_dir)
     smart_mkdir(pbtk_dir)
     smart_mkdir(connectome_dir)
     smart_mkdir(consensus_dir)
-    smart_mkdir(edi_maps)
 
     # Probtrackx
     s3_1_future = s3_1_start(params, inputs=inputs)

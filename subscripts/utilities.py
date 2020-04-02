@@ -301,7 +301,7 @@ def copy_dir(src, dest):
     smart_mkdir(dest)
     run("cp -Rf {} {}".format(join(src,"."), join(dest,".")))
 
-def parse_default(arg, default, args_obj):
+def parse_default(arg, default, args_obj, pending_args):
     if not hasattr(args_obj, arg) or getattr(args_obj, arg) is None:
         setattr(args_obj, arg, default)
     if isinstance(default, bool):
@@ -309,6 +309,7 @@ def parse_default(arg, default, args_obj):
     elif isinstance(default, str):
         if str(getattr(args_obj, arg)).lower() == "none":
             setattr(args_obj, arg, None)
+    pending_args.pop(arg, None)
 
 def add_binary_vol(src, target, params={}):
     run("fslmaths {} -add {} {}".format(src, target, target), params)
