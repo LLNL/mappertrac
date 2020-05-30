@@ -159,7 +159,7 @@ parse_default('parsl_path', None, args, pending_args)
 parse_default('render_list', "lists/render_targets.txt", args, pending_args)
 parse_default('pbtx_sample_count', 200, args, pending_args)
 parse_default('pbtx_random_seed', None, args, pending_args)
-parse_default('pbtx_edge_chunk_size', 4, args, pending_args)
+parse_default('pbtx_edge_chunk_size', 16, args, pending_args)
 parse_default('pbtx_max_memory', 0, args, pending_args)
 parse_default('pbtx_max_gpu_memory', 0, args, pending_args)
 parse_default('connectome_idx_list', "lists/connectome_idxs.txt", args, pending_args)
@@ -430,6 +430,9 @@ total_num_steps = sum(num_subjects.values())
 if total_num_steps == 0:
     print("Error: not running any steps on any subjects")
     exit(0)
+elif 's3' in steps and len(subject_dict) > 50:
+    print("Error: do not run probtrackx tractography with more than 50 subjects at a time. Frequent instability on Quartz.")
+    exit(0) 
 else:
     print("In total, running {} steps across {} subjects".format(total_num_steps, len(subject_dict)))
 

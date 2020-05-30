@@ -45,6 +45,11 @@ def s2a_bedpostx(params, inputs=[]):
         else:
             write(bedpostx_sh, "bedpostx_gpu {} -NJOBS 4".format(bedpostx))
         run("sh " + bedpostx_sh, params)
+        # hacky validation step
+        with open(stdout) as f:
+            log_content = f.read()
+            for i in range(1, 5):
+                assert("{:d} parts processed out of 4".format(i) in log_content)
     else:
         write(stdout, "Running Bedpostx without GPU")
         run("bedpostx {}".format(bedpostx), params)
