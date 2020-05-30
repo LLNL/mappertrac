@@ -1,5 +1,6 @@
-# TRACK TBI
-Parallel EDI tractography workflow
+# MaPPeRTrac
+
+Massively Parallel, Portable, and Reproducible Tractography (MaPPeRTrac) is a brain tractography workflow for high performance computing. It incorporates novel technologies to simplify and accelerate neuroimaging research.
 <br></br>
 <br></br>
 ### Setup
