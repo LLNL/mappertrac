@@ -428,11 +428,11 @@ for sname in subject_dict:
         num_subjects[step] += 1
 total_num_steps = sum(num_subjects.values())
 if total_num_steps == 0:
-    print("Error: not running any steps on any subjects")
-    exit(0)
-elif 's3' in steps and len(subject_dict) > 50:
-    print("Error: do not run probtrackx tractography with more than 50 subjects at a time. Frequent instability on Quartz.")
-    exit(0) 
+    raise Exception("Not running any steps on any subjects")
+elif 's3' in steps:
+    subject_samples = len(subject_dict) * int(args.pbtx_sample_count)
+    if subject_samples > 10000:
+        raise Exception("Do not run probtrackx tractography with more than 10000 subjects * pbtx_samples. Frequent instability on Quartz.")
 else:
     print("In total, running {} steps across {} subjects".format(total_num_steps, len(subject_dict)))
 
