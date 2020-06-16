@@ -178,3 +178,10 @@ The following are the most important output files. This list is not comprehensiv
 | bids_json             | examples/dataset_description.json | Description file dataset_description.json, as specified at https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html |
 | bids_readme           |                                   | Free form text file describing the dataset in more detail |
 | bids_session_name     |                                   | Name for the session timepoint (e.g. 2weeks) |
+
+### License
+
+MaPPeRTrac is distributed under the terms of the BSD-3 License.
+
+LLNL-CODE-811655
+
