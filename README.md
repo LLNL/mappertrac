@@ -180,12 +180,13 @@ The following are the most important output files. This list is not comprehensiv
 | bids_readme           |                                   | Free form text file describing the dataset in more detail |
 | bids_session_name     |                                   | Name for the session timepoint (e.g. 2weeks) |
 
-######################################
+
 
 ### download_openneuro.py
 
 Download MRI images from OpenNeuro repository by providing path to install data and accession ID of the MRI image.
 
+```
 usage: download_openneuro.py [-h] [--install-directory INSTALL_DIR]
                              [-a ACC_NUM]
 
@@ -196,20 +197,28 @@ optional arguments:
   -a ACC_NUM, --accession ACC_NUM
                         MRI Accession ID from OpenNeuro
 
+```
 
 Requirements:
 python package datalad, git-appex
 Installation:
 
+```
 conda install -c conda-forge datalad
+```
 
 on mac:
+
+```
 brew install git-annex
+```
 
 on linux:
-conda install -c conda-forge git-annex
 
-#######################################
+```
+conda install -c conda-forge git-annex
+```
+
 
 ### License
 
