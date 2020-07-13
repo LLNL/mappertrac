@@ -182,15 +182,14 @@ The following are the most important output files. This list is not comprehensiv
 
 
 
-### download_openneuro.py
+### Download MRI Images from OpenNeuro
 
 Download MRI images from OpenNeuro repository by providing path to install data and accession ID of the MRI image.
 
 ```
-usage: download_openneuro.py [-h] [--install-directory INSTALL_DIR]
-                             [-a ACC_NUM]
+usage: subscripts/download_openneuro.py [-h] [--install-directory INSTALL_DIR] [-a ACC_NUM]
 
-optional arguments:
+arguments:
   -h, --help            show this help message and exit
   --install-directory INSTALL_DIR
                         Path where data will be installed
@@ -200,7 +199,7 @@ optional arguments:
 ```
 
 Requirements:
-python package datalad, git-appex
+python package datalad, git-annex
 Installation:
 
 ```

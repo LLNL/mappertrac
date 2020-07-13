@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from datalad.api import install
 import argparse, os, tempfile, sys, glob
 from subprocess import call
