@@ -22,7 +22,7 @@ From: ubuntu:16.04
     add-apt-repository -y universe
     sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
     apt-get -y update
-    apt-get -y install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron
+    apt-get -y install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron debhelper dh-autoreconf
     locale-gen en_US.UTF-8
     rm /bin/sh
     ln -s /bin/bash /bin/sh
@@ -95,7 +95,7 @@ From: ubuntu:16.04
     $VTK_SRC
     make -j12
     cd $MAIN_DIR
-    python3.5 -m pip install nibabel pyevtk numpy
+    python3.5 -m pip install nibabel pyevtk numpy==1.18.5
 
     # CUDA 5.0
     CUDA5_RUN=$(basename $CUDA5)
