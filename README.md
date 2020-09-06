@@ -29,7 +29,10 @@ i. Obtain root access (you can copy and run the image in a non-root system after
 ii. Place a Freesurfer `license.txt` in the repo directory (https://surfer.nmr.mgh.harvard.edu/fswiki/License).  
 iii. `./container/build.sh`
 <br></br>
-Make sure to set `container_path` to the Singularity container's location.
+Notes:
+- Make sure to set `container_path` to the Singularity container's location.
+- If you are having trouble building the container, try branch `no_viz`. This will disable render functionality.
+- Alternatively, download the image [here](https://drive.google.com/file/d/1lh0_5GO6-7qIznjvIcSMY-Ua8iBpZ4DJ/view?usp=sharing).
 <br></br>
 ### Launch
 Specify parameters either in a config JSON file or as command line arguments. See <b>s_run_all.py</b> for parameter details.
