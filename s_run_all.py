@@ -6,7 +6,7 @@ from parsl.executors.ipp import IPyParallelExecutor
 from parsl.executors import HighThroughputExecutor
 from parsl.launchers import MpiRunLauncher,SingleNodeLauncher,SimpleLauncher,SrunLauncher
 from parsl.addresses import address_by_hostname,address_by_route
-from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider
+from parsl.providers import LocalProvider,SlurmProvider,CobaltProvider,GridEngineProvider
 from parsl.channels import SSHInteractiveLoginChannel,LocalChannel,SSHChannel
 from parsl.utils import get_all_checkpoints
 from parsl.executors.ipp_controller import Controller
