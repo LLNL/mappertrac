@@ -52,10 +52,15 @@ TracktographyScripts/
 |  +- build.sh
 |  +- Singularity               # Singularity build recipe
 |
-+- example_config.json          # Example of the config JSON
-+- example_subjects.json        # Example of the subjects JSON
++- examples
+|  +- dataset_description.json  # Example of the BIDS dataset description
+|  +- dummy_config.json         # Example of the config JSON
+|  +- dummy_dicom/
+|  +- dummy_nifti/
+|  +- dummy_subjects.json       # Example of the subjects JSON
 |
-+- license.txt                  # Not included, required to build Singularity container
++- license.txt                  # Freesurfer license. NOTE: not included, required to build Singularity container
++- LICENSE                      # MaPPeRTrac license.
 |
 +- lists/
 |  +- connectome_idxs.txt       # Brain region indices for .mat connectome files
@@ -179,7 +184,7 @@ The following are the most important output files. This list is not comprehensiv
 | s2b_cores             | [[core count on head node]]       | Cores per node for step s2b |
 | s3_cores              | [[core count on head node]]       | Cores per node for step s3 |
 | s4_cores              | [[core count on head node]]       | Cores per node for step s4 |
-| bids_json             | examples/dataset_description.json | Description file dataset_description.json, as specified at https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html |
+| bids_json             | examples/dummy_bids_desc.json     | Description file dataset_description.json, as specified at https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html |
 | bids_readme           |                                   | Free form text file describing the dataset in more detail |
 | bids_session_name     |                                   | Name for the session timepoint (e.g. 2weeks) |
 
