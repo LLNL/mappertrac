@@ -3,7 +3,7 @@
     "output_dir": "output",
     "scheduler_name": "slurm",
     "scheduler_bank": "ccp",
-    "scheduler_partition": "pbatch",
+    "scheduler_partition": "pdebug",
     "steps": "s1",
     "force": "true"
 }

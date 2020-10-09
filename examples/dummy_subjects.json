@@ -5,5 +5,5 @@
         "extra_b0_dirs": [
             "examples/dummy_dicom/b0"
         ]
-    },
+    }
 }
