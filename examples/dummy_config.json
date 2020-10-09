@@ -1,0 +1,9 @@
+{
+    "subjects_json": "examples/dummy_subjects.json",
+    "output_dir": "output",
+    "scheduler_name": "slurm",
+    "scheduler_bank": "ccp",
+    "scheduler_partition": "pbatch",
+    "steps": "s1",
+    "force": "true"
+}
