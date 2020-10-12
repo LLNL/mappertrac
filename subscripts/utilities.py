@@ -158,6 +158,10 @@ def write(path, output, params={}):
     with open(path, 'a') as f:
         f.write(str(output) + "\n")
 
+def write_error(path, output, params={}):
+    write(path, 'Exception: ' + output, params)
+    raise output
+
 def record_start(params):
     """Record step start in timing log, and write to stdout.
     """

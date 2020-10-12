@@ -8,7 +8,7 @@ from shutil import copyfile
 def s1_1_dicom_preproc(params, inputs=[]):
     import time,tarfile
     from subscripts.utilities import run,record_apptime,record_start,smart_remove,smart_copy, \
-                                     smart_mkdir,write,strip_trailing_slash
+                                     smart_mkdir,write,strip_trailing_slash,write_error
     from os.path import join,split,exists,basename
     from shutil import copyfile
     from glob import glob
@@ -105,12 +105,12 @@ def s1_1_dicom_preproc(params, inputs=[]):
         found_T1 = glob(join(T1_dicom_tmp_dir, 'co*.nii.gz'))
 
         if len(found_bvals) != 1:
-            raise Exception('Did not find exactly one bvals output in {}'.format(DTI_dicom_tmp_dir))
+            write_error(stdout, 'Did not find exactly one bvals output in {}'.format(DTI_dicom_tmp_dir), params)
         else:
             copyfile(found_bvals[0], bvals_file)
 
         if len(found_bvecs) != 1:
-            raise Exception('Did not find exactly one bvecs output in {}'.format(DTI_dicom_tmp_dir))
+            write_error(stdout, 'Did not find exactly one bvecs output in {}'.format(DTI_dicom_tmp_dir), params)
         else:
             copyfile(found_bvecs[0], bvecs_file)
 
@@ -118,7 +118,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
         if len(found_T1) == 0:
             found_T1 = glob(join(T1_dicom_tmp_dir, '*.nii.gz'))
         if len(found_T1) == 0:
-            raise Exception('Did not find T1 output in {}'.format(T1_dicom_tmp_dir))
+            write_error(stdout, 'Did not find T1 output in {}'.format(T1_dicom_tmp_dir), params)
         elif len(found_T1) > 1:
             write(stdout, 'Warning: Found more than one T1 output in {}'.format(T1_dicom_tmp_dir))
         found_T1.sort()
@@ -143,7 +143,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             else:
                 normal_slices.append(file)
         if not b0_slices:
-            raise Exception('Failed to find b0 values in {}'.format(DTI_dicom_dir))
+            write_error(stdout, 'Failed to find b0 values in {}'.format(DTI_dicom_dir), params)
         write(stdout, 'Found {} normal DTI slices'.format(len(normal_slices)))
 
         # Remove outliers from b0 values
@@ -158,7 +158,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
                     b0_slices.pop(file)
                     num_outliers += 1
             if num_outliers > max_outliers:
-                raise Exception('Found more than {} outliers in b0 values. This probably means that this script has incorrectly identified b0 slices.'.format(max_outliers))
+                write_error(stdout, 'Found more than {} outliers in b0 values. This probably means that this script has incorrectly identified b0 slices.'.format(max_outliers), params)
         write(stdout, 'Found {} b0 slices'.format(len(b0_slices)))
 
         # Average b0 slices into a single image
@@ -184,7 +184,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             entries = [x.strip() for x in f.read().split() if x]
             extra_zero = entries.pop(0) # strip leading zero
             if extra_zero != "0":
-                raise Exception("{} should begin with zero, as a placeholder for the averaged b0 slice".format(bvals_file))
+                write_error(stdout, "{} should begin with zero, as a placeholder for the averaged b0 slice".format(bvals_file), params)
 
             # remove zero sequences
             min_sequence_length = 5
@@ -193,17 +193,17 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 while len(entries) > num_slices:
                     extra_zero = entries.pop(0)
                     if extra_zero != "0":
-                        raise Exception("Failed to clean extra zeros from {}".format(bvals_file))
+                        write_error(stdout, "Failed to clean extra zeros from {}".format(bvals_file), params)
             elif all(x == "0" for x in entries[-1:-min_sequence_length-1:-1]):
                 write(stdout, "Stripped trailing zero sequence from {}".format(bvals_file))
                 while len(entries) > num_slices:
                     extra_zero = entries.pop(-1)
                     if extra_zero != "0":
-                        raise Exception("Failed to clean extra zeros from {}".format(bvals_file))
+                        write_error(stdout, "Failed to clean extra zeros from {}".format(bvals_file), params)
 
             if len(entries) > num_slices:
-                raise Exception('Failed to clean bvals file {}. Since {} has {} slices, bvals must have {} columns'.
-                    format(bvals_file, hardi_file, num_slices, num_slices))
+                write_error(stdout, 'Failed to clean bvals file {}. Since {} has {} slices, bvals must have {} columns'
+                    .format(bvals_file, hardi_file, num_slices, num_slices), params)
             text = "0 " + " ".join(entries) + "\n" # restore leading zero
             f.seek(0)
             f.write(text)
@@ -217,7 +217,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
                 entries = [x.strip() for x in line.split() if x]
                 extra_zero = entries.pop(0) # strip leading zero
                 if extra_zero != "0":
-                    raise Exception("Each line in {} should begin with zero, as a placeholder for the averaged b0 slice".format(bvecs_file))
+                    write_error(stdout, "Each line in {} should begin with zero, as a placeholder for the averaged b0 slice".format(bvecs_file), params)
 
                 # remove zero sequences
                 min_sequence_length = 5
@@ -226,17 +226,17 @@ def s1_1_dicom_preproc(params, inputs=[]):
                     while len(entries) > num_slices:
                         extra_zero = entries.pop(0)
                         if extra_zero != "0":
-                            raise Exception("Failed to clean extra zeros from {}".format(bvecs_file))
+                            write_error(stdout, "Failed to clean extra zeros from {}".format(bvecs_file), params)
                 elif all(x == "0" for x in entries[-1:-min_sequence_length-1:-1]):
                     write(stdout, "Stripped trailing zero sequence from {}".format(bvecs_file))
                     while len(entries) > num_slices:
                         extra_zero = entries.pop(-1)
                         if extra_zero != "0":
-                            raise Exception("Failed to clean extra zeros from {}".format(bvecs_file))
+                            write_error(stdout, "Failed to clean extra zeros from {}".format(bvecs_file), params)
 
                 if len(entries) > num_slices:
-                    raise Exception('Failed to clean bvecs file {}. Since {} has {} slices, bvecs must have {} columns'.
-                        format(bvecs_file, hardi_file, num_slices, num_slices))
+                    write_error(stdout, 'Failed to clean bvecs file {}. Since {} has {} slices, bvecs must have {} columns'
+                        .format(bvecs_file, hardi_file, num_slices, num_slices), params)
                 text += "0 " + " ".join(entries) + "\n" # restore leading zero
             f.seek(0)
             f.write(text)
