@@ -105,12 +105,14 @@ def s1_1_dicom_preproc(params, inputs=[]):
         found_T1 = glob(join(T1_dicom_tmp_dir, 'co*.nii.gz'))
 
         if len(found_bvals) != 1:
-            write_error(stdout, 'Did not find exactly one bvals output in {}'.format(DTI_dicom_tmp_dir), params)
+            write_error(stdout, 'Did not find exactly one bvals output in {}. Instead found {}.'
+                .format(DTI_dicom_tmp_dir, len(found_bvals)), params)
         else:
             copyfile(found_bvals[0], bvals_file)
 
         if len(found_bvecs) != 1:
-            write_error(stdout, 'Did not find exactly one bvecs output in {}'.format(DTI_dicom_tmp_dir), params)
+            write_error(stdout, 'Did not find exactly one bvecs output in {}. Instead found {}.'
+                .format(DTI_dicom_tmp_dir, len(found_bvecs)), params)
         else:
             copyfile(found_bvecs[0], bvecs_file)
 
@@ -341,11 +343,16 @@ def s1_4_dti_fit(params, inputs=[]):
     FA = join(sdir,"FA.nii.gz")
     run("fslmerge -t {} {}".format(output_data, " ".join(timeslices)), params)
     run("bet {} {} -m -f 0.3".format(output_data,bet), params)
-    run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(output_data,dti_params,bet_mask,bvecs,bvals), params)
-    run("fslmaths {} -add {} -add {} -div 3 {}".format(dti_L1,dti_L2,dti_L3,dti_MD), params)
-    run("fslmaths {} -add {} -div 2 {}".format(dti_L2,dti_L3,dti_RD), params)
-    copyfile(dti_L1,dti_AD)
-    copyfile(dti_FA,FA)
+
+    if exists(bet_mask):
+        run("dtifit --verbose -k {} -o {} -m {} -r {} -b {}".format(output_data,dti_params,bet_mask,bvecs,bvals), params)
+        run("fslmaths {} -add {} -add {} -div 3 {}".format(dti_L1,dti_L2,dti_L3,dti_MD), params)
+        run("fslmaths {} -add {} -div 2 {}".format(dti_L2,dti_L3,dti_RD), params)
+        copyfile(dti_L1,dti_AD)
+        copyfile(dti_FA,FA)
+    else:
+        write(stdout, "Warning: failed to generate masked outputs")
+
     for i in glob("{}_tmp????.*".format(output_prefix)):
         smart_remove(i)
     for j in glob("{}_ref*".format(output_prefix)):
