@@ -127,7 +127,12 @@ def s1_1_dicom_preproc(params, inputs=[]):
         # Copy extra b0 values to DTI temp dir
         for extra_b0_tmp_dir in extra_b0_tmp_dirs:
             for file in glob(join(extra_b0_tmp_dir, "*.nii.gz")):
-                copyfile(file, join(DTI_dicom_tmp_dir, "extra_b0_" + basename(file)))
+                file_copy = join(DTI_dicom_tmp_dir, "extra_b0_" + basename(file))
+                copyfile(file, file_copy)
+
+                # Ensure extra b0 slices get counted as b0
+                slice_val = run("fslmeants -i {} | head -n 1".format(file_copy), params)
+                b0_slices[file_copy] = slice_val
             write(stdout, 'Copied NiFTI outputs from {} to {}'.format(extra_b0_tmp_dir, DTI_dicom_tmp_dir))
 
         # Sort slices into DTI and b0
@@ -140,7 +145,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
             # mark as b0 if more than 20% from normal slice median
             if abs(slice_val - normal_median) > 0.2 * normal_median:
                 b0_slices[file] = slice_val
-            else:
+            elif not file in b0_slices:
                 normal_slices.append(file)
         if not b0_slices:
             write_error(stdout, 'Failed to find b0 values in {}'.format(DTI_dicom_dir), params)

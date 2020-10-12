@@ -2,7 +2,11 @@
 *.stdout
 *.simg
 *.json
+*.dcm
+*.nii.gz
 !examples/*.json
+!examples/*/*/*.dcm
+!examples/*/*/*.nii.gz
 *.qsub
 *.core
 *.out
