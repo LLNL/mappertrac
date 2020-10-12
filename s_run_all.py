@@ -569,7 +569,6 @@ for step in steps:
                         max_blocks=1,
                         walltime=walltimes[step],
                         scheduler_options=options,
-                        move_files=False,
                     ),
                 )
             )
