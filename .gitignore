@@ -5,8 +5,8 @@
 *.dcm
 *.nii.gz
 !examples/*.json
-!examples/*/*/*.dcm
-!examples/*/*/*.nii.gz
+!examples/dummy_dicom/*/*.dcm
+!examples/dummy_nifti/*.nii.gz
 *.qsub
 *.core
 *.out
