@@ -132,7 +132,7 @@ def s1_1_dicom_preproc(params, inputs=[]):
 
                 # Ensure extra b0 slices get counted as b0
                 slice_val = run("fslmeants -i {} | head -n 1".format(file_copy), params)
-                b0_slices[file_copy] = slice_val
+                b0_slices[file_copy] = float(slice_val)
             write(stdout, 'Copied NiFTI outputs from {} to {}'.format(extra_b0_tmp_dir, DTI_dicom_tmp_dir))
 
         # Sort slices into DTI and b0
