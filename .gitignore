@@ -21,6 +21,7 @@ parsl_logs/
 qsub/
 __pycache__
 !.gitignore
+!.gitattributes
 *~
 lists/subject*.txt
 cmd_parsl.auto*
