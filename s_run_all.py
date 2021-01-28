@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse,multiprocessing,parsl,getpass,socket,json,sys,re
+import argparse,multiprocessing,parsl,getpass,socket,json,sys,re,glob
 from parsl.app.app import python_app,bash_app
 from parsl.config import Config
 from parsl.executors.ipp import IPyParallelExecutor
@@ -45,7 +45,17 @@ if len(sys.argv) == 2 and sys.argv[1] not in ['-h', '--help']:
     args = ArgsObject(**raw_args)
 else:
     parser = argparse.ArgumentParser(description='Generate connectome and edge density images',
-        usage='%(prog)s [config_json]\n\n<< OR >>\n\nusage: %(prog)s --subjects_json SUBJECTS_JSON --scheduler_name SCHEDULER\n(see optional arguments with --help)\n')
+        usage="""%(prog)s --subject SUBJECT_NAME --scheduler_name SCHEDULER --output_dir OUT_DIR
+
+<< OR >>
+
+usage: %(prog)s --subjects_json SUBJECTS_JSON --scheduler_name SCHEDULER --output_dir OUT_DIR
+
+<< OR >>
+
+usage: %(prog)s [config_json]
+
+(see optional arguments with --help)""")
     
     ### ==================
     ### Required arguments
@@ -73,6 +83,7 @@ else:
     parser.add_argument('--unix_username', help='Unix username for Parsl job requests')
     parser.add_argument('--unix_group', help='Unix group to assign file permissions')
     parser.add_argument('--container_path', help='Path to Singularity container image')
+    parser.add_argument('--container_cwd', help='Path to current working directory for Singularity.')
     parser.add_argument('--parsl_path', help='Path to Parsl binaries, if not installed in /usr/bin or /usr/sbin')
     parser.add_argument('--render_list', help='Text file list of NIfTI outputs for s4_render (relative to each subject output directory).')
     parser.add_argument('--gssapi', help='Use Kerberos GSS-API authentication.', action='store_true')
@@ -148,6 +159,7 @@ parse_default('scheduler_options', "", args, pending_args)
 parse_default('worker_init', "", args, pending_args)
 parse_default('gpu_options', "", args, pending_args)
 parse_default('container_path', "container/image.simg", args, pending_args)
+parse_default('container_cwd', "", args, pending_args)
 parse_default('unix_username', getpass.getuser(), args, pending_args)
 parse_default('unix_group', None, args, pending_args)
 parse_default('force', False, args, pending_args)
@@ -216,8 +228,14 @@ if len(steps) != len(set(steps)):
     raise Exception("Argument \"steps\" has duplicate values")
 if len(gpu_steps) != len(set(gpu_steps)):
     raise Exception("Argument \"gpu_steps\" has duplicate values")
-if hasattr(args, 'subject') and 's1' in steps:
-    raise Exception("Step s1 must be run with argument \"subjects_json\", not \"subject\". This is because you need to specify NiFTI or DICOM directories.")
+if hasattr(args, 'subject') and args.subject:
+    if 's1' in steps:
+        raise Exception("Step s1 must be run with \"--subjects_json\", not \"--subject\". This is because you need to specify NiFTI/DICOM input directories.")
+    
+    single_subject_path = join(abspath(args.output_dir), 'derivatives', '**', get_bids_subject_name(args.subject))
+    if len(glob(single_subject_path, recursive=True)) == 0:
+        raise Exception("No subject matches {}\nNote: subject directory must be named according to BIDS format.".format(single_subject_path))
+
 step_setup_functions = {
     'debug': setup_debug,
     's1': setup_s1,
@@ -280,8 +298,7 @@ else:
 
 for sname in json_data:
     sname = sname.replace('sub-', '') # make naming consistent
-    regex = re.compile('[^a-zA-Z0-9]')
-    subject_name = 'sub-{}'.format(regex.sub('', sname))
+    subject_name = get_bids_subject_name(sname)
     if args.bids_session_name:
         session_name = args.bids_session_name.replace('ses-', '')
         session_name = 'ses-{}'.format(regex.sub('', session_name))

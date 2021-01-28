@@ -1,4 +1,4 @@
-import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap,fnmatch,gzip
+import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap,fnmatch,gzip,re
 from glob import glob
 from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile
 from shutil import copyfile,copytree,rmtree,ignore_patterns
@@ -55,12 +55,15 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
     container = params['container'] if (params and 'container' in params) else None
     use_gpu = params['use_gpu'] if (params and 'use_gpu' in params) else None
     sdir = params['sdir'] if (params and 'sdir' in params) else None
+    container_cwd = params['container_cwd'] if (params and 'container_cwd' in params) else None
 
     # When using a container, change all paths to be relative to its mounted directory (hideous, but works without changing other code)
     if container is not None:
         odir = split(sdir)[0]
         command = command.replace(odir, "/share")
         command = "singularity exec{} -B {}:/share {} {}".format(" --nv" if use_gpu else "", odir, container, command)
+        if container_cwd:
+            command = "cd {}; {}".format(container_cwd, command)
         if stdout:
             write(stdout, command)
 
@@ -359,4 +362,8 @@ def compress_file(file):
             shutil.copyfileobj(f_in, f_out)
     return compressed_file
 
+def get_bids_subject_name(sname):
+    sname = sname.replace('sub-', '') # make naming consistent
+    regex = re.compile('[^a-zA-Z0-9]')
+    return 'sub-{}'.format(regex.sub('', sname))
 
