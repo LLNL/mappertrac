@@ -367,3 +367,10 @@ def get_bids_subject_name(sname):
     regex = re.compile('[^a-zA-Z0-9]')
     return 'sub-{}'.format(regex.sub('', sname))
 
+def validate(file, params={}):
+    file = file.strip()
+    if not file.endswith('.nii.gz'):
+        file = file + '.nii.gz'
+    mean = run("fslstats {} -m | head -n 1".format(file), params)
+    assert is_float(mean), "Invalid mean value in {}".format(file)
+    assert float(mean) != 0, "Zero mean value in {}".format(file)
