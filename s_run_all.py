@@ -577,6 +577,7 @@ for step in steps:
                     label=step,
                     worker_debug=True,
                     address=address_by_hostname(),
+                    max_workers=int(cores_per_node[step]), # cap workers, or else defaults to infinity.
                     provider=GridEngineProvider(
                         channel=channel,
                         launcher=SingleNodeLauncher(),
@@ -586,6 +587,7 @@ for step in steps:
                         max_blocks=1,
                         walltime=walltimes[step],
                         scheduler_options=options,
+                        queue='gpu.q', # enables Wynton GPU queues
                     ),
                 )
             )
