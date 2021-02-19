@@ -219,8 +219,12 @@ def s3_2_probtrackx(params, edges, inputs=[]):
                 with open(waytotal, 'r') as f:
                     waytotal_count = f.read().strip()
                     fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
-                    assert is_float(waytotal_count), "Failed to read waytotal_count value {}".format(waytotal_count)
-                    assert is_float(fdt_count), "Failed to read fdt_count value {}".format(fdt_count)
+                    if not is_float(waytotal_count):
+                        write(stdout, "Error: Failed to read waytotal_count value {} in {}".format(waytotal_count, edge))
+                        continue
+                    if not is_float(fdt_count):
+                        write(stdout, "Error: Failed to read fdt_count value {} in {}".format(fdt_count, edge))
+                        continue
                     edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
                     smart_remove(edge_file)
                     write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
@@ -230,7 +234,9 @@ def s3_2_probtrackx(params, edges, inputs=[]):
                         line = f.read().strip()
                         if len(line) > 0: # ignore empty lines
                             chunks = [x.strip() for x in line.split(' ') if x]
-                            assert len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3]), "Connectome {} has invalid edge {} to {}".format(edge_file, a, b)
+                            if not (len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3])):
+                                write(stdout, "Error: Connectome {} has invalid edge {} to {}".format(edge_file, a, b))
+                                continue
             else:
                 write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
             copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
@@ -431,7 +437,8 @@ def s3_5_edi_combine(params, consensus_edges, inputs=[]):
             copyfile(consensus, edge_total)
         else:
             run("fslmaths {0} -add {1} {1}".format(consensus, edge_total), params)
-    assert exists(edge_total), "Failed to generate {}".format(edge_total)
+    if not exists(edge_total):
+        write(stdout, "Error: Failed to generate {}".format(edge_total))
 
     if compress_pbtx_results:
         pbtk_archive = strip_trailing_slash(pbtk_dir) + '.tar.gz'
