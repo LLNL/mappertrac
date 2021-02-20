@@ -258,7 +258,6 @@ for step in steps:
         if prereq not in steps:
             print("Warning: step {} has prerequisite steps {}. You are only running steps {}.".format(step, prereqs[step], steps))
             break
-
 ############################
 # Inputs
 ############################
@@ -288,16 +287,17 @@ if args.bids_readme:
     smart_copy(args.bids_readme, join(rawdata_dir, "README"))
 
 subject_dict = {}
-
 json_data = {}
 if hasattr(args, 'subjects_json') and args.subjects_json is not None:
     with open(args.subjects_json, newline='') as json_file:
         json_data = json.load(json_file)
 else:
-    json_data = {args.subject:{}}
+    sname = get_bids_subject_name(args.subject).replace('sub-', '')
+    json_data = {sname:{"nifti_dir": single_subject_path}}
 
 for sname in json_data:
     sname = sname.replace('sub-', '') # make naming consistent
+    regex = re.compile('[^a-zA-Z0-9]')
     subject_name = get_bids_subject_name(sname)
     if args.bids_session_name:
         session_name = args.bids_session_name.replace('ses-', '')
