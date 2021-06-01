@@ -35,7 +35,7 @@ Notes:
 - Alternatively, download the image [here](https://drive.google.com/file/d/1lh0_5GO6-7qIznjvIcSMY-Ua8iBpZ4DJ/view?usp=sharing).
 <br></br>
 ### Launch
-Specify parameters either in a config JSON file or as command line arguments. See <b>s_run_all.py</b> for parameter details.
+Specify parameters either in a config JSON file or as command line arguments. Use `examples/dummy_config.json` to process dummy data.
 
 `./s_run_all.py <config_json>`
 
