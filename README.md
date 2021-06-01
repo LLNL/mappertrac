@@ -16,8 +16,8 @@ Requirements:
 
 <b>2\. Clone repository</b>
 
-`git clone https://lc.llnl.gov/bitbucket/scm/tbi/tracktographyscripts.git`  
-`cd tracktographyscripts`  
+`git clone git@github.com:LLNL/MaPPeRTrac.git`  
+`cd MaPPeRTrac/`  
 
 <b>3\. Load a Singularity container</b>
 

@@ -228,13 +228,16 @@ if len(steps) != len(set(steps)):
     raise Exception("Argument \"steps\" has duplicate values")
 if len(gpu_steps) != len(set(gpu_steps)):
     raise Exception("Argument \"gpu_steps\" has duplicate values")
+
+json_data = {}
 if hasattr(args, 'subject') and args.subject:
     if 's1' in steps:
         raise Exception("Step s1 must be run with \"--subjects_json\", not \"--subject\". This is because you need to specify NiFTI/DICOM input directories.")
     
-    single_subject_path = join(abspath(args.output_dir), 'derivatives', '**', get_bids_subject_name(args.subject))
+    single_subject_path = join(abspath(args.output_dir), 'derivatives', '**', get_bids_subject_name(args.subject), '**')
     if len(glob(single_subject_path, recursive=True)) == 0:
         raise Exception("No subject matches {}\nNote: subject directory must be named according to BIDS format.".format(single_subject_path))
+    json_data = {args.subject: {"nifti_dir": single_subject_path}}
 
 step_setup_functions = {
     'debug': setup_debug,
@@ -258,6 +261,7 @@ for step in steps:
         if prereq not in steps:
             print("Warning: step {} has prerequisite steps {}. You are only running steps {}.".format(step, prereqs[step], steps))
             break
+
 ############################
 # Inputs
 ############################
@@ -287,17 +291,15 @@ if args.bids_readme:
     smart_copy(args.bids_readme, join(rawdata_dir, "README"))
 
 subject_dict = {}
-json_data = {}
+
 if hasattr(args, 'subjects_json') and args.subjects_json is not None:
     with open(args.subjects_json, newline='') as json_file:
         json_data = json.load(json_file)
 else:
-    sname = get_bids_subject_name(args.subject).replace('sub-', '')
-    json_data = {sname:{"nifti_dir": single_subject_path}}
+    json_data = {args.subject:{}}
 
 for sname in json_data:
     sname = sname.replace('sub-', '') # make naming consistent
-    regex = re.compile('[^a-zA-Z0-9]')
     subject_name = get_bids_subject_name(sname)
     if args.bids_session_name:
         session_name = args.bids_session_name.replace('ses-', '')
