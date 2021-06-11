@@ -42,7 +42,6 @@ Notes:
 
 `./s_run_all.py <arg1>=val1 <arg2>=val2 etc...`
 <br></br>
-<br></br>
 Specify parameters either in a config JSON file or as command line arguments. See `examples/dummy_config.json` for an example.
 ### File Overview
 
