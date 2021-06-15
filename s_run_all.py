@@ -228,6 +228,8 @@ if len(steps) != len(set(steps)):
     raise Exception("Argument \"steps\" has duplicate values")
 if len(gpu_steps) != len(set(gpu_steps)):
     raise Exception("Argument \"gpu_steps\" has duplicate values")
+if not exists(args.container_path):
+    raise Exception(f'Container image does not exist at {args.container_path}')
 
 json_data = {}
 if hasattr(args, 'subject') and args.subject:
@@ -531,8 +533,6 @@ base_options = ""
 if args.scheduler_name in ['slurm']:
     base_options += "#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.scheduler_bank)
 base_options += str(args.scheduler_options) + '\n'
-if args.parsl_path is not None:
-    base_options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
 
 worker_init = args.worker_init
 worker_init += "\nexport PYTHONPATH=$PYTHONPATH:{}".format(getcwd())
@@ -542,6 +542,9 @@ for step in steps:
     node_count = int(node_counts[step])
     print("Requesting {} nodes for step \"{}\"".format(node_count, step))
     options = base_options
+    options += f"#SBATCH -c {cores_per_node[step]}\n"
+    if args.parsl_path is not None:
+        options += "PATH=\"{}:$PATH\"\nexport PATH\n".format(args.parsl_path)
     if step in gpu_steps:
         options += str(args.gpu_options) + '\n'
     if args.local_host_only:
