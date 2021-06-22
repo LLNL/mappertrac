@@ -352,6 +352,7 @@ def s1_4_dti_fit(params, inputs=[]):
         copyfile(dti_FA,FA)
     else:
         write(stdout, "Warning: failed to generate masked outputs")
+        raise Exception(f"Failed BET step. Please check {stdout} for more info.")
 
     for i in glob("{}_tmp????.*".format(output_prefix)):
         smart_remove(i)
