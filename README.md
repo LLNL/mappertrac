@@ -34,15 +34,19 @@ Notes:
 - If you are having trouble building the container, try branch `no_viz`. This will disable render functionality.
 - Alternatively, download the image [here](https://drive.google.com/file/d/1lh0_5GO6-7qIznjvIcSMY-Ua8iBpZ4DJ/view?usp=sharing).
 <br></br>
+
+<b>4\. Specify your DICOM or NIfTI data</b>
+
+Place your data in the same filesystem as the repository.
+
+You can download the example data [here](https://drive.google.com/file/d/1YC0QzWNohq173_zJaqZfnI5d6EPb9On2/view?usp=sharing).
+
 ### Launch
 
 `./s_run_all.py <config_json>`
-
-**OR**
-
-`./s_run_all.py <arg1>=val1 <arg2>=val2 etc...`
 <br></br>
-Specify parameters either in a config JSON file or as command line arguments. See `examples/dummy_config.json` for an example.
+See `examples/dummy_config.json` for example parameters.
+
 ### File Overview
 
 ```
