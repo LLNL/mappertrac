@@ -1,8 +1,18 @@
 {
-    "subjects_json": "examples/dummy_subjects.json",
+    "subjects_json": {
+
+        "dummy_nifti": {
+            "nifti_dir": "examples/dummy_nifti"
+        },
+
+        "dummy_dicom": {
+            "DTI_dicom_dir": "examples/dummy_dicom/DTI",
+            "T1_dicom_dir": "examples/dummy_dicom/T1"
+        }
+    },
     "output_dir": "output",
     "scheduler_name": "slurm",
-    "scheduler_bank": "ccp",
+    "scheduler_bank": "asccasc",
     "scheduler_partition": "pbatch",
     "steps": "s1",
     "force": "true",

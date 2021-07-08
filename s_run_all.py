@@ -295,8 +295,11 @@ if args.bids_readme:
 subject_dict = {}
 
 if hasattr(args, 'subjects_json') and args.subjects_json is not None:
-    with open(args.subjects_json, newline='') as json_file:
-        json_data = json.load(json_file)
+    if isinstance(args.subjects_json, dict):
+        json_data = args.subjects_json
+    else:
+        with open(args.subjects_json, newline='') as json_file:
+            json_data = json.load(json_file)
 else:
     json_data = {args.subject:{}}
 
