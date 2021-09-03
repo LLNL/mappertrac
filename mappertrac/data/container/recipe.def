@@ -1,0 +1,107 @@
+Bootstrap: docker
+From: ubuntu:16.04
+
+%files
+    license.txt
+
+%post
+    # Links
+    MAIN_DIR=$PWD
+    CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
+    FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
+    BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_8.0/bedpostx_gpu.zip
+    NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
+    MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+
+    # Linux packages
+    mkdir /share
+    apt-get -y update
+    apt-get install -y apt-transport-https ca-certificates
+    apt-get install -y software-properties-common
+    add-apt-repository -y universe
+    add-apt-repository -y ppa:deadsnakes/ppa
+    sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+    apt-get -y update
+    apt-get -y install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv
+    locale-gen en_US.UTF-8
+    rm /bin/sh
+    ln -s /bin/bash /bin/sh
+
+    # Heudiconv
+    curl https://bootstrap.pypa.io/get-pip.py | python3.8
+    pip install heudiconv
+
+    # FSL
+    NEURODEBIAN_KEY_RUN=$(basename $NEURODEBIAN_KEY)
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get install -y tzdata
+    ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+    dpkg-reconfigure --frontend noninteractive tzdata
+    gpg --keyserver hkp://keyserver.ubuntu.com:11371 --recv-keys 22598A94
+    wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
+    wget --no-check-certificate $NEURODEBIAN_KEY
+    apt-key add $NEURODEBIAN_KEY_RUN
+    apt-get -y update
+    apt-get -y install fsl-5.0-complete dcm2niix
+
+    # CUDA 8.0
+    CUDA8_RUN=$(basename $CUDA8)
+    wget --no-check-certificate $CUDA8
+    sh $CUDA8_RUN -silent -override -toolkit
+
+    # Bedpostx GPU
+    BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
+    wget --no-check-certificate $BEDPOSTX_GPU
+    unzip -o -d /usr/share/fsl/5.0 $BEDPOSTX_GPU_ZIP
+    cp /usr/share/fsl/5.0/bin/*.so /usr/share/fsl/5.0/lib/
+
+    # Freesurfer
+    FREESURFER_GZ=$(basename $FREESURFER)
+    wget --no-check-certificate $FREESURFER
+    tar -xzf $FREESURFER_GZ -C /opt
+    cp license.txt /opt/freesurfer/license.txt
+    chmod a+r /opt/freesurfer/license.txt
+
+    # Cleanup
+    rm -rf $CUDA8_RUN
+    rm -rf $FREESURFER_GZ
+    rm -rf $BEDPOSTX_GPU_ZIP
+    rm -rf /license.txt
+    apt-get -y clean
+
+%environment
+    export FSLDIR=/usr/share/fsl/5.0
+    FSL_DIR=$FSLDIR
+    FSLOUTPUTTYPE=NIFTI_GZ
+    FSLMULTIFILEQUIT=TRUE
+    FSLTCLSH=${FSLDIR}/bin/fsltclsh
+    FSLWISH=${FSLDIR}/bin/fslwish
+    FSLGECUDAQ="cuda.q"
+    FSL_BIN=${FSLDIR}/bin
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+
+    export FREESURFER_HOME=/opt/freesurfer
+    LOCAL_DIR=${FREESURFER_HOME}/local
+    PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    FSFAST_HOME=${FREESURFER_HOME}/fsfast
+    FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
+    FSF_OUTPUT_FORMAT="nii.gz"
+    MNI_DIR=${FREESURFER_HOME}/mni
+    MNI_DATAPATH=${FREESURFER_HOME}/mni/data
+    MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
+    MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
+    SUBJECTS_DIR=/share
+    FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
+
+    export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+
+    export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
+
+    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
+    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export OS=LINUX
+
+
