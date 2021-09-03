@@ -158,7 +158,7 @@ def print_start():
 def print_finish(start_time):
     print(get_finish())
 
-def write(path, output, params={}):
+def write(path, output='', params={}):
     if params and 'container' in params and 'work_dir' in params:
         command = command.replace(params['work_dir'], "/mnt")
     # make path to file if not an empty string

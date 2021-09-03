@@ -19,20 +19,17 @@ def parse_args(args):
 
     workflow_group = parser.add_mutually_exclusive_group(required=True)
 
-    workflow_group.add_argument('--preprocessing', '-s1', action='store_true',
-        help='Run step 1: preprocessing.')
+    workflow_group.add_argument('--freesurfer', '-s1', action='store_true',
+        help='Run step 1: freesurfer.')
 
     workflow_group.add_argument('--bedpostx', '-s2', action='store_true',
         help='Run step 2: bedpostx.')
 
-    workflow_group.add_argument('--freesurfer', '-s3', action='store_true',
-        help='Run step 3: freesurfer.')
-
-    workflow_group.add_argument('--probtrackx', '-s4', action='store_true',
-        help='Run step 4: probtrackx.')
+    workflow_group.add_argument('--probtrackx', '-s3', action='store_true',
+        help='Run step 3: probtrackx.')
 
     parser.add_argument('--outputs', '-o', default='mappertrac_outputs/',
-        help='Path to output directory.')
+        help='Path to output directories.')
 
     parser.add_argument('--container', default=join(cwd, 'image.sif'),
         help='Path to Singularity container image.')
@@ -76,21 +73,49 @@ def main():
     if isinstance(args.inputs, str):
         args.inputs = glob(args.inputs)
 
-    all_params = {}
+    output_dir = abspath(normpath(args.outputs))
+    smart_mkdir(output_dir)
+
+    all_params = []
 
     # Copy reads to subject directory
+    session_dirs = []
+    subject_dirs = [] # subjects without sessions
     for input_dir in args.inputs:
-        subject = basename(normpath(input_dir))
+        input_dir = abspath(input_dir)
 
-        if not subject:
-            raise Exception(f'Invalid subject {subject} for input {input_dir}')
+        sessions = glob(join(input_dir, 'ses-*/'))
+        if len(sessions) > 0:
+            session_dirs += [normpath(_) for _ in sessions]
+        else:
+            subject_dirs += [normpath(input_dir)]
 
-        subject_dir = abspath(join(args.outputs, subject))
-        all_params[subject] = {
+    for input_dir in session_dirs:
+        subject = basename(dirname(input_dir))
+        session = basename(input_dir)
+        subject_dir = join(output_dir, 'derivatives', subject, session)
+
+        all_params.append({
             'container': abspath(args.container),
+            'input_dir': input_dir,
+            'output_dir': output_dir,
             'work_dir': subject_dir,
+            'ID': f'{subject}_{session}',
             'stdout': join(subject_dir, 'worker.stdout'),
-        }
+        })
+
+    for input_dir in subject_dirs:
+        subject = basename(input_dir)
+        subject_dir = join(output_dir, 'derivatives', subject)
+
+        all_params.append({
+            'container': abspath(args.container),
+            'input_dir': input_dir,
+            'output_dir': output_dir,
+            'work_dir': subject_dir,
+            'ID': subject,
+            'stdout': join(subject_dir, 'worker.stdout'),
+        })
 
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
@@ -115,12 +140,12 @@ def main():
     parsl.set_stream_logger()
     parsl.load(config)
 
-    # if args.ivar:
-    #     results =  []
-    #     for params in all_params.values():
-    #         results.append(run_ivar(params))
-    #     for r in results:
-    #         r.result()
+    if args.freesurfer:
+        results =  []
+        for params in all_params:
+            results.append(run_freesurfer(params))
+        for r in results:
+            r.result()
 
 if __name__ == '__main__':
     main()
