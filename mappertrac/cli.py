@@ -65,7 +65,7 @@ def main():
         raise Exception(f"Missing container image at {abspath(args.container)}\n\n" +
             f"Either specify another image with --container\n\n" +
             f"Or build the container with the recipe at: {join(script_dir, 'data/container/recipe.def')}\n\n" +
-            f"Or download the container at: TODO needs upload\n")
+            f"Or download the container at: https://www.dropbox.com/s/2v74hra04bo22w7/image.sif?dl=1\n")
 
     if args.test:
         args.inputs = join(script_dir, 'data/example_inputs/sub-*/')

@@ -299,6 +299,49 @@ def validate(file, params={}):
     assert is_float(mean), "Invalid mean value in {}".format(file)
     assert float(mean) != 0, "Zero mean value in {}".format(file)
 
+def maskseeds(root_dir,input_dir,output_dir,low_threshold,high_threshold,high_threshold_thalamus,params):
+    
+    smart_remove(output_dir)
+    smart_mkdir(output_dir)
+
+    tmp_thalamus = join(root_dir, "tmp_thalamus.nii.gz")
+    tmp = join(root_dir, "tmp.nii.gz")
+        
+    # Now create two transformed volumes with threshold 1 and 2
+    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold,tmp), params)
+    run("fslmaths {} -thr {} -uthr {} -bin {}".format(join(root_dir,"FA.nii.gz"),low_threshold,high_threshold_thalamus,tmp_thalamus), params)
+    
+    for seed in glob(join(input_dir,"*s2fa.nii.gz")):
+
+        region = split(seed)[1].split(".")[1].split("_")[0]
+    
+        if region == "thalamus":
+            run("fslmaths {} -mas {} {}".format(seed, tmp_thalamus, join(output_dir,split(seed)[1])), params)
+        else:
+            run("fslmaths {} -mas {} {}".format(seed, tmp, join(output_dir,split(seed)[1])), params)
+           
+    smart_remove(tmp_thalamus)
+    smart_remove(tmp)
+    
+def saveallvoxels(root_dir,cortical_dir,subcortical_dir,output_name,params):
+    
+    smart_remove(join(root_dir,"cort.nii.gz"))
+    smart_remove(join(root_dir,"subcort.nii.gz"))
+    
+    all_vols = ""
+    for vol in glob(join(cortical_dir,"*_s2fa.nii.gz")):
+        all_vols += " " + vol
+    
+    run("find_the_biggest {} {}".format(all_vols,join(root_dir,"cort.nii.gz")), params)
+        
+    all_vols = ""
+    for vol in glob(join(subcortical_dir,"*_s2fa.nii.gz")):
+        all_vols += " " + vol
+    
+    run("find_the_biggest {} {}".format(all_vols,join(root_dir,"subcort.nii.gz")), params)
+    run("fslmaths {} -add {} {} ".format(join(root_dir,"cort.nii.gz"),join(root_dir,"subcort.nii.gz"),output_name), params)
+    run("fslmaths {} -bin {}".format(output_name,output_name), params)
+
 def append_to_filename(filename, append_string):
     name, ext = os.path.splitext(filename)
     return "{}_{}{}".format(name, append_string, ext)
