@@ -187,6 +187,7 @@ Arguments:
     for file in glob(join(sdir, 'volumes_subcortical_s2fa','*.nii.gz')):
         shutil.copy(file, EDI_allvols)
     validate(terminationmask, params)
+    update_permissions(sdir, params)
 
     write(join(sdir, 'S1_COMPLETE'))
     

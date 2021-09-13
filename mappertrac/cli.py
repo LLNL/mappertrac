@@ -147,5 +147,19 @@ def main():
         for r in results:
             r.result()
 
+    elif args.bedpostx:
+        results =  []
+        for params in all_params:
+            results.append(run_bedpostx(params))
+        for r in results:
+            r.result()
+
+    elif args.probtrackx:
+        results =  []
+        for params in all_params:
+            results.append(run_probtrackx(params))
+        for r in results:
+            r.result()
+
 if __name__ == '__main__':
     main()
