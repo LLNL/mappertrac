@@ -97,6 +97,7 @@ def main():
 
         all_params.append({
             'container': abspath(args.container),
+            'script_dir': abspath(script_dir),
             'input_dir': input_dir,
             'output_dir': output_dir,
             'work_dir': subject_dir,
@@ -110,6 +111,7 @@ def main():
 
         all_params.append({
             'container': abspath(args.container),
+            'script_dir': abspath(script_dir),
             'input_dir': input_dir,
             'output_dir': output_dir,
             'work_dir': subject_dir,

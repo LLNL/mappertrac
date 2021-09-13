@@ -1,0 +1,10 @@
+lh.bankssts_s2fa,lh.inferiorparietal_s2fa
+lh.bankssts_s2fa,lh.middletemporal_s2fa
+lh.bankssts_s2fa,lh.parsopercularis_s2fa
+lh.bankssts_s2fa,lh.superiortemporal_s2fa
+lh.bankssts_s2fa,lh.supramarginal_s2fa
+lh.inferiorparietal_s2fa,lh.bankssts_s2fa
+lh.middletemporal_s2fa,lh.bankssts_s2fa
+lh.parsopercularis_s2fa,lh.bankssts_s2fa
+lh.superiortemporal_s2fa,lh.bankssts_s2fa
+lh.supramarginal_s2fa,lh.bankssts_s2fa
