@@ -9,7 +9,8 @@ from mappertrac.subscripts import *
 def run_probtrackx(params):
 
     pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_tiny.txt'))
-    n = 4
+    edges_per_chunk = 4
+    n = edges_per_chunk
     edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range((len(pbtx_edges) + n - 1) // n )]
 
     start_future = start(params)
@@ -422,6 +423,8 @@ def combine(params, inputs=[]):
     if not exists(edge_total):
         write(stdout, "Error: Failed to generate {}".format(edge_total))
 
+    smart_copy(edge_total, join(dirname(sdir), 'EDI_' + basename(edge_total)))
+    smart_copy(twoway_nof_normalized, join(dirname(sdir), basename(twoway_nof_normalized)))
 
     update_permissions(sdir, params)
     write(join(sdir, 'S3_COMPLETE'))

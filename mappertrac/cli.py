@@ -107,7 +107,7 @@ def main():
         param = base_params.copy()
         param.update({
             'input_dir': input_dir,
-            'work_dir': subject_dir,
+            'work_dir': join(subject_dir, 'work_dir'),
             'ID': f'{subject}_{session}',
             'stdout': join(subject_dir, 'worker.stdout'),
         })
@@ -119,7 +119,7 @@ def main():
         param = base_params.copy()
         param.update({
             'input_dir': input_dir,
-            'work_dir': subject_dir,
+            'work_dir': join(subject_dir, 'work_dir'),
             'ID': subject,
             'stdout': join(subject_dir, 'worker.stdout'),
         })

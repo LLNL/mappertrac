@@ -8,7 +8,6 @@ from mappertrac.subscripts import *
 def run_freesurfer(params):
 
     input_dir = params['input_dir']
-    output_dir = params['output_dir']
     sdir = params['work_dir']
     ID = params['ID']
     stdout = params['stdout']
@@ -32,6 +31,7 @@ Arguments:
     for _ in [input_dwi, input_bval, input_bvec, input_T1]:
         assert exists(_), f'Missing file {_}'
     
+    smart_mkdir(sdir)
     work_dwi = join(sdir, 'hardi.nii.gz')
     work_bval = join(sdir, 'bvals')
     work_bvec = join(sdir, 'bvecs')

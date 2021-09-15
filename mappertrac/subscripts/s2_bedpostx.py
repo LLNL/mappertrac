@@ -8,7 +8,6 @@ from mappertrac.subscripts import *
 def run_bedpostx(params):
 
     input_dir = params['input_dir']
-    output_dir = params['output_dir']
     sdir = params['work_dir']
     ID = params['ID']
     stdout = params['stdout']
