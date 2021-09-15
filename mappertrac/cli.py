@@ -34,6 +34,9 @@ def parse_args(args):
     parser.add_argument('--container', default=join(cwd, 'image.sif'),
         help='Path to Singularity container image.')
 
+    parser.add_argument('--pbtx_sample_count', default=200,
+        help='Number of probtrackx samples per voxel.')
+
     scheduler_group = parser.add_mutually_exclusive_group()
 
     scheduler_group.add_argument('--slurm', action='store_true',
@@ -90,34 +93,37 @@ def main():
         else:
             subject_dirs += [normpath(input_dir)]
 
+    base_params = {
+        'container': abspath(args.container),
+        'script_dir': abspath(script_dir),
+        'output_dir': output_dir,
+        'pbtx_sample_count': int(args.pbtx_sample_count),
+    }
+
     for input_dir in session_dirs:
         subject = basename(dirname(input_dir))
         session = basename(input_dir)
         subject_dir = join(output_dir, 'derivatives', subject, session)
-
-        all_params.append({
-            'container': abspath(args.container),
-            'script_dir': abspath(script_dir),
+        param = base_params.copy()
+        param.update({
             'input_dir': input_dir,
-            'output_dir': output_dir,
             'work_dir': subject_dir,
             'ID': f'{subject}_{session}',
             'stdout': join(subject_dir, 'worker.stdout'),
         })
+        all_params.append(param)
 
     for input_dir in subject_dirs:
         subject = basename(input_dir)
         subject_dir = join(output_dir, 'derivatives', subject)
-
-        all_params.append({
-            'container': abspath(args.container),
-            'script_dir': abspath(script_dir),
+        param = base_params.copy()
+        param.update({
             'input_dir': input_dir,
-            'output_dir': output_dir,
             'work_dir': subject_dir,
             'ID': subject,
             'stdout': join(subject_dir, 'worker.stdout'),
         })
+        all_params.append(param)
 
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
