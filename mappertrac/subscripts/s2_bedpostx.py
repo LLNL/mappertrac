@@ -47,7 +47,9 @@ Arguments:
     write(bedpostx_sh, 'export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n' +
                        'export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n' +
                        'bedpostx_gpu /mnt/bedpostx_b1000 -NJOBS 4')
-    run('sh ' + bedpostx_sh, params)
+    gpu_params = params.copy()
+    gpu_params['use_gpu'] = True
+    run('sh ' + bedpostx_sh, gpu_params)
     
     # hacky validation step
     with open(stdout) as f:
@@ -57,9 +59,6 @@ Arguments:
 
     run(f'make_dyadic_vectors {th1} {ph1} {brain_mask} {dyads1}', params)
     run(f'make_dyadic_vectors {th2} {ph2} {brain_mask} {dyads2}', params)
-    validate(th1, params)
-    validate(ph1, params)
-    validate(dyads1, params)
     update_permissions(sdir, params)
 
     write(join(sdir, 'S2_COMPLETE'))

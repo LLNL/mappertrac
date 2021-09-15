@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os,sys,glob,multiprocessing,time,csv,math,pprint,shutil
+import scipy.io
 from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
@@ -52,6 +53,81 @@ def process(params, edges, inputs=[]):
     terminationmask = join(sdir,"terminationmask.nii.gz")
     bs = join(sdir,"bs.nii.gz")
 
+    for edge in edges:
+        a, b = edge
+        a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
+        b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
+        tmp = join(sdir, "tmp", "{}_to_{}".format(a, b))
+        a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
+        a_to_b_file = join(pbtk_dir,a_to_b_formatted)
+        waypoints = join(tmp,"waypoint.txt")
+        waytotal = join(tmp, "waytotal")
+        assert exists(a_file) and exists(b_file), "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file)
+        smart_remove(a_to_b_file)
+        smart_remove(tmp)
+        smart_mkdir(tmp)
+        write(stdout, "Running subproc: {} to {}".format(a, b))
+        if container:
+            write(waypoints, b_file.replace(odir, "/share"))
+        else:
+            write(waypoints, b_file)
+
+        exclusion = join(tmp,"exclusion.nii.gz")
+        termination = join(tmp,"termination.nii.gz")
+        run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
+        run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
+        run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
+        run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
+
+        pbtx_args = (" -x {} ".format(a_file) +
+            # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+            " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
+            " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
+            " --forcedir --opd --rseed={}".format(subject_random_seed) +
+            " -s {}".format(merged) +
+            " -m {}".format(nodif_brain_mask) +
+            " --dir={}".format(tmp) +
+            " --out={}".format(a_to_b_formatted)
+            )
+        if use_gpu:
+            probtrackx2_sh = join(tmp, "probtrackx2.sh")
+            smart_remove(probtrackx2_sh)
+            write(probtrackx2_sh, "export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n" +
+                           "export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n" +
+                           "probtrackx2_gpu" + pbtx_args.replace(odir, "/share"))
+            run("sh " + probtrackx2_sh, params)
+        else:
+            run("probtrackx2" + pbtx_args, params)
+
+        waytotal_count = 0
+        if exists(waytotal):
+            with open(waytotal, 'r') as f:
+                waytotal_count = f.read().strip()
+                fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
+                if not is_float(waytotal_count):
+                    write(stdout, "Error: Failed to read waytotal_count value {} in {}".format(waytotal_count, edge))
+                    continue
+                if not is_float(fdt_count):
+                    write(stdout, "Error: Failed to read fdt_count value {} in {}".format(fdt_count, edge))
+                    continue
+                edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+                smart_remove(edge_file)
+                write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+
+                # Error check edge file
+                with open(edge_file) as f:
+                    line = f.read().strip()
+                    if len(line) > 0: # ignore empty lines
+                        chunks = [x.strip() for x in line.split(' ') if x]
+                        if not (len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3])):
+                            write(stdout, "Error: Connectome {} has invalid edge {} to {}".format(edge_file, a, b))
+                            continue
+        else:
+            write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
+        copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
+        if not a == "lh.paracentral": # discard all temp files except these for debugging
+            smart_remove(tmp)
+
     # assert exists(bedpostxResults), "Could not find {}".format(bedpostxResults)
 
 @python_app(executors=['worker'])
@@ -59,7 +135,135 @@ def combine(params, inputs=[]):
 
     sdir = params['work_dir']
     stdout = params['stdout']
+
+    copyfile(connectome_idx_list, connectome_idx_list_copy) # give each subject a copy for reference
+
+    ##################################
+    # Compile connectome matrices
+    ##################################
+    vol_idxs = {}
+    with open(connectome_idx_list) as f:
+        lines = [x.strip() for x in f.readlines() if x]
+        max_idx = -1
+        for line in lines:
+            vol, idx = line.split(',', 1)
+            idx = int(idx)
+            vol_idxs[vol] = idx
+            if idx > max_idx:
+                max_idx = idx
+        oneway_nof_normalized_matrix = np.zeros((max_idx+1, max_idx+1))
+        oneway_nof_matrix = np.zeros((max_idx+1, max_idx+1))
+        twoway_nof_normalized_matrix = np.zeros((max_idx+1, max_idx+1))
+        twoway_nof_matrix = np.zeros((max_idx+1, max_idx+1))
+
+    for edge in get_edges_from_file(pbtx_edge_list):
+        a, b = edge
+        edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+        with open(edge_file) as f:
+            chunks = [x.strip() for x in f.read().strip().split(' ') if x]
+            a_to_b = (chunks[0], chunks[1])
+            b_to_a = (chunks[1], chunks[0])
+            waytotal_count = float(chunks[2])
+            fdt_count = float(chunks[3])
+            if b_to_a in twoway_edges:
+                twoway_edges[b_to_a][0] += waytotal_count
+                twoway_edges[b_to_a][1] += fdt_count
+            else:
+                twoway_edges[a_to_b] = [waytotal_count, fdt_count]
+            oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+
+    for a_to_b in oneway_edges:
+        a = a_to_b[0]
+        b = a_to_b[1]
+        for vol in a_to_b:
+            if vol not in vol_idxs:
+                write(stdout, 'Error: could not find {} in connectome idxs'.format(vol))
+                break
+        else:
+            write(oneway_list, "{} {} {} {}".format(a, b, oneway_edges[a_to_b][0], oneway_edges[a_to_b][1]))
+            oneway_nof_matrix[vol_idxs[a]][vol_idxs[b]] = oneway_edges[a_to_b][0]
+            oneway_nof_normalized_matrix[vol_idxs[a]][vol_idxs[b]] = oneway_edges[a_to_b][1]
+
+    for a_to_b in twoway_edges:
+        a = a_to_b[0]
+        b = a_to_b[1]
+        for vol in a_to_b:
+            if vol not in vol_idxs:
+                write(stdout, 'Error: could not find {} in connectome idxs'.format(vol))
+                break
+        else:
+            write(twoway_list, "{} {} {} {}".format(a, b, twoway_edges[a_to_b][0], twoway_edges[a_to_b][1]))
+            twoway_nof_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][0]
+            twoway_nof_normalized_matrix[vol_idxs[a]][vol_idxs[b]] = twoway_edges[a_to_b][1]
+    scipy.io.savemat(oneway_nof, {'data': oneway_nof_matrix})
+    scipy.io.savemat(oneway_nof_normalized, {'data': oneway_nof_normalized_matrix})
+    scipy.io.savemat(twoway_nof, {'data': twoway_nof_matrix})
+    scipy.io.savemat(twoway_nof_normalized, {'data': twoway_nof_normalized_matrix})
     
+    ##################################
+    # EDI consensus
+    ##################################
+    for edge in edges:
+        a, b = edge
+        a_to_b = "{}_to_{}".format(a, b)
+        a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
+        b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
+        if not exists(a_to_b_file):
+            write(stdout, "Error: cannot find {}".format(a_to_b_file))
+            return
+        if not exists(b_to_a_file):
+            write(stdout, "Error: cannot find {}".format(b_to_a_file))
+            return
+        consensus = join(consensus_dir, a_to_b + '.nii.gz')
+        amax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(a_to_b_file), params).strip()
+        if not is_float(amax):
+            write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
+            return
+        amax = int(float(amax))
+        bmax = run("fslstats {} -R | cut -f 2 -d \" \" ".format(b_to_a_file), params).strip()
+        if not is_float(bmax):
+            write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
+            return
+        bmax = int(float(bmax))
+        write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
+        if amax > 0 and bmax > 0:
+            tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
+            tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
+            run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
+            run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
+            run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
+            smart_remove(tmp1)
+            smart_remove(tmp2)
+        else:
+            with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
+                log.write("For edge {}:\n".format(a_to_b))
+                log.write("{} is thresholded to {}\n".format(a, amax))
+                log.write("{} is thresholded to {}\n".format(b, bmax))
+
+    # Collect number of probtrackx tracts per voxel
+    for edge in get_edges_from_file(pbtx_edge_list):
+        a, b = edge
+        a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
+        a_to_b_file = join(pbtk_dir,a_to_b_formatted)
+        if not exists(tract_total):
+            copyfile(a_to_b_file, tract_total)
+        else:
+            run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
+
+    # Collect number of parcel-to-parcel edges per voxel
+    for edge in consensus_edges:
+        a, b = edge
+        consensus = join(consensus_dir, "{}_to_{}.nii.gz".format(a,b))
+        if not exists(consensus):
+            write(stdout,"{} has been thresholded. See {} for details".format(edge, join(pbtk_dir, "zerosl.txt")))
+            continue
+        if not exists(edge_total):
+            copyfile(consensus, edge_total)
+        else:
+            run("fslmaths {0} -add {1} {1}".format(consensus, edge_total), params)
+    if not exists(edge_total):
+        write(stdout, "Error: Failed to generate {}".format(edge_total))
+
     update_permissions(sdir, params)
     write(join(sdir, 'S3_COMPLETE'))
     
