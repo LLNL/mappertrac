@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os,sys,glob,multiprocessing,time,csv,math,pprint,shutil
+import GPUtil
 from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
@@ -11,6 +12,9 @@ def run_bedpostx(params):
     sdir = params['work_dir']
     ID = params['ID']
     stdout = params['stdout']
+
+    assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
+    assert len(GPUtil.getAvailable() > 0), 'Failed to find CUDA-capable GPU'
 
     start_time = time.time()
     start_str = f'''

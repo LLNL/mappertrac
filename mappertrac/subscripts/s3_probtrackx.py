@@ -8,6 +8,10 @@ from mappertrac.subscripts import *
 
 def run_probtrackx(params):
 
+    sdir = params['work_dir']
+    assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
+    assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
+
     pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_tiny.txt'))
     edges_per_chunk = 4
     n = edges_per_chunk
