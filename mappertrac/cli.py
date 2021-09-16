@@ -19,13 +19,13 @@ def parse_args(args):
 
     workflow_group = parser.add_mutually_exclusive_group(required=True)
 
-    workflow_group.add_argument('--freesurfer', '-s1', action='store_true',
+    workflow_group.add_argument('--freesurfer', '--s1_freesurfer', '-s1', action='store_true',
         help='Run step 1: freesurfer.')
 
-    workflow_group.add_argument('--bedpostx', '-s2', action='store_true',
+    workflow_group.add_argument('--bedpostx', '--s2_bedpostx', '-s2', action='store_true',
         help='Run step 2: bedpostx.')
 
-    workflow_group.add_argument('--probtrackx', '-s3', action='store_true',
+    workflow_group.add_argument('--probtrackx', '--s3_probtrackx', '-s3', action='store_true',
         help='Run step 3: probtrackx.')
 
     parser.add_argument('--outputs', '-o', default='mappertrac_outputs/',

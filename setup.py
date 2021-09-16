@@ -9,7 +9,7 @@ src_path = join(src_path, 'mappertrac')
 setup(
     name='mappertrac',
     description='Probabilistic tractography for high-performance computing',
-    version='0.5.0',
+    version='1.0.0',
     python_requires='>=3.7',
     author='Joseph Moon',
     author_email='moon15@llnl.gov',
@@ -23,7 +23,7 @@ setup(
     package_data={'mappertrac' : ['data/*'] },
     install_requires=['pip>=21.2.4', 'parsl>=1.1.0', 'pytest>=6.2.4', 'scipy>=1.7.1', 'numpy>=1.21.2', 'gputil>=1.4.0'],
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
