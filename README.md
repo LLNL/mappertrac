@@ -33,6 +33,8 @@ mappertrac --s2_bedpostx <SUBJECT_INPUT_DIRECTORY>
 mappertrac --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
 ```
 
+Note: the input directory must adhere to [BIDS](https://bids.neuroimaging.io/). See this [example](https://github.com/LLNL/MaPPeRTrac/tree/master/mappertrac/data/example_inputs/sub-011591).
+
 ---
 
 ## Instructions
