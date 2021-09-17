@@ -1,5 +1,8 @@
 name: GitHub Actions
-on: [push]
+on: 
+  push:
+    paths:
+      - 'setup.py'
 jobs:
   build-n-publish:
     runs-on: ubuntu-18.04
