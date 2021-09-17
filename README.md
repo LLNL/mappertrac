@@ -39,8 +39,16 @@ Note: the input directory must adhere to [BIDS](https://bids.neuroimaging.io/). 
 
 ## Instructions
 
+#### Conda Installation
+If you're having trouble installing mappertrac, please use a clean environment using virtualenv or conda.
+```
+conda create -n myenv
+conda activate myenv
+pip install mappertrac
+```
+
 #### Example Testing
-Check that mappertrac works on your system by running the example input data.
+Check that your installation works by running the example input data.
 ```
 mappertrac --s1_freesurfer --test
 ```
