@@ -16,3 +16,4 @@ dist/
 tmp/
 __pycache__/
 !.gitignore
+!.github/
