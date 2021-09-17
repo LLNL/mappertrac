@@ -1,7 +1,8 @@
 mappertrac
 ===========
 ![example workflow](https://github.com/LLNL/MaPPeRTrac/actions/workflows/github-actions.yml/badge.svg
-) [![PyPI version](https://badge.fury.io/py/mappertrac.svg)](https://badge.fury.io/py/mappertrac)
+) [![PyPI version](https://badge.fury.io/py/mappertrac.svg)](https://badge.fury.io/py/mappertrac
+) [![DOI](https://zenodo.org/badge/376166124.svg)](https://zenodo.org/badge/latestdoi/376166124)
 
 mappertrac is a probabilistic tractography workflow using structural DW-MRI and designed for high performance computing.
 
