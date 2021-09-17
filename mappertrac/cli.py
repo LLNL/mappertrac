@@ -42,6 +42,12 @@ def parse_args(args):
     scheduler_group.add_argument('--slurm', action='store_true',
         help='Use the Slurm scheduler.')
 
+    scheduler_group.add_argument('--cobalt', action='store_true',
+        help='Use the Cobalt scheduler.')
+
+    scheduler_group.add_argument('--grid_engine', action='store_true',
+        help='Use the Grid Engine scheduler.')
+
     parser.add_argument('--nnodes', '-n', default=1,
         help='Scheduler: number of nodes.')
 
@@ -135,10 +141,47 @@ def main():
                 nodes_per_block=int(args.nnodes),
                 init_blocks=1,
                 max_blocks=1,
+                scheduler_options="#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank),
                 worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
                 walltime=args.walltime,
-                scheduler_options="#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank),
                 move_files=False,
+            ),
+        )
+    elif args.cobalt:
+        executor = parsl.executors.HighThroughputExecutor(
+            label="worker",
+            worker_debug=True,
+            address=parsl.addresses.address_by_hostname(),
+            provider=parsl.providers.CobaltProvider(
+                channel=parsl.channels.LocalChannel(),
+                launcher=parsl.launchers.SimpleLauncher(),
+                nodes_per_block=int(args.nnodes),
+                init_blocks=1,
+                max_blocks=1,
+                scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
+                worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
+                # worker_init='source /home/madduri/setup_cooley_env.sh',
+                walltime=args.walltime,
+                account=args.bank,
+                queue=args.partition,
+            ),
+        )
+    elif args.grid_engine:
+        executor = parsl.executors.HighThroughputExecutor(
+            label="worker",
+            worker_debug=True,
+            address=parsl.addresses.address_by_hostname(),
+            max_workers=int(cores_per_node[step]), # cap workers, or else defaults to infinity.
+            provider=parsl.providers.GridEngineProvider(
+                channel=parsl.channels.LocalChannel(),
+                launcher=parsl.launchers.SingleNodeLauncher(),
+                nodes_per_block=int(args.nnodes),
+                init_blocks=1,
+                max_blocks=1,
+                scheduler_options="#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank),
+                worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
+                walltime=args.walltime,
+                queue='gpu.q', # enables Wynton GPU queues
             ),
         )
     else:
