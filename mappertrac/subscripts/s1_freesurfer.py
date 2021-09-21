@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os,sys,glob,multiprocessing,time,csv,math,pprint,shutil
+import os,sys,glob,time,csv,math,pprint,shutil
 from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
@@ -102,7 +102,7 @@ Arguments:
     smart_mkdir(join(sdir, 'mri', 'orig'))
     run(f'mri_convert {work_T1} {mri_out}', params)
 
-    ncores = int(multiprocessing.cpu_count())
+    ncores = int(os.cpu_count())
     write(stdout, f'Running Freesurfer with {ncores} cores')
     run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
 

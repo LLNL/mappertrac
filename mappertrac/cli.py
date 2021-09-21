@@ -131,10 +131,17 @@ def main():
         })
         all_params.append(param)
 
+    if args.probtrackx:
+        cores_per_worker = 1
+    else:
+        cores_per_worker = int(os.cpu_count())
+
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
             label="worker",
+            worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
+            cores_per_worker=cores_per_worker,
             provider=parsl.providers.SlurmProvider(
                 args.partition,
                 launcher=parsl.launchers.SrunLauncher(),
@@ -152,6 +159,7 @@ def main():
             label="worker",
             worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
+            cores_per_worker=cores_per_worker,
             provider=parsl.providers.CobaltProvider(
                 channel=parsl.channels.LocalChannel(),
                 launcher=parsl.launchers.SimpleLauncher(),
@@ -171,7 +179,7 @@ def main():
             label="worker",
             worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
-            max_workers=int(cores_per_node[step]), # cap workers, or else defaults to infinity.
+            max_workers=cores_per_worker, # cap workers, or else defaults to infinity.
             provider=parsl.providers.GridEngineProvider(
                 channel=parsl.channels.LocalChannel(),
                 launcher=parsl.launchers.SingleNodeLauncher(),
