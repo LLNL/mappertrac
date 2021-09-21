@@ -14,7 +14,7 @@ From: ubuntu:16.04
     MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
     # Linux packages
-    mkdir /share
+    mkdir /mnt
     apt-get -y update
     apt-get install -y apt-transport-https ca-certificates
     apt-get install -y software-properties-common
@@ -37,7 +37,6 @@ From: ubuntu:16.04
     apt-get install -y tzdata
     ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
     dpkg-reconfigure --frontend noninteractive tzdata
-    gpg --keyserver hkp://keyserver.ubuntu.com:11371 --recv-keys 22598A94
     wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
     wget --no-check-certificate $NEURODEBIAN_KEY
     apt-key add $NEURODEBIAN_KEY_RUN
@@ -93,7 +92,7 @@ From: ubuntu:16.04
     MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
     MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
     MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
-    SUBJECTS_DIR=/share
+    SUBJECTS_DIR=/mnt
     FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
 
     export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
@@ -103,5 +102,6 @@ From: ubuntu:16.04
     export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
+
 
 
