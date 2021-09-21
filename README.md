@@ -18,7 +18,7 @@ Outputs: connectome matrix `.mat` and edge density `.nii.gz`
 
 * Python 3.7+
 * [Singularity](https://sylabs.io/guides/3.5/user-guide/index.html)
-* CUDA-capable GPU
+* CUDA 8.0-compatible GPU ([Kepler-Turing](https://docs.nvidia.com/deploy/cuda-compatibility/))
 
 #### Installation
 ```

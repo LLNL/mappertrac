@@ -12,7 +12,7 @@ def run_probtrackx(params):
     assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
     assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
 
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_tiny.txt'))
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_reduced.txt'))
     edges_per_chunk = 4
     n = edges_per_chunk
     edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range((len(pbtx_edges) + n - 1) // n )]
@@ -44,6 +44,21 @@ Arguments:
     smart_remove(time_log)
     write(time_log, start_time)
 
+    sdir = params['work_dir']
+    output_dir = params['output_dir']
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    connectome_dir = join(sdir,"EDI","CNTMresults")
+    derivatives_dir_tmp = join(output_dir, 'derivatives', "tmp")
+    sdir_tmp = join(sdir, "tmp")
+    smart_remove(pbtk_dir)
+    smart_remove(connectome_dir)
+    smart_remove(sdir_tmp)
+    smart_mkdir(pbtk_dir)
+    smart_mkdir(connectome_dir)
+    smart_mkdir(sdir_tmp)
+    time.sleep(random.randrange(0, 10)) # random sleep to avoid parallel collision
+    smart_mkdir(derivatives_dir_tmp)
+
 @python_app(executors=['worker'])
 def process(params, edges, inputs=[]):
 
@@ -71,10 +86,6 @@ def process(params, edges, inputs=[]):
     node_name = platform.uname().node.strip()
     assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
     mem_record = join(derivatives_dir_tmp, node_name + '.json') # Keep record to avoid overusing node memory
-    smart_mkdir(sdir_tmp)
-    smart_mkdir(derivatives_dir_tmp)
-    smart_mkdir(pbtk_dir)
-    smart_mkdir(connectome_dir)
 
     # Only access mem_record with file locking to avoid outdated data
     def open_mem_record(mode = 'r'):
@@ -161,7 +172,7 @@ def process(params, edges, inputs=[]):
     total_sleep = 0
     # Memory record is atomic, but might not be updated on time
     # So we randomize sleep to discourage multiple tasks hitting at once
-    init_sleep = random.randrange(0, 120)
+    init_sleep = random.randrange(0, 30)
     write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
     total_sleep += init_sleep
     time.sleep(init_sleep)
@@ -175,7 +186,7 @@ def process(params, edges, inputs=[]):
     total_mem_usage = estimate_total_memory_usage()
     # Then we sleep until memory usage is low enough
     while total_mem_usage + task_mem_usage > pbtx_max_memory:
-        sleep_interval = random.randrange(30, 120)
+        sleep_interval = random.randrange(5, 60)
         write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, total_mem_usage, pbtx_max_memory))
         total_sleep += sleep_interval
         if total_sleep > sleep_timeout:
@@ -362,6 +373,8 @@ def combine(params, inputs=[]):
     scipy.io.savemat(oneway_nof_normalized, {'data': oneway_nof_normalized_matrix})
     scipy.io.savemat(twoway_nof, {'data': twoway_nof_matrix})
     scipy.io.savemat(twoway_nof_normalized, {'data': twoway_nof_normalized_matrix})
+    smart_copy(twoway_nof_normalized, join(dirname(sdir), basename(twoway_nof_normalized)))
+    smart_copy(twoway_list, join(dirname(sdir), basename(twoway_list)))
     
     ##################################
     # EDI consensus
@@ -426,9 +439,8 @@ def combine(params, inputs=[]):
             run("fslmaths {0} -add {1} {1}".format(consensus, edge_total), params)
     if not exists(edge_total):
         write(stdout, "Error: Failed to generate {}".format(edge_total))
-
-    smart_copy(edge_total, join(dirname(sdir), 'EDI_' + basename(edge_total)))
-    smart_copy(twoway_nof_normalized, join(dirname(sdir), basename(twoway_nof_normalized)))
+    else:
+        smart_copy(edge_total, join(dirname(sdir), 'EDI_' + basename(edge_total)))
 
     update_permissions(sdir, params)
     write(join(sdir, 'S3_COMPLETE'))

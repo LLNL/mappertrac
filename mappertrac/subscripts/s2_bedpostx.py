@@ -14,7 +14,7 @@ def run_bedpostx(params):
     stdout = params['stdout']
 
     assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
-    assert len(GPUtil.getAvailable() > 0), 'Failed to find CUDA-capable GPU'
+    assert len(GPUtil.getAvailable(includeNan=True)) > 0, 'Failed to find CUDA-capable GPU'
 
     start_time = time.time()
     start_str = f'''
