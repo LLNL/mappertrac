@@ -242,7 +242,12 @@ def process(params, edges, inputs=[]):
             if exists(waytotal):
                 with open(waytotal, 'r') as f:
                     waytotal_count = f.read().strip()
-                    fdt_count = run("fslmeants -i {} -m {} | head -n 1".format(join(tmp, a_to_b_formatted), b_file), params) # based on getconnectome script
+                    fdt_file = join(connectome_dir, "{}_to_{}.fdt.tmp".format(a, b))
+                    smart_remove(fdt_file)
+                    run(f"fslmeants -i {join(tmp, a_to_b_formatted)} -m {b_file} | head -n 1 > {fdt_file}", params) # based on getconnectome script
+                    time.sleep(5)
+                    with open(fdt_file, 'r') as f2:
+                        fdt_count = f2.read().strip()
                     if not is_float(waytotal_count):
                         write(stdout, "Error: Failed to read waytotal_count value {} in {}".format(waytotal_count, edge))
                         continue

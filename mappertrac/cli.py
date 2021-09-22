@@ -148,7 +148,7 @@ def main():
                 nodes_per_block=int(args.nnodes),
                 init_blocks=1,
                 max_blocks=1,
-                scheduler_options="#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank),
+                scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
                 worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
                 walltime=args.walltime,
                 move_files=False,
@@ -186,7 +186,7 @@ def main():
                 nodes_per_block=int(args.nnodes),
                 init_blocks=1,
                 max_blocks=1,
-                scheduler_options="#SBATCH --exclusive\n#SBATCH -A {}\n".format(args.bank),
+                scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
                 worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
                 walltime=args.walltime,
                 queue='gpu.q', # enables Wynton GPU queues
