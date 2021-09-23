@@ -242,11 +242,11 @@ def process(params, edges, inputs=[]):
             if exists(waytotal):
                 with open(waytotal, 'r') as f:
                     waytotal_count = f.read().strip()
-                    fdt_file = join(connectome_dir, "{}_to_{}.fdt.tmp".format(a, b))
-                    smart_remove(fdt_file)
-                    run(f"fslmeants -i {join(tmp, a_to_b_formatted)} -m {b_file} | head -n 1 > {fdt_file}", params) # based on getconnectome script
+                    fdt_tmp = join(connectome_dir, "{}_to_{}.fdt.tmp".format(a, b))
+                    smart_remove(fdt_tmp)
+                    run(f"fslmeants -i {join(tmp, a_to_b_formatted)} -m {b_file} | head -n 1 > {fdt_tmp}", params) # based on getconnectome script
                     time.sleep(5)
-                    with open(fdt_file, 'r') as f2:
+                    with open(fdt_tmp, 'r') as f2:
                         fdt_count = f2.read().strip()
                     if not is_float(waytotal_count):
                         write(stdout, "Error: Failed to read waytotal_count value {} in {}".format(waytotal_count, edge))
@@ -280,7 +280,7 @@ def combine(params, inputs=[]):
     sdir = params['work_dir']
     stdout = params['stdout']
     pbtx_sample_count = params['pbtx_sample_count']
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_tiny.txt'))
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_reduced.txt'))
     connectome_idx_list = join(params['script_dir'], 'data/lists/connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
@@ -396,16 +396,29 @@ def combine(params, inputs=[]):
             write(stdout, "Error: cannot find {}".format(b_to_a_file))
             return
         consensus = join(consensus_dir, a_to_b + '.nii.gz')
-        amax = run('fslstats {} -R | cut -f 2 -d \\" \\" '.format(a_to_b_file), params).strip()
+        
+        amax_tmp = join(connectome_dir, f"{a_to_b}.amax.tmp")
+        bmax_tmp = join(connectome_dir, f"{a_to_b}.bmax.tmp")
+        smart_remove(amax_tmp)
+        smart_remove(bmax_tmp)
+        run(f'fslstats {a_to_b_file} -R | cut -f 2 -d \\" \\" > {amax_tmp}', params).strip()
+        run(f'fslstats {b_to_a_file} -R | cut -f 2 -d \\" \\" > {bmax_tmp}', params).strip()
+        time.sleep(5)
+        with open(amax_tmp, 'r') as f:
+            amax = f.read().strip()
+        with open(bmax_tmp, 'r') as f:
+            bmax = f.read().strip()
+
         if not is_float(amax):
             write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
             return
         amax = int(float(amax))
-        bmax = run('fslstats {} -R | cut -f 2 -d \\" \\" '.format(b_to_a_file), params).strip()
+
         if not is_float(bmax):
             write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
             return
         bmax = int(float(bmax))
+
         write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
         if amax > 0 and bmax > 0:
             tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
