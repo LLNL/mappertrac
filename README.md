@@ -63,7 +63,7 @@ mappertrac --s1_freesurfer <ALL_SUBJECTS_DIR>/*/
 #### Job scheduling
 Multiple subjects can be run on distributed systems using Slurm, Cobalt, or Grid Engine.
 ```
-mappertrac --s1_freesurfer --slurm -n 1 -b mybank -p mypartition <SUBJECT_INPUT_DIRECTORY>
+mappertrac --s1_freesurfer --slurm -b mybank -p mypartition <SUBJECT_INPUT_DIRECTORY>
 ```
 
 #### Additional options
