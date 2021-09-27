@@ -9,7 +9,7 @@ src_path = join(src_path, 'mappertrac')
 setup(
     name='mappertrac',
     description='Probabilistic tractography for high-performance computing',
-    version='1.0.3',
+    version='1.0.4',
     python_requires='>=3.7',
     author='Joseph Moon',
     author_email='moon15@llnl.gov',
