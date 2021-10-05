@@ -17,3 +17,5 @@ tmp/
 __pycache__/
 !.gitignore
 !.github/
+coverage.xml
+codecov
