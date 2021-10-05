@@ -10,6 +10,8 @@ Inputs: structural DW-MRI `.nii.gz`, T1-weighted anatomical MRI `.nii.gz`, `.bva
 
 Outputs: connectome matrix `.mat` and edge density `.nii.gz`
 
+![](workflow_diagram.png?raw=true)
+
 ---
 
 ## Quick Setup
