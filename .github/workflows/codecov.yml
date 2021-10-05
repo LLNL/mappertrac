@@ -11,10 +11,14 @@ jobs:
         with:
           python-version: 3.9
 
+      - uses: eWaterCycle/setup-singularity@v6
+        with:
+          singularity-version: 3.7.1
+
       - name: Generate coverage report
         run: |
           pip install .
-          wget -O image.sif https://osf.io/792up/download
+          wget --quiet -O image.sif https://osf.io/792up/download
           pytest --cov=mappertrac/ --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
