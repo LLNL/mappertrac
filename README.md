@@ -31,8 +31,10 @@ wget -O image.sif https://osf.io/792up/download
 
 #### Usage
 ```
-mappertrac --s1_freesurfer <SUBJECT_INPUT_DIRECTORY>
+mappertrac --s1_freesurfer <SUBJECT_INPUT_DIRECTORY> # this will take several hours
+
 mappertrac --s2_bedpostx <SUBJECT_INPUT_DIRECTORY>
+
 mappertrac --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
 ```
 
