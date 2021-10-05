@@ -1,4 +1,4 @@
-name: GitHub Actions
+name: Code Coverage
 on: 
   workflow_dispatch:
 jobs:
