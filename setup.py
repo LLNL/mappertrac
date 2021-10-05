@@ -21,7 +21,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={'mappertrac' : ['data/*'] },
-    install_requires=['pip>=21.2.4', 'parsl>=1.1.0', 'pytest>=6.2.4', 'scipy>=1.7.1', 'numpy>=1.21.2', 'gputil>=1.4.0'],
+    install_requires=['pip>=21.2.4', 'parsl>=1.1.0', 'pytest>=6.2.4', 'pytest-cov>=3.0.0', 'scipy>=1.7.1', 'numpy>=1.21.2', 'gputil>=1.4.0'],
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",

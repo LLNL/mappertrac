@@ -2,7 +2,8 @@ mappertrac
 ===========
 ![example workflow](https://github.com/LLNL/MaPPeRTrac/actions/workflows/github-actions.yml/badge.svg
 ) [![PyPI version](https://badge.fury.io/py/mappertrac.svg)](https://badge.fury.io/py/mappertrac
-) [![DOI](https://zenodo.org/badge/376166124.svg)](https://zenodo.org/badge/latestdoi/376166124)
+) [![DOI](https://zenodo.org/badge/376166124.svg)](https://zenodo.org/badge/latestdoi/376166124
+) [![codecov](https://codecov.io/gh/LLNL/mappertrac/branch/master/graph/badge.svg?token=E1EYRQ9EPZ)](https://codecov.io/gh/LLNL/mappertrac)
 
 mappertrac is a probabilistic tractography workflow using structural DW-MRI and designed for high performance computing.
 
@@ -24,7 +25,7 @@ Outputs: connectome matrix `.mat` and edge density `.nii.gz`
 
 #### Installation
 ```
-pip3 install mappertrac
+pip install mappertrac
 wget -O image.sif https://osf.io/792up/download
 ```
 

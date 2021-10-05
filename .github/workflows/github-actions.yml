@@ -19,6 +19,7 @@ jobs:
           pip install
           build
           --user
+
       - name: Build a binary wheel and a source tarball
         run: >-
           python -m
@@ -32,9 +33,9 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
-  code-coverage:
-    runs-on: ubuntu-18.04
-    steps:
+      - name: Generate coverage report
+        run: >-
+          pytest --cov=./ --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
