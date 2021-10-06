@@ -26,7 +26,7 @@ Outputs: connectome matrix `.mat` and edge density `.nii.gz`
 #### Installation
 ```
 pip install mappertrac
-wget -O image.sif https://osf.io/792up/download
+wget -O image.sif "https://osf.io/792up/download"
 ```
 
 #### Usage
