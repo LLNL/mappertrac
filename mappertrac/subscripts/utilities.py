@@ -153,6 +153,7 @@ def validate(file, params={}):
     file = file.strip()
     if not file.endswith('.nii.gz'):
         file = file + '.nii.gz'
+    smart_mkdir('/var/tmp/')
     tmp = f'/var/tmp/tmp_{random.randint(0,1000)}_{basename(file)}'
     run(f"fslstats {file} -m | head -n 1 > {tmp}", params)
     time.sleep(5)
