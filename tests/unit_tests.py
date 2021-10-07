@@ -35,3 +35,14 @@ def test_edges():
     assert len(edges) == 930
 
     smart_remove(test_dir)
+
+def test_validate():
+    smart_mkdir(test_dir)
+
+    example_nifti = join(script_dir, 
+        'data/example_inputs/sub-011591/anat/sub-011591_T1w.nii.gz')
+    test_nifti = join(test_dir, 'test.nii.gz')
+    smart_copy(example_nifti, test_nifti)
+    validate(test_nifti, params)
+
+    smart_remove(test_dir)
