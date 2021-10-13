@@ -6,13 +6,15 @@ from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
 
+EDGE_LIST = 'data/lists/list_edges_reduced.txt'
+
 def run_probtrackx(params):
 
     sdir = params['work_dir']
     assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
     assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
 
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_reduced.txt'))
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
     edges_per_chunk = 4
     n = edges_per_chunk
     edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range((len(pbtx_edges) + n - 1) // n )]
@@ -149,7 +151,15 @@ def process(params, edges, inputs=[]):
             tmp_fp, tmp_path = tempfile.mkstemp(dir=sdir_tmp)
             with open(tmp_path, 'w', newline='') as tmp: # file pointer not consistent, so we open using the pathname
                 json.dump(mem_dict, tmp)
-            os.replace(tmp_path, mem_record) # atomic on POSIX systems. flock is advisory, so we can still overwrite.
+            
+            try:
+                os.replace(tmp_path, mem_record) # atomic on POSIX systems. flock is advisory, so we can still overwrite.
+            except OSError as e:
+                fcntl.flock(f, fcntl.LOCK_UN)
+                f.close()
+                time.sleep(random.randrange(5, 30))
+                return add_task()
+        
         fcntl.flock(f, fcntl.LOCK_UN)
         f.close()
         return task_id
@@ -161,7 +171,14 @@ def process(params, edges, inputs=[]):
         tmp_fp, tmp_path = tempfile.mkstemp(dir=sdir_tmp)
         with open(tmp_path, 'w', newline='') as tmp:
             json.dump(mem_dict, tmp)
-        os.replace(tmp_path, mem_record)
+        try:
+            os.replace(tmp_path, mem_record)
+        except OSError as e:
+            fcntl.flock(f, fcntl.LOCK_UN)
+            f.close()
+            time.sleep(random.randrange(5, 30))
+            return remove_task(task_id)
+        
         fcntl.flock(f, fcntl.LOCK_UN)
         f.close()
 
@@ -172,7 +189,7 @@ def process(params, edges, inputs=[]):
     total_sleep = 0
     # Memory record is atomic, but might not be updated on time
     # So we randomize sleep to discourage multiple tasks hitting at once
-    init_sleep = random.randrange(0, 30)
+    init_sleep = random.randrange(5, 30)
     write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
     total_sleep += init_sleep
     time.sleep(init_sleep)
@@ -280,7 +297,7 @@ def combine(params, inputs=[]):
     sdir = params['work_dir']
     stdout = params['stdout']
     pbtx_sample_count = params['pbtx_sample_count']
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], 'data/lists/list_edges_reduced.txt'))
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
     connectome_idx_list = join(params['script_dir'], 'data/lists/connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")

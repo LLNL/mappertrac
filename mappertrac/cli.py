@@ -196,6 +196,7 @@ def main():
         executor = parsl.executors.ThreadPoolExecutor(label="worker")
 
     config = parsl.config.Config(executors=[executor])
+    parsl.clear()
     parsl.set_stream_logger()
     parsl.load(config)
 
