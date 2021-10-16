@@ -234,7 +234,7 @@ def process(params, edges, inputs=[]):
             smart_remove(tmp)
             smart_mkdir(tmp)
             write(stdout, "Running subproc: {} to {}".format(a, b))
-            write(waypoints, b_file.replace(sdir, "/mnt"))
+            write(waypoints, b_file.replace(sdir, "/mappertrac"))
 
             exclusion = join(tmp,"exclusion.nii.gz")
             termination = join(tmp,"termination.nii.gz")

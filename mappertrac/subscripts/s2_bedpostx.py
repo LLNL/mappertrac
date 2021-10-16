@@ -47,9 +47,8 @@ Arguments:
 
     bedpostx_sh = join(sdir, 'bedpostx.sh')
     smart_remove(bedpostx_sh)
-    write(bedpostx_sh, 'export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n' +
-                       'export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n' +
-                       'bedpostx_gpu /mnt/bedpostx_b1000 -NJOBS 4')
+    write(bedpostx_sh, 'export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n' +
+                       'bedpostx_gpu /mappertrac/bedpostx_b1000 -NJOBS 4')
     gpu_params = params.copy()
     gpu_params['use_gpu'] = True
     run('sh ' + bedpostx_sh, gpu_params)
