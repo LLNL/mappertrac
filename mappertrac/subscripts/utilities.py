@@ -59,11 +59,11 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
 
     # When using a container, change all paths to be relative to its mounted directory (hideous, but works without changing other code)
     if container is not None:
-        command = command.replace(work_dir, "/mnt")
+        command = command.replace(work_dir, "/mappertrac")
         command = (f'singularity exec {"--nv" if use_gpu else ""} ' +
             f'--cleanenv ' +
             f'--home /fake_home_dir ' +
-            f'-B {work_dir}:/mnt {container} ' +
+            f'-B {work_dir}:/mappertrac {container} ' +
             f'sh -c "{command}"')
         print(command)
         if container_cwd:
@@ -120,7 +120,7 @@ def get_time_string(seconds):
 
 def write(path, output='', params={}):
     if params and 'container' in params and 'work_dir' in params:
-        command = command.replace(params['work_dir'], "/mnt")
+        command = command.replace(params['work_dir'], "/mappertrac")
     # make path to file if not an empty string
     if dirname(path):
         smart_mkdir(dirname(path))

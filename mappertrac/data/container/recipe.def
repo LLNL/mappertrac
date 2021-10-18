@@ -7,14 +7,14 @@ From: ubuntu:16.04
 %post
     # Links
     MAIN_DIR=$PWD
-    CUDA8=https://developer.nvidia.com/compute/cuda/8.0/Prod2/local_installers/cuda_8.0.61_375.26_linux-run
+    CUDA8=https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda_9.2.148_396.37_linux
     FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
-    BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_8.0/bedpostx_gpu.zip
+    BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_9.2/bedpostx_gpu.zip
     NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
     MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
     # Linux packages
-    mkdir /mnt
+    mkdir /mappertrac
     apt-get -y update
     apt-get install -y apt-transport-https ca-certificates
     apt-get install -y software-properties-common
@@ -26,6 +26,11 @@ From: ubuntu:16.04
     locale-gen en_US.UTF-8
     rm /bin/sh
     ln -s /bin/bash /bin/sh
+
+    # CUDA
+    CUDA8_RUN=$(basename $CUDA8)
+    wget --no-check-certificate $CUDA8
+    sh $CUDA8_RUN -silent -override -toolkit
 
     # Heudiconv
     curl https://bootstrap.pypa.io/get-pip.py | python3.8
@@ -42,11 +47,6 @@ From: ubuntu:16.04
     apt-key add $NEURODEBIAN_KEY_RUN
     apt-get -y update
     apt-get -y install fsl-5.0-complete dcm2niix
-
-    # CUDA 8.0
-    CUDA8_RUN=$(basename $CUDA8)
-    wget --no-check-certificate $CUDA8
-    sh $CUDA8_RUN -silent -override -toolkit
 
     # Bedpostx GPU
     BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
@@ -92,16 +92,18 @@ From: ubuntu:16.04
     MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
     MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
     MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
-    SUBJECTS_DIR=/mnt
+    SUBJECTS_DIR=/mappertrac
     FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
 
     export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
 
-    export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
+    # export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
+    export CUDA_8_LIB_DIR=/usr/local/cuda-9.2/lib64
 
     export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
+
 
 
 
