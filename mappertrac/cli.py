@@ -74,7 +74,7 @@ def main():
         raise Exception(f"Missing container image at {abspath(args.container)}\n\n" +
             f"Either specify another image with --container\n\n" +
             f"Or build the container with the recipe at: {join(script_dir, 'data/container/recipe.def')}\n\n" +
-            f"Or download the container at: https://www.dropbox.com/s/2v74hra04bo22w7/image.sif?dl=1\n")
+            f"Or download the container at: https://osf.io/792up/download\n")
 
     if args.test:
         args.inputs = join(script_dir, 'data/example_inputs/sub-*/')
@@ -133,8 +133,22 @@ def main():
 
     if args.probtrackx:
         cores_per_worker = 1
+        mem_per_worker = 0.1
+        for params in all_params:
+            work_dir = params['work_dir']
+            bedpostxResults = join(work_dir,"bedpostx_b1000.bedpostX")
+            subject_size = 0
+            for dirpath, dirnames, filenames in os.walk(bedpostxResults):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if not os.path.islink(fp):
+                        subject_size += os.path.getsize(fp)
+            subject_size = 1.25 * subject_size * 1.0E-9
+            if subject_size > mem_per_worker:
+                mem_per_worker = subject_size
     else:
         cores_per_worker = int(os.cpu_count())
+        mem_per_worker = None
 
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
@@ -142,6 +156,7 @@ def main():
             worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
             cores_per_worker=cores_per_worker,
+            mem_per_worker=mem_per_worker,
             provider=parsl.providers.SlurmProvider(
                 args.partition,
                 launcher=parsl.launchers.SrunLauncher(),
@@ -160,6 +175,7 @@ def main():
             worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
             cores_per_worker=cores_per_worker,
+            mem_per_worker=mem_per_worker,
             provider=parsl.providers.CobaltProvider(
                 channel=parsl.channels.LocalChannel(),
                 launcher=parsl.launchers.SimpleLauncher(),
@@ -180,6 +196,7 @@ def main():
             worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
             max_workers=cores_per_worker, # cap workers, or else defaults to infinity.
+            mem_per_worker=mem_per_worker,
             provider=parsl.providers.GridEngineProvider(
                 channel=parsl.channels.LocalChannel(),
                 launcher=parsl.launchers.SingleNodeLauncher(),

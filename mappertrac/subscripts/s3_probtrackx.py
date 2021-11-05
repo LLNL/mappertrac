@@ -81,215 +81,76 @@ def process(params, edges, inputs=[]):
     bs = join(sdir,"bs.nii.gz")
 
     ##################################
-    # Memory Management
-    ##################################
-
-    pbtx_max_memory = psutil.virtual_memory().total * 1.0E-9
-    node_name = platform.uname().node.strip()
-    assert node_name and ' ' not in node_name, "Invalid node name {}".format(node_name)
-    mem_record = join(derivatives_dir_tmp, node_name + '.json') # Keep record to avoid overusing node memory
-
-    # Only access mem_record with file locking to avoid outdated data
-    def open_mem_record(mode = 'r'):
-        f = None
-        while True:
-            try:
-                f = open(mem_record, mode, newline='')
-                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except IOError as e:
-                # raise on unrelated IOErrors
-                if e.errno != errno.EAGAIN:
-                    raise
-                else:
-                    time.sleep(0.1)
-        assert f is not None, "Failed to open mem_record {}".format(mem_record)
-        return f
-
-    def estimate_total_memory_usage():
-        f = open_mem_record('r')
-        mem_dict = json.load(f)
-        fcntl.flock(f, fcntl.LOCK_UN)
-        f.close()
-        mem_sum = 0.0
-        for task_mem in mem_dict.values():
-            mem_sum += float(task_mem)
-        return mem_sum
-
-    def estimate_task_mem_usage():
-        total_size = 0
-        total_size += os.path.getsize(allvoxelscortsubcort)
-        total_size += os.path.getsize(terminationmask)
-        total_size += os.path.getsize(bs)
-        for dirpath, dirnames, filenames in os.walk(bedpostxResults):
-            for f in filenames:
-                fp = os.path.join(dirpath, f)
-                if not os.path.islink(fp):
-                    total_size += os.path.getsize(fp)
-
-        max_region_size = 0
-        for edge in edges:
-            a, b = edge
-            a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
-            b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
-            a_size = os.path.getsize(a_file)
-            b_size = os.path.getsize(b_file)
-            max_region_size = max([a_size, b_size, max_region_size])
-        total_size += max_region_size
-        return float(total_size) * 1.0E-9
-
-    def add_task():
-        task_id = '0'
-        f = open_mem_record('r')
-        if not exists(mem_record):
-            json.dump({task_id:task_mem_usage}, f)
-        else:
-            mem_dict = json.load(f)
-            task_ids = [int(x) for x in mem_dict.keys()] + [0] # append zero in case task_ids empty
-            task_id = str(max(task_ids) + 1) # generate incremental task_id
-            mem_dict[task_id] = task_mem_usage
-            tmp_fp, tmp_path = tempfile.mkstemp(dir=sdir_tmp)
-            with open(tmp_path, 'w', newline='') as tmp: # file pointer not consistent, so we open using the pathname
-                json.dump(mem_dict, tmp)
-            
-            try:
-                os.replace(tmp_path, mem_record) # atomic on POSIX systems. flock is advisory, so we can still overwrite.
-            except OSError as e:
-                fcntl.flock(f, fcntl.LOCK_UN)
-                f.close()
-                time.sleep(random.randrange(5, 30))
-                return add_task()
-        
-        fcntl.flock(f, fcntl.LOCK_UN)
-        f.close()
-        return task_id
-
-    def remove_task(task_id):
-        f = open_mem_record('r')
-        mem_dict = json.load(f)
-        mem_dict.pop(task_id, None)
-        tmp_fp, tmp_path = tempfile.mkstemp(dir=sdir_tmp)
-        with open(tmp_path, 'w', newline='') as tmp:
-            json.dump(mem_dict, tmp)
-        try:
-            os.replace(tmp_path, mem_record)
-        except OSError as e:
-            fcntl.flock(f, fcntl.LOCK_UN)
-            f.close()
-            time.sleep(random.randrange(5, 30))
-            return remove_task(task_id)
-        
-        fcntl.flock(f, fcntl.LOCK_UN)
-        f.close()
-
-    sleep_timeout = 7200
-
-    task_mem_usage = estimate_task_mem_usage()
-    assert task_mem_usage < pbtx_max_memory, f'Task consumes more memory ({task_mem_usage:.2f} GB) than available ({pbtx_max_memory:.2f} GB)'
-    total_sleep = 0
-    # Memory record is atomic, but might not be updated on time
-    # So we randomize sleep to discourage multiple tasks hitting at once
-    init_sleep = random.randrange(5, 30)
-    write(stdout, "Sleeping for {:d} seconds".format(init_sleep))
-    total_sleep += init_sleep
-    time.sleep(init_sleep)
-
-    if not exists(mem_record):
-        f = open_mem_record('w')
-        json.dump({}, f)
-        fcntl.flock(f, fcntl.LOCK_UN)
-        f.close()
-
-    total_mem_usage = estimate_total_memory_usage()
-    # Then we sleep until memory usage is low enough
-    while total_mem_usage + task_mem_usage > pbtx_max_memory:
-        sleep_interval = random.randrange(5, 60)
-        write(stdout, "Sleeping for {:d} seconds. Memory usage: {:.2f}/{:.2f} GB".format(sleep_interval, total_mem_usage, pbtx_max_memory))
-        total_sleep += sleep_interval
-        if total_sleep > sleep_timeout:
-            raise Exception('Retrying task that has slept longer than 2 hours')
-        time.sleep(sleep_interval)
-        total_mem_usage = estimate_total_memory_usage()
-    write(stdout, "Running Probtrackx after sleeping for {} seconds".format(total_sleep))
-
-    # Insert task and memory usage into record
-    task_id = add_task()
-
-    ##################################
     # Tractography
     ##################################
+    for edge in edges:
+        a, b = edge
+        a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
+        b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
+        tmp = join(sdir, "tmp", "{}_to_{}".format(a, b))
+        a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
+        a_to_b_file = join(pbtk_dir,a_to_b_formatted)
+        waypoints = join(tmp,"waypoint.txt")
+        waytotal = join(tmp, "waytotal")
+        assert exists(a_file) and exists(b_file), "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file)
+        smart_remove(a_to_b_file)
+        smart_remove(tmp)
+        smart_mkdir(tmp)
+        write(stdout, "Running subproc: {} to {}".format(a, b))
+        write(waypoints, b_file.replace(sdir, "/mappertrac"))
 
-    try:
-        for edge in edges:
-            a, b = edge
-            a_file = join(EDI_allvols, a + "_s2fa.nii.gz")
-            b_file = join(EDI_allvols, b + "_s2fa.nii.gz")
-            tmp = join(sdir, "tmp", "{}_to_{}".format(a, b))
-            a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
-            a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-            waypoints = join(tmp,"waypoint.txt")
-            waytotal = join(tmp, "waytotal")
-            assert exists(a_file) and exists(b_file), "Error: Both Freesurfer regions must exist: {} and {}".format(a_file, b_file)
-            smart_remove(a_to_b_file)
+        exclusion = join(tmp,"exclusion.nii.gz")
+        termination = join(tmp,"termination.nii.gz")
+        run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
+        run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
+        run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
+        run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
+
+        pbtx_args = (" -x {} ".format(a_file) +
+            # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
+            " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
+            " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
+            " --forcedir --opd --rseed={}".format(random.randint(1000,9999)) +
+            " -s {}".format(merged) +
+            " -m {}".format(nodif_brain_mask) +
+            " --dir={}".format(tmp) +
+            " --out={}".format(a_to_b_formatted)
+            )
+        run("probtrackx2" + pbtx_args, params)
+
+        waytotal_count = 0
+        if exists(waytotal):
+            with open(waytotal, 'r') as f:
+                waytotal_count = f.read().strip()
+                fdt_tmp = join(connectome_dir, "{}_to_{}.fdt.tmp".format(a, b))
+                smart_remove(fdt_tmp)
+                run(f"fslmeants -i {join(tmp, a_to_b_formatted)} -m {b_file} | head -n 1 > {fdt_tmp}", params) # based on getconnectome script
+                time.sleep(5)
+                with open(fdt_tmp, 'r') as f2:
+                    fdt_count = f2.read().strip()
+                if not is_float(waytotal_count):
+                    write(stdout, "Error: Failed to read waytotal_count value {} in {}".format(waytotal_count, edge))
+                    continue
+                if not is_float(fdt_count):
+                    write(stdout, "Error: Failed to read fdt_count value {} in {}".format(fdt_count, edge))
+                    continue
+                edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
+                smart_remove(edge_file)
+                write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
+
+                # Error check edge file
+                with open(edge_file) as f:
+                    line = f.read().strip()
+                    if len(line) > 0: # ignore empty lines
+                        chunks = [x.strip() for x in line.split(' ') if x]
+                        if not (len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3])):
+                            write(stdout, "Error: Connectome {} has invalid edge {} to {}".format(edge_file, a, b))
+                            continue
+        else:
+            write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
+        copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
+        if not a == "lh.paracentral": # discard all temp files except these for debugging
             smart_remove(tmp)
-            smart_mkdir(tmp)
-            write(stdout, "Running subproc: {} to {}".format(a, b))
-            write(waypoints, b_file.replace(sdir, "/mappertrac"))
-
-            exclusion = join(tmp,"exclusion.nii.gz")
-            termination = join(tmp,"termination.nii.gz")
-            run("fslmaths {} -sub {} {}".format(allvoxelscortsubcort, a_file, exclusion), params)
-            run("fslmaths {} -sub {} {}".format(exclusion, b_file, exclusion), params)
-            run("fslmaths {} -add {} {}".format(exclusion, bs, exclusion), params)
-            run("fslmaths {} -add {} {}".format(terminationmask, b_file, termination), params)
-
-            pbtx_args = (" -x {} ".format(a_file) +
-                # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-                " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
-                " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
-                " --forcedir --opd --rseed={}".format(random.randint(1000,9999)) +
-                " -s {}".format(merged) +
-                " -m {}".format(nodif_brain_mask) +
-                " --dir={}".format(tmp) +
-                " --out={}".format(a_to_b_formatted)
-                )
-            run("probtrackx2" + pbtx_args, params)
-
-            waytotal_count = 0
-            if exists(waytotal):
-                with open(waytotal, 'r') as f:
-                    waytotal_count = f.read().strip()
-                    fdt_tmp = join(connectome_dir, "{}_to_{}.fdt.tmp".format(a, b))
-                    smart_remove(fdt_tmp)
-                    run(f"fslmeants -i {join(tmp, a_to_b_formatted)} -m {b_file} | head -n 1 > {fdt_tmp}", params) # based on getconnectome script
-                    time.sleep(5)
-                    with open(fdt_tmp, 'r') as f2:
-                        fdt_count = f2.read().strip()
-                    if not is_float(waytotal_count):
-                        write(stdout, "Error: Failed to read waytotal_count value {} in {}".format(waytotal_count, edge))
-                        continue
-                    if not is_float(fdt_count):
-                        write(stdout, "Error: Failed to read fdt_count value {} in {}".format(fdt_count, edge))
-                        continue
-                    edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
-                    smart_remove(edge_file)
-                    write(edge_file, "{} {} {} {}".format(a, b, waytotal_count, fdt_count))
-
-                    # Error check edge file
-                    with open(edge_file) as f:
-                        line = f.read().strip()
-                        if len(line) > 0: # ignore empty lines
-                            chunks = [x.strip() for x in line.split(' ') if x]
-                            if not (len(chunks) == 4 and is_float(chunks[2]) and is_float(chunks[3])):
-                                write(stdout, "Error: Connectome {} has invalid edge {} to {}".format(edge_file, a, b))
-                                continue
-            else:
-                write(stdout, 'Error: failed to find waytotal for {} to {}'.format(a, b))
-            copyfile(join(tmp, a_to_b_formatted), a_to_b_file) # keep edi output
-            if not a == "lh.paracentral": # discard all temp files except these for debugging
-                smart_remove(tmp)
-    finally:
-        remove_task(task_id)
 
 @python_app(executors=['worker'])
 def combine(params, inputs=[]):
