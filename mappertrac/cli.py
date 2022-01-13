@@ -28,6 +28,9 @@ def parse_args(args):
     workflow_group.add_argument('--probtrackx', '--s3_probtrackx', '-s3', action='store_true',
         help='Run step 3: probtrackx.')
 
+    workflow_group.add_argument('--mrtrix', '--s2b_mrtrix', '-s2b', action='store_true',
+        help='Run step 2b: alternative tractography pipeline to run after freesurfer.')
+
     parser.add_argument('--outputs', '-o', default='mappertrac_outputs/',
         help='Path to output directories.')
 
@@ -235,6 +238,13 @@ def main():
         results =  []
         for params in all_params:
             results.append(run_probtrackx(params))
+        for r in results:
+            r.result()
+
+    elif args.mrtrix:
+        results =  []
+        for params in all_params:
+            results.append(run_mrtrix(params))
         for r in results:
             r.result()
 

@@ -12,6 +12,7 @@ From: ubuntu:16.04
     BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_9.2/bedpostx_gpu.zip
     NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
     MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    MRTRIX=https://github.com/MRtrix3/mrtrix3/archive/994498557037c9e4f7ba67f255820ef84ea899d9.zip
 
     # Linux packages
     mkdir /mappertrac
@@ -19,22 +20,28 @@ From: ubuntu:16.04
     apt-get install -y apt-transport-https ca-certificates
     apt-get install -y software-properties-common
     add-apt-repository -y universe
-    add-apt-repository -y ppa:deadsnakes/ppa
+    # add-apt-repository -y ppa:deadsnakes/ppa
+    apt-add-repository "deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu xenial main"
     sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
     apt-get -y update
-    apt-get -y install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv
+    apt-get -y --allow-unauthenticated install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv libeigen3-dev zlib1g-dev
     locale-gen en_US.UTF-8
     rm /bin/sh
     ln -s /bin/bash /bin/sh
+
+    # MRTrix
+    MRTRIX_ZIP=$(basename $MRTRIX)
+    wget --no-check-certificate $MRTRIX
+    unzip -o -d /opt $MRTRIX_ZIP
+    cd /opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
+    python3.8 ./configure -nogui -openmp
+    python3.8 ./build
+    cd $MAIN_DIR
 
     # CUDA
     CUDA8_RUN=$(basename $CUDA8)
     wget --no-check-certificate $CUDA8
     sh $CUDA8_RUN -silent -override -toolkit
-
-    # Heudiconv
-    curl https://bootstrap.pypa.io/get-pip.py | python3.8
-    pip install heudiconv
 
     # FSL
     NEURODEBIAN_KEY_RUN=$(basename $NEURODEBIAN_KEY)
@@ -95,12 +102,14 @@ From: ubuntu:16.04
     SUBJECTS_DIR=/mappertrac
     FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
 
+    export MRTRIX_DIR=/opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
+
     export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
 
     # export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
     export CUDA_8_LIB_DIR=/usr/local/cuda-9.2/lib64
 
-    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:$PATH"
+    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:${MRTRIX_DIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
 
