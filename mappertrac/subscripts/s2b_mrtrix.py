@@ -31,7 +31,9 @@ Arguments:
     input_bvec = join(input_dir, 'dwi', f'{ID}_dwi.bvec')
     input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
     for _ in [input_dwi, input_bval, input_bvec, input_T1]:
-        assert exists(_), f'Missing file {_}'
+        if not exists(_):
+            write(stdout, f'Error: Missing file {_}')
+            return
     
     smart_mkdir(sdir)
     work_dwi = join(sdir, 'hardi.nii.gz')
@@ -97,7 +99,6 @@ Arguments:
         num_voxels = int(float(f.read().strip()))
 
     # Run tractography
-    # TODO: pass sample count to select arg
     run(f'''tckgen \
         -info \
         -force \
