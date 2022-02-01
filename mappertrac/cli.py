@@ -37,8 +37,8 @@ def parse_args(args):
     parser.add_argument('--container', default=join(cwd, 'image.sif'),
         help='Path to Singularity container image.')
 
-    parser.add_argument('--pbtx_sample_count', default=200,
-        help='Number of probtrackx samples per voxel.')
+    parser.add_argument('--trac_sample_count, --pbtx_sample_count', default=200,
+        help='Number of tractography samples per voxel.')
 
     scheduler_group = parser.add_mutually_exclusive_group()
 
@@ -106,7 +106,7 @@ def main():
         'container': abspath(args.container),
         'script_dir': abspath(script_dir),
         'output_dir': output_dir,
-        'pbtx_sample_count': int(args.pbtx_sample_count),
+        'trac_sample_count': int(args.trac_sample_count),
     }
 
     for input_dir in session_dirs:

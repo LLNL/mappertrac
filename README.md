@@ -77,7 +77,7 @@ mappertrac --help
 ```
 ```
 usage: mappertrac [-h] [--test] (--freesurfer | --bedpostx | --probtrackx) [--outputs OUTPUTS] [--container CONTAINER]
-                  [--pbtx_sample_count PBTX_SAMPLE_COUNT] [--slurm | --cobalt | --grid_engine] [--nnodes NNODES] [--bank BANK]
+                  [--trac_sample_count TRAC_SAMPLE_COUNT] [--slurm | --cobalt | --grid_engine] [--nnodes NNODES] [--bank BANK]
                   [--partition PARTITION] [--walltime WALLTIME]
                   inputs [inputs ...]
 
@@ -97,7 +97,7 @@ optional arguments:
                         Path to output directories.
   --container CONTAINER
                         Path to Singularity container image.
-  --pbtx_sample_count PBTX_SAMPLE_COUNT
+  --trac_sample_count   TRAC_SAMPLE_COUNT
                         Number of probtrackx samples per voxel.
   --slurm               Use the Slurm scheduler.
   --cobalt              Use the Cobalt scheduler.

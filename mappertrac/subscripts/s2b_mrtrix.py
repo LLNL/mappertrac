@@ -12,7 +12,9 @@ def run_mrtrix(params):
     sdir = params['work_dir']
     ID = params['ID']
     stdout = params['stdout']
-    pbtx_sample_count = params['pbtx_sample_count']
+    trac_sample_count = params['trac_sample_count']
+
+    assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
 
     start_time = time.time()
     start_str = f'''
@@ -103,7 +105,7 @@ Arguments:
         -info \
         -force \
         -algorithm iFOD2 \
-        -select {pbtx_sample_count * num_voxels} \
+        -select {trac_sample_count * num_voxels} \
         -act {sdir}/5TT.mif -backtrack -crop_at_gmwmi \
         -max_attempts_per_seed 1000 \
         -seed_gmwmi {gmwmi_mif} \
@@ -118,7 +120,7 @@ Arguments:
     run(f'tck2connectome {sdir}/tracks.tck {sdir}/nodes.mif {sdir}/mrtrix_connectome.csv -force -info', params)
     
     # Format connectome
-    connectome_file = join(sdir, "connectome_{}samples_mrtrix.mat".format(pbtx_sample_count))
+    connectome_file = join(sdir, "connectome_{}samples_mrtrix.mat".format(trac_sample_count))
     connectome_matrix = np.genfromtxt(f'{sdir}/mrtrix_connectome.csv', delimiter=',')
     scipy.io.savemat(connectome_file, {'data': connectome_matrix})
 

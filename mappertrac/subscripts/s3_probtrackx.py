@@ -67,7 +67,7 @@ def process(params, edges, inputs=[]):
     sdir = params['work_dir']
     stdout = params['stdout']
     output_dir = params['output_dir']
-    pbtx_sample_count = params['pbtx_sample_count']
+    trac_sample_count = params['trac_sample_count']
     derivatives_dir_tmp = join(output_dir, 'derivatives', "tmp")
     sdir_tmp = join(sdir, "tmp")
     EDI_allvols = join(sdir,"EDI","allvols")
@@ -108,7 +108,7 @@ def process(params, edges, inputs=[]):
 
         pbtx_args = (" -x {} ".format(a_file) +
             # " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P 1000" +
-            " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(pbtx_sample_count) +
+            " --pd -l -c 0.2 -S 2000 --steplength=0.5 -P {}".format(trac_sample_count) +
             " --waypoints={} --avoid={} --stop={}".format(waypoints, exclusion, termination) +
             " --forcedir --opd --rseed={}".format(random.randint(1000,9999)) +
             " -s {}".format(merged) +
@@ -157,17 +157,17 @@ def combine(params, inputs=[]):
 
     sdir = params['work_dir']
     stdout = params['stdout']
-    pbtx_sample_count = params['pbtx_sample_count']
+    trac_sample_count = params['trac_sample_count']
     pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
     connectome_idx_list = join(params['script_dir'], 'data/lists/connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
-    oneway_list = join(sdir, "connectome_{}samples_oneway.txt".format(pbtx_sample_count))
-    twoway_list = join(sdir, "connectome_{}samples_twoway.txt".format(pbtx_sample_count))
-    oneway_nof = join(sdir, "connectome_{}samples_oneway_nof.mat".format(pbtx_sample_count)) # nof = number of fibers
-    twoway_nof = join(sdir, "connectome_{}samples_twoway_nof.mat".format(pbtx_sample_count))
-    oneway_nof_normalized = join(sdir, "connectome_{}samples_oneway_nofn.mat".format(pbtx_sample_count)) # nofn = number of fibers, normalized
-    twoway_nof_normalized = join(sdir, "connectome_{}samples_twoway_nofn.mat".format(pbtx_sample_count))
+    oneway_list = join(sdir, "connectome_{}samples_oneway.txt".format(trac_sample_count))
+    twoway_list = join(sdir, "connectome_{}samples_twoway.txt".format(trac_sample_count))
+    oneway_nof = join(sdir, "connectome_{}samples_oneway_nof.mat".format(trac_sample_count)) # nof = number of fibers
+    twoway_nof = join(sdir, "connectome_{}samples_twoway_nof.mat".format(trac_sample_count))
+    oneway_nof_normalized = join(sdir, "connectome_{}samples_oneway_nofn.mat".format(trac_sample_count)) # nofn = number of fibers, normalized
+    twoway_nof_normalized = join(sdir, "connectome_{}samples_twoway_nofn.mat".format(trac_sample_count))
     pbtk_dir = join(sdir,"EDI","PBTKresults")
     consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
     edi_maps = join(sdir,"EDI","EDImaps")

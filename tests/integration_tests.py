@@ -10,7 +10,7 @@ params = {
     'work_dir':test_dir,
     'output_dir': '/tmp',
     'stdout': join(test_dir, 'test.stdout'),
-    'pbtx_sample_count': 1,
+    'trac_sample_count': 1,
     'script_dir': script_dir,
     'input_dir': join(script_dir, 
         'data/example_inputs/sub-011591/anat/sub-011591_T1w.nii.gz')
