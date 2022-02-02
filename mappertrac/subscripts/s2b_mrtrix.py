@@ -14,7 +14,9 @@ def run_mrtrix(params):
     stdout = params['stdout']
     trac_sample_count = params['trac_sample_count']
 
-    assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
+    if not exists(join(sdir, 'S1_COMPLETE')):
+        write(stdout, 'Subject {sdir} must first run --freesurfer')
+        return
 
     start_time = time.time()
     start_str = f'''
@@ -27,29 +29,16 @@ Arguments:
 '''
     write(stdout, start_str)
     print(start_str)
-
-    input_dwi = join(input_dir, 'dwi', f'{ID}_dwi.nii.gz')
-    input_bval = join(input_dir, 'dwi', f'{ID}_dwi.bval')
-    input_bvec = join(input_dir, 'dwi', f'{ID}_dwi.bvec')
-    input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
-    for _ in [input_dwi, input_bval, input_bvec, input_T1]:
-        if not exists(_):
-            write(stdout, f'Error: Missing file {_}')
-            return
     
-    smart_mkdir(sdir)
     work_dwi = join(sdir, 'hardi.nii.gz')
     work_bval = join(sdir, 'bvals')
     work_bvec = join(sdir, 'bvecs')
     work_T1 = join(sdir, 'T1.nii.gz')
-    smart_copy(input_dwi, work_dwi)
-    smart_copy(input_bval, work_bval)
-    smart_copy(input_bvec, work_bvec)
-    smart_copy(input_T1, work_T1)
 
-    # Save NIfTI files in BIDS rawdata directory
-    rawdata_dir = sdir.replace('/derivatives/', '/rawdata/')
-    smart_copy(input_dir, rawdata_dir)
+    for _ in [work_dwi, work_bval, work_bvec, work_T1]:
+        if not exists(_):
+            write(stdout, f'Error: Missing file {_}')
+            return
 
     unzipped_dwi = join(sdir, 'hardi.nii')
     dwi_mif = join(sdir, 'DWI.mif')
@@ -145,3 +134,4 @@ Total time: {get_time_string(time.time() - start_time)} (HH:MM:SS)
 '''
     write(stdout, finish_str)
     print(finish_str)
+

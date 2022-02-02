@@ -37,7 +37,7 @@ def parse_args(args):
     parser.add_argument('--container', default=join(cwd, 'image.sif'),
         help='Path to Singularity container image.')
 
-    parser.add_argument('--trac_sample_count, --pbtx_sample_count', default=200,
+    parser.add_argument('--trac_sample_count', '--pbtx_sample_count', default=200,
         help='Number of tractography samples per voxel.')
 
     scheduler_group = parser.add_mutually_exclusive_group()
@@ -250,3 +250,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
