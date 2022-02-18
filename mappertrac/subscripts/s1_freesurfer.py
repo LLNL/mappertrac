@@ -60,6 +60,7 @@ Arguments:
     run(f'fslsplit {work_dwi} {eddy_prefix}_tmp', params)
 
     timeslices = glob(f'{eddy_prefix}_tmp????.*')
+    timeslices.sort()
     for _ in timeslices:
         run(f'flirt -in {_} -ref {eddy_prefix}_ref -nosearch -interp trilinear -o {_} -paddingsize 1', params)
     run(f'fslmerge -t {data_eddy} {" ".join(timeslices)}', params)
