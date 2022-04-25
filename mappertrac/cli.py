@@ -40,6 +40,9 @@ def parse_args(args):
     parser.add_argument('--trac_sample_count', '--pbtx_sample_count', default=200,
         help='Number of tractography samples per voxel.')
 
+    parser.add_argument('--conda_env', default='',
+        help='Path to manually loaded conda environment for compute nodes.')
+
     scheduler_group = parser.add_mutually_exclusive_group()
 
     scheduler_group.add_argument('--slurm', action='store_true',
@@ -152,6 +155,8 @@ def main():
     else:
         cores_per_worker = int(os.cpu_count())
         mem_per_worker = None
+    worker_init = f"conda activate {args.conda_env}\n" if args.conda_env else ''
+    worker_init += f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}"
 
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
@@ -167,7 +172,7 @@ def main():
                 init_blocks=1,
                 max_blocks=1,
                 scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
-                worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
+                worker_init=worker_init,
                 walltime=args.walltime,
                 move_files=False,
             ),
@@ -186,7 +191,7 @@ def main():
                 init_blocks=1,
                 max_blocks=1,
                 scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
-                worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
+                worker_init=worker_init,
                 # worker_init='source /home/madduri/setup_cooley_env.sh',
                 walltime=args.walltime,
                 account=args.bank,
@@ -207,7 +212,7 @@ def main():
                 init_blocks=1,
                 max_blocks=1,
                 scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
-                worker_init=f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}",
+                worker_init=worker_init,
                 walltime=args.walltime,
                 queue='gpu.q', # enables Wynton GPU queues
             ),
