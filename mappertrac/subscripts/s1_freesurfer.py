@@ -11,6 +11,8 @@ def run_freesurfer(params):
     sdir = params['work_dir']
     ID = params['ID']
     stdout = params['stdout']
+    ncores = params['nnodes'] # For grid engine on UCSF Wynton
+    #ncores = int(os.cpu_count()) 
 
     start_time = time.time()
     start_str = f'''
@@ -52,25 +54,24 @@ Arguments:
     eddy_prefix = join(sdir, 'data_eddy')
     data_eddy = f'{eddy_prefix}.nii.gz'
     bet = join(sdir, 'data_bet.nii.gz')
-
-    for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
-        smart_remove(_)
-
-    run(f'fslroi {work_dwi} {eddy_prefix}_ref 0 1', params)
-    run(f'fslsplit {work_dwi} {eddy_prefix}_tmp', params)
-
-    timeslices = glob(f'{eddy_prefix}_tmp????.*')
-    timeslices.sort()
-    for _ in timeslices:
-        run(f'flirt -in {_} -ref {eddy_prefix}_ref -nosearch -interp trilinear -o {_} -paddingsize 1', params)
-    run(f'fslmerge -t {data_eddy} {" ".join(timeslices)}', params)
-    run(f'bet {data_eddy} {bet} -m -f 0.3', params)
-
-    ##################################
-    # recon-all
-    ##################################
-
     bet_mask = join(sdir, 'data_bet_mask.nii.gz')
+
+    if exists(data_eddy):
+        write(stdout, "Eddy output image was found. Skipping eddy step. ")
+    else:
+        for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
+            smart_remove(_)
+
+        run(f'fslroi {work_dwi} {eddy_prefix}_ref 0 1', params)
+        run(f'fslsplit {work_dwi} {eddy_prefix}_tmp', params)
+
+        timeslices = glob(f'{eddy_prefix}_tmp????.*')
+        timeslices.sort()
+        for _ in timeslices:
+            run(f'flirt -in {_} -ref {eddy_prefix}_ref -nosearch -interp trilinear -o {_} -paddingsize 1', params)
+        run(f'fslmerge -t {data_eddy} {" ".join(timeslices)}', params)
+        run(f'bet {data_eddy} {bet} -m -f 0.3', params)
+
     dti_params = join(sdir, 'DTIparams')
     dti_L1 = f'{dti_params}_L1.nii.gz'
     dti_L2 = f'{dti_params}_L2.nii.gz'
@@ -81,18 +82,26 @@ Arguments:
     dti_AD = f'{dti_params}_AD.nii.gz'
     dti_FA = f'{dti_params}_FA.nii.gz'
     FA = join(sdir, 'FA.nii.gz')
-    if exists(bet_mask):
-        run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec} -b {work_bval}', params)
-        run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
-        run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
-        smart_copy(dti_L1, dti_AD)
-        smart_copy(dti_FA, FA)
+    
+    if exists(dti_FA):
+        write(stdout, "DTI parameter maps already exist. Skipping DTI fit. ")
     else:
-        write(stdout, "Warning: failed to generate masked outputs")
-        raise Exception(f"Failed BET step. Please check {stdout} for more info.")
+        if exists(bet_mask):
+            run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec} -b {work_bval}', params)
+            run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
+            run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
+            smart_copy(dti_L1, dti_AD)
+            smart_copy(dti_FA, FA)
+        else:
+            write(stdout, "Warning: failed to generate masked outputs")
+            raise Exception(f"Failed BET step. Please check {stdout} for more info.")
 
-    for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
-        smart_remove(_)
+        for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
+            smart_remove(_)
+
+    ################################
+    # recon-all
+    ################################
 
     # fsdir = join(sdir, 'freesurfer')
     # smart_mkdir(fsdir)
@@ -103,7 +112,6 @@ Arguments:
     smart_mkdir(join(sdir, 'mri', 'orig'))
     run(f'mri_convert {work_T1} {mri_out}', params)
 
-    ncores = int(os.cpu_count())
     write(stdout, f'Running Freesurfer with {ncores} cores')
     run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
 
