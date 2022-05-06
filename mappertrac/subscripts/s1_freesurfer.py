@@ -98,8 +98,6 @@ Arguments:
         for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
             smart_remove(_)
 
-    smart_copy(dti_FA, FA)
-
     ################################
     # recon-all
     ################################
@@ -112,14 +110,10 @@ Arguments:
     mri_out = join(sdir, 'mri', 'orig', '001.mgz')
     smart_mkdir(join(sdir, 'mri', 'orig'))
     run(f'mri_convert {work_T1} {mri_out}', params)
-    EDI = join(sdir, 'EDI')
 
-    if exists(EDI):
-        write(stdout, f'Detected EDI folder. Skipping recon-all.')
-    else:
-        write(stdout, f'Running Freesurfer with {ncores} cores')
-        run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
-    
+    write(stdout, f'Running Freesurfer with {ncores} cores')
+    run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
+
     ##################################
     # mri_annotation2label
     ##################################
