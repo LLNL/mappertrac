@@ -91,7 +91,6 @@ Arguments:
             run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
             run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
             smart_copy(dti_L1, dti_AD)
-            smart_copy(dti_FA, FA)
         else:
             write(stdout, "Warning: failed to generate masked outputs")
             raise Exception(f"Failed BET step. Please check {stdout} for more info.")
@@ -99,6 +98,8 @@ Arguments:
         for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
             smart_remove(_)
 
+    smart_copy(dti_FA, FA)
+    
     ################################
     # recon-all
     ################################
