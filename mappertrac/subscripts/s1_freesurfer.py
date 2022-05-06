@@ -112,9 +112,14 @@ Arguments:
     mri_out = join(sdir, 'mri', 'orig', '001.mgz')
     smart_mkdir(join(sdir, 'mri', 'orig'))
     run(f'mri_convert {work_T1} {mri_out}', params)
+    
+    EDI = join(sdir, 'EDI')
 
-    write(stdout, f'Running Freesurfer with {ncores} cores')
-    run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
+    if exists(EDI):
+        write(stdout, f'Detected EDI folder. Skipping recon-all.')
+    else:
+        write(stdout, f'Running Freesurfer with {ncores} cores')
+        run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
 
     ##################################
     # mri_annotation2label
@@ -137,7 +142,7 @@ Arguments:
         '10:lh_thalamus', '11:lh_caudate', '12:lh_putamen', '13:lh_pallidum', '17:lh_hippocampus', '18:lh_amygdala', '26:lh_acumbens', 
         '49:rh_thalamus', '50:rh_caudate', '51:rh_putamen', '52:rh_pallidum', '53:rh_hippocampus', '54:rh_amygdala', '58:rh_acumbens',
     ]
-    EDI = join(sdir, 'EDI')
+    
     EDI_allvols = join(EDI, 'allvols')
 
     smart_mkdir(cort_label_dir)
