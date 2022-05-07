@@ -15,9 +15,9 @@ def run_probtrackx(params):
     assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
 
     pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
-    edges_per_chunk = 4
+    edges_per_chunk = 5
     n = edges_per_chunk
-    edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range((len(pbtx_edges) + n - 1) // n )]
+    edge_chunks = [pbtx_edges[i * n:(i * n + n - 1)] for i in range((len(pbtx_edges) - n) // n )]
 
     start_future = start(params)
     process_futures = []
@@ -216,18 +216,21 @@ def combine(params, inputs=[]):
     for edge in pbtx_edges:
         a, b = edge
         edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
-        with open(edge_file) as f:
-            chunks = [x.strip() for x in f.read().strip().split(' ') if x]
-            a_to_b = (chunks[0], chunks[1])
-            b_to_a = (chunks[1], chunks[0])
-            waytotal_count = float(chunks[2])
-            fdt_count = float(chunks[3])
-            if b_to_a in twoway_edges:
-                twoway_edges[b_to_a][0] += waytotal_count
-                twoway_edges[b_to_a][1] += fdt_count
-            else:
-                twoway_edges[a_to_b] = [waytotal_count, fdt_count]
-            oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+        if exists(edge_file):
+            with open(edge_file) as f:
+                chunks = [x.strip() for x in f.read().strip().split(' ') if x]
+                a_to_b = (chunks[0], chunks[1])
+                b_to_a = (chunks[1], chunks[0])
+                waytotal_count = float(chunks[2])
+                fdt_count = float(chunks[3])
+                if b_to_a in twoway_edges:
+                    twoway_edges[b_to_a][0] += waytotal_count
+                    twoway_edges[b_to_a][1] += fdt_count
+                else:
+                    twoway_edges[a_to_b] = [waytotal_count, fdt_count]
+                oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+        else:
+            write(stdout, 'The connectom edge file {}_to_{} does not exist.'.format(a, b))
 
     for a_to_b in oneway_edges:
         a = a_to_b[0]
