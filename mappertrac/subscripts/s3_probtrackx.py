@@ -17,7 +17,7 @@ def run_probtrackx(params):
     pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
     edges_per_chunk = 5
     n = edges_per_chunk
-    edge_chunks = [pbtx_edges[i * n:(i * n + n - 1)] for i in range((len(pbtx_edges) - n) // n )]
+    edge_chunks = [pbtx_edges[i * n:(i + 1) * n)] for i in range(len(pbtx_edges) // n )]
 
     start_future = start(params)
     process_futures = []
