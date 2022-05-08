@@ -17,7 +17,7 @@ def run_probtrackx(params):
     pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
     edges_per_chunk = 5
     n = edges_per_chunk
-    edge_chunks = [pbtx_edges[i * n:(i + 1) * n)] for i in range(len(pbtx_edges) // n )]
+    edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range(len(pbtx_edges) // n )]
 
     start_future = start(params)
     process_futures = []
@@ -271,59 +271,64 @@ def combine(params, inputs=[]):
         a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
         b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
         if not exists(a_to_b_file):
-            write(stdout, "Error: cannot find {}".format(a_to_b_file))
-            return
-        if not exists(b_to_a_file):
-            write(stdout, "Error: cannot find {}".format(b_to_a_file))
-            return
-        consensus = join(consensus_dir, a_to_b + '.nii.gz')
-        
-        amax_tmp = join(connectome_dir, f"{a_to_b}.amax.tmp")
-        bmax_tmp = join(connectome_dir, f"{a_to_b}.bmax.tmp")
-        smart_remove(amax_tmp)
-        smart_remove(bmax_tmp)
-        run(f'fslstats {a_to_b_file} -R | cut -f 2 -d \\" \\" > {amax_tmp}', params).strip()
-        run(f'fslstats {b_to_a_file} -R | cut -f 2 -d \\" \\" > {bmax_tmp}', params).strip()
-        time.sleep(5)
-        with open(amax_tmp, 'r') as f:
-            amax = f.read().strip()
-        with open(bmax_tmp, 'r') as f:
-            bmax = f.read().strip()
-
-        if not is_float(amax):
-            write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
-            return
-        amax = int(float(amax))
-
-        if not is_float(bmax):
-            write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
-            return
-        bmax = int(float(bmax))
-
-        write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
-        if amax > 0 and bmax > 0:
-            tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
-            tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
-            run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
-            run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
-            run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
-            smart_remove(tmp1)
-            smart_remove(tmp2)
+            write(stdout, "Warning: cannot find {}".format(a_to_b_file))
+            #return
+        elif not exists(b_to_a_file):
+            write(stdout, "Warning: cannot find {}".format(b_to_a_file))
+            #return
         else:
-            with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
-                log.write("For edge {}:\n".format(a_to_b))
-                log.write("{} is thresholded to {}\n".format(a, amax))
-                log.write("{} is thresholded to {}\n".format(b, bmax))
+            consensus = join(consensus_dir, a_to_b + '.nii.gz')
+        
+            amax_tmp = join(connectome_dir, f"{a_to_b}.amax.tmp")
+            bmax_tmp = join(connectome_dir, f"{a_to_b}.bmax.tmp")
+            smart_remove(amax_tmp)
+            smart_remove(bmax_tmp)
+            run(f'fslstats {a_to_b_file} -R | cut -f 2 -d \\" \\" > {amax_tmp}', params).strip()
+            run(f'fslstats {b_to_a_file} -R | cut -f 2 -d \\" \\" > {bmax_tmp}', params).strip()
+            time.sleep(5)
+            with open(amax_tmp, 'r') as f:
+                amax = f.read().strip()
+            with open(bmax_tmp, 'r') as f:
+                bmax = f.read().strip()
+
+            if not is_float(amax):
+                write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
+                return
+            amax = int(float(amax))
+
+            if not is_float(bmax):
+                write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
+                return
+            bmax = int(float(bmax))
+
+            write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
+            if amax > 0 and bmax > 0:
+                tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
+                tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
+                run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
+                run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
+                run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
+                smart_remove(tmp1)
+                smart_remove(tmp2)
+            else:
+                with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
+                    log.write("For edge {}:\n".format(a_to_b))
+                    log.write("{} is thresholded to {}\n".format(a, amax))
+                    log.write("{} is thresholded to {}\n".format(b, bmax))
 
     # Collect number of probtrackx tracts per voxel
     for edge in pbtx_edges:
         a, b = edge
         a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
         a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-        if not exists(tract_total):
-            copyfile(a_to_b_file, tract_total)
+        
+        if not exists(a_to_b_file):
+            write(stdout, "Warning: cannot find {}".format(a_to_b_file))
         else:
-            run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
+            if not exists(tract_total):
+                copyfile(a_to_b_file, tract_total)
+            else:
+                run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
 
     # Collect number of parcel-to-parcel edges per voxel
     for edge in consensus_edges:
