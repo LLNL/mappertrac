@@ -43,6 +43,12 @@ def parse_args(args):
     parser.add_argument('--conda_env', default='',
         help='Path to manually loaded conda environment for compute nodes.')
 
+    parser.add_argument('--retries', default=0,
+        help='Number of times to retry failed tasks.')
+
+    parser.add_argument('--edgelist', default='reduced',
+        help='Edge list for probtrackx: all (6642 edges) or reduced (930 edges).')
+
     scheduler_group = parser.add_mutually_exclusive_group()
 
     scheduler_group.add_argument('--slurm', action='store_true',
@@ -109,6 +115,7 @@ def main():
         'container': abspath(args.container),
         'script_dir': abspath(script_dir),
         'output_dir': output_dir,
+        'edgelist': args.edgelist,
         'nnodes': int(args.nnodes),
         'trac_sample_count': int(args.trac_sample_count),
     }
@@ -156,8 +163,17 @@ def main():
     else:
         cores_per_worker = int(os.cpu_count())
         mem_per_worker = None
-    worker_init = f"conda activate {args.conda_env}\n" if args.conda_env else ''
-    worker_init += f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}"
+    
+    if args.conda_env:
+        worker_init = (f"cd /wynton/home/mukherjee/shared/miniconda3\n" + 
+                       f". bin/activate\n" +
+                       f"export PATH=$PATH:/wynton/home/mukherjee/shared/miniconda3/bin\n" +
+                       f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}\n" +
+                       f"echo $( python3 -V )\n" +
+                       f"echo $( conda -V )\n" +
+                       f"conda activate {args.conda_env}")
+    else:
+        worker_init = ''
 
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
@@ -214,7 +230,7 @@ def main():
                 min_blocks=0,
                 max_blocks=1,
                 parallelism=1,
-                maxcores=int(args.ncores), # this passes to the qsub command in parsl to request consistent num of cores
+                maxcores=int(args.nnodes), # this passes to the qsub command in parsl to request consistent num of cores
                 scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
                 worker_init=worker_init,
                 walltime=args.walltime,
@@ -224,7 +240,7 @@ def main():
     else:
         executor = parsl.executors.ThreadPoolExecutor(label="worker")
 
-    config = parsl.config.Config(executors=[executor])
+    config = parsl.config.Config(executors=[executor], retries=int(args.retries))
     parsl.clear()
     parsl.set_stream_logger()
     parsl.load(config)
