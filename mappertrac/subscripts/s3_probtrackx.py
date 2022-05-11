@@ -6,7 +6,7 @@ from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
 
-if "all" in params['list']: 
+if "all" in params['edgelist']: 
     EDGE_LIST = 'data/lists/list_edges_all.txt'
 else:
     EDGE_LIST = 'data/lists/list_edges_reduced.txt'
