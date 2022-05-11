@@ -6,18 +6,18 @@ from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
 
-if "all" in params['edgelist']: 
-    EDGE_LIST = 'data/lists/list_edges_all.txt'
-else:
-    EDGE_LIST = 'data/lists/list_edges_reduced.txt'
-
 def run_probtrackx(params):
 
     sdir = params['work_dir']
     assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
     assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
 
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
+    if "all" in params['edgelist']: 
+        edge_list = 'data/lists/list_edges_all.txt'
+    else:
+        edge_list = 'data/lists/list_edges_reduced.txt'
+
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], edge_list))
     edges_per_chunk = 5
     n = edges_per_chunk
     edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range(len(pbtx_edges) // n )]
@@ -161,7 +161,13 @@ def combine(params, inputs=[]):
     sdir = params['work_dir']
     stdout = params['stdout']
     trac_sample_count = params['trac_sample_count']
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
+    
+    if "all" in params['edgelist']: 
+        edge_list = 'data/lists/list_edges_all.txt'
+    else:
+        edge_list = 'data/lists/list_edges_reduced.txt'
+    
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], edge_list))
     connectome_idx_list = join(params['script_dir'], 'data/lists/connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
