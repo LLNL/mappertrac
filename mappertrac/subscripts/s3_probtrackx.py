@@ -14,6 +14,8 @@ def run_probtrackx(params):
 
     if "all" in params['edgelist']: 
         edge_list = 'data/lists/list_edges_all.txt'
+    elif "tiny" in params['edgelist']:
+        edge_list = 'data/lists/list_edges_tiny.txt'
     else:
         edge_list = 'data/lists/list_edges_reduced.txt'
 
@@ -23,10 +25,18 @@ def run_probtrackx(params):
     edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range(len(pbtx_edges) // n )]
 
     start_future = start(params)
+
     process_futures = []
     for edge_chunk in edge_chunks:
         process_futures.append(process(params, edge_chunk, inputs=[start_future]))
-    return combine(params, inputs=process_futures)
+
+    combine_future = combine(params, inputs=[process_futures])
+
+    consensus_futures = []
+    for edge_chunk in edge_chunks:
+        consensus_futures.append(consensus(params, edge_chunk, inputs=[combine_future]))
+
+    return conclude(params, inputs=consensus_futures)
 
 @python_app(executors=['worker'])
 def start(params, inputs=[]):
@@ -164,6 +174,8 @@ def combine(params, inputs=[]):
     
     if "all" in params['edgelist']: 
         edge_list = 'data/lists/list_edges_all.txt'
+    elif "tiny" in params['edgelist']:
+        edge_list = 'data/lists/list_edges_tiny.txt'
     else:
         edge_list = 'data/lists/list_edges_reduced.txt'
     
@@ -194,13 +206,6 @@ def combine(params, inputs=[]):
     smart_mkdir(edi_maps)
     oneway_edges = {}
     twoway_edges = {}
-
-    consensus_edges = []
-    for edge in pbtx_edges:
-        a, b = edge
-        if [a, b] in consensus_edges or [b, a] in consensus_edges:
-            continue
-        consensus_edges.append(edge)
 
     copyfile(connectome_idx_list, join(sdir, 'connectome_idxs.txt')) # give each subject a copy for reference
 
@@ -271,10 +276,22 @@ def combine(params, inputs=[]):
     smart_copy(twoway_nof_normalized, join(dirname(sdir), basename(twoway_nof_normalized)))
     smart_copy(twoway_list, join(dirname(sdir), basename(twoway_list)))
     
+@python_app(executors=['worker'])
+def consensus(params, edges, inputs=[]):
+    sdir = params['sdir']
+    stdout = params['stdout']
+    trac_sample_count = params['trac_sample_count']
+    start_time = time.time()
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
+    edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
+
     ##################################
     # EDI consensus
     ##################################
-    for edge in pbtx_edges:
+    for edge in edges:
         a, b = edge
         a_to_b = "{}_to_{}".format(a, b)
         a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
@@ -325,6 +342,29 @@ def combine(params, inputs=[]):
                     log.write("{} is thresholded to {}\n".format(a, amax))
                     log.write("{} is thresholded to {}\n".format(b, bmax))
 
+@python_app(executors=['worker'])
+def conclude(params, inputs=[]):
+    sdir = params['work_dir']
+    stdout = params['stdout']
+    
+    if "all" in params['edgelist']: 
+        edge_list = 'data/lists/list_edges_all.txt'
+    elif "tiny" in params['edgelist']:
+        edge_list = 'data/lists/list_edges_tiny.txt'
+    else:
+        edge_list = 'data/lists/list_edges_reduced.txt'
+    
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], edge_list))
+    start_time = time.time()
+    connectome_dir = join(sdir,"EDI","CNTMresults")
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
+    edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
+    smart_remove(edi_maps)
+    smart_mkdir(edi_maps)    
+
     # Collect number of probtrackx tracts per voxel
     for edge in pbtx_edges:
         a, b = edge
@@ -339,6 +379,13 @@ def combine(params, inputs=[]):
             else:
                 run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
 
+    consensus_edges = []
+    for edge in pbtx_edges:
+        a, b = edge
+        if [a, b] in consensus_edges or [b, a] in consensus_edges:
+            continue
+        consensus_edges.append(edge)
+    
     # Collect number of parcel-to-parcel edges per voxel
     for edge in consensus_edges:
         a, b = edge
