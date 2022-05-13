@@ -283,6 +283,7 @@ def consensus(params, edges, inputs=[]):
     trac_sample_count = params['trac_sample_count']
     start_time = time.time()
     pbtk_dir = join(sdir,"EDI","PBTKresults")
+    connectome_dir = join(sdir,"EDI","CNTMresults")
     consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
     edi_maps = join(sdir,"EDI","EDImaps")
     edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
