@@ -30,7 +30,7 @@ def run_probtrackx(params):
     for edge_chunk in edge_chunks:
         process_futures.append(process(params, edge_chunk, inputs=[start_future]))
 
-    combine_future = combine(params, inputs=[process_futures])
+    combine_future = combine(params, inputs=process_futures)
 
     consensus_futures = []
     for edge_chunk in edge_chunks:
@@ -278,7 +278,7 @@ def combine(params, inputs=[]):
     
 @python_app(executors=['worker'])
 def consensus(params, edges, inputs=[]):
-    sdir = params['sdir']
+    sdir = params['work_dir']
     stdout = params['stdout']
     trac_sample_count = params['trac_sample_count']
     start_time = time.time()
