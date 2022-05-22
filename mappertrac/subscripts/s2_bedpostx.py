@@ -43,7 +43,10 @@ Arguments:
     smart_copy(join(sdir, 'data_eddy.nii.gz'), join(bedpostx, 'data.nii.gz'))
     smart_copy(join(sdir, 'data_bet_mask.nii.gz'), join(bedpostx, 'nodif_brain_mask.nii.gz'))
     smart_copy(join(sdir, 'bvals'), join(bedpostx, 'bvals'))
-    smart_copy(join(sdir, 'bvecs'), join(bedpostx, 'bvecs'))
+    if exists(join(sdir, 'eddy_rotated_bvecs')):
+        smart_copy(join(sdir, 'eddy_rotated_bvecs'), join(bedpostx, 'bvecs'))
+    else:
+        smart_copy(join(sdir, 'bvecs'), join(bedpostx, 'bvecs'))
 
     bedpostx_sh = join(sdir, 'bedpostx.sh')
     smart_remove(bedpostx_sh)
