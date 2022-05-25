@@ -9,6 +9,7 @@ from mappertrac.subscripts import *
 def run_probtrackx(params):
 
     sdir = params['work_dir']
+    stdout = params['stdout']
     assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
     assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
 
@@ -24,17 +25,25 @@ def run_probtrackx(params):
     n = edges_per_chunk
     edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range(len(pbtx_edges) // n )]
 
+    connectome_idx_list = join(sdir, "connectome_idxs.txt")
+
     start_future = start(params)
 
-    process_futures = []
-    for edge_chunk in edge_chunks:
-        process_futures.append(process(params, edge_chunk, inputs=[start_future]))
+    if exists(connectome_idx_list):
+        write(stdout, 'Probtrackx and combination steps were done. Running consensus directly.')
+        consensus_futures = []
+        for edge_chunk in edge_chunks:
+            consensus_futures.append(consensus(params, edge_chunk, inputs=[start_future]))
+    else:
+        process_futures = []
+        for edge_chunk in edge_chunks:
+            process_futures.append(process(params, edge_chunk, inputs=[start_future]))
 
-    combine_future = combine(params, inputs=process_futures)
+        combine_future = combine(params, inputs=process_futures)
 
-    consensus_futures = []
-    for edge_chunk in edge_chunks:
-        consensus_futures.append(consensus(params, edge_chunk, inputs=[combine_future]))
+        consensus_futures = []
+        for edge_chunk in edge_chunks:
+            consensus_futures.append(consensus(params, edge_chunk, inputs=[combine_future]))
 
     return conclude(params, inputs=consensus_futures)
 
