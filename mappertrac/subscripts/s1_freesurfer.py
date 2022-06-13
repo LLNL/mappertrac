@@ -27,6 +27,7 @@ Arguments:
     print(start_str)
 
     input_dwi = join(input_dir, 'dwi', f'{ID}_dwi.nii.gz')
+    input_rev = join(input_dir, 'dwi', f'{ID}_dwi_rev.nii.gz')
     input_bval = join(input_dir, 'dwi', f'{ID}_dwi.bval')
     input_bvec = join(input_dir, 'dwi', f'{ID}_dwi.bvec')
     input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
@@ -51,6 +52,29 @@ Arguments:
     # dti-preproc
     ##################################
 
+    # Optional topup step
+    if exists(input_rev):
+        # Define file name variables
+        b0_ap = join(sdir, 'b0_ap.nii.gz')
+        b0_pa = join(sdir, 'b0_pa.nii.gz')
+        topup_input = join(sdir, 'b0_ap_pa.nii.gz')
+        acq_file = join(input_dir, 'acq.txt')
+        topup_results = join(sdir, 'topup_results')
+        data_topup = join(sdir, 'data_topup.nii.gz')
+
+        # cut and merge b0_ap and b0_pa for topup
+        run(f'fslroi {work_dwi} {b0_ap} 0 1', params)
+        run(f'fslroi {input_rev} {b0_pa} 0 1', params)
+        run(f'fslmerge -t {topup_input} {b0_ap} {b0_pa}', params) 
+
+        # Identify acquisition file
+
+        # run topup
+        run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
+        run(f'applytopup --imain={work_dwi} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    else:
+        smart_copy(work_dwi, data_topup)
+
+    # Registration based motion correction and eddy
     eddy_prefix = join(sdir, 'data_eddy')
     data_eddy = f'{eddy_prefix}.nii.gz'
     bet = join(sdir, 'data_bet.nii.gz')
