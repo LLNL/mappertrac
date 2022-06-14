@@ -71,7 +71,8 @@ Arguments:
 
         # run topup
         run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
-        run(f'applytopup --imain={work_dwi} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    else:
+        run(f'applytopup --imain={work_dwi} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    
+    else:
         smart_copy(work_dwi, data_topup)
 
     # Registration based motion correction and eddy
@@ -86,8 +87,8 @@ Arguments:
         for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
             smart_remove(_)
 
-        run(f'fslroi {work_dwi} {eddy_prefix}_ref 0 1', params)
-        run(f'fslsplit {work_dwi} {eddy_prefix}_tmp', params)
+        run(f'fslroi {data_topup} {eddy_prefix}_ref 0 1', params)
+        run(f'fslsplit {data_topup} {eddy_prefix}_tmp', params)
 
         timeslices = glob(f'{eddy_prefix}_tmp????.*')
         timeslices.sort()
