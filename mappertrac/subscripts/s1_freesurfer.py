@@ -74,7 +74,7 @@ Arguments:
         run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
         run(f'applytopup --imain={work_dwi} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    
     else:
-        white(stdout, "No revPE input image available. Skipping topup. ")
+        write(stdout, "No revPE input image available. Skipping topup. ")
         smart_copy(work_dwi, data_topup)
 
     # Registration based motion correction and eddy
