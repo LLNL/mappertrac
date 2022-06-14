@@ -53,6 +53,8 @@ Arguments:
     ##################################
 
     # Optional topup step
+    data_topup = join(sdir, 'data_topup.nii.gz')
+
     if exists(input_rev):
         # Define file name variables
         b0_ap = join(sdir, 'b0_ap.nii.gz')
@@ -60,7 +62,6 @@ Arguments:
         topup_input = join(sdir, 'b0_ap_pa.nii.gz')
         acq_file = join(input_dir, 'acq.txt')
         topup_results = join(sdir, 'topup_results')
-        data_topup = join(sdir, 'data_topup.nii.gz')
 
         # cut and merge b0_ap and b0_pa for topup
         run(f'fslroi {work_dwi} {b0_ap} 0 1', params)
@@ -73,6 +74,7 @@ Arguments:
         run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
         run(f'applytopup --imain={work_dwi} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    
     else:
+        white(stdout, "No revPE input image available. Skipping topup. ")
         smart_copy(work_dwi, data_topup)
 
     # Registration based motion correction and eddy
