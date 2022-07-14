@@ -37,6 +37,7 @@ Arguments:
     dyads1 = join(bedpostxResults, 'dyads1')
     dyads2 = join(bedpostxResults, 'dyads2')
     brain_mask = join(bedpostxResults, 'nodif_brain_mask')
+    smart_remove(bedpostx)
     smart_remove(bedpostxResults)
     smart_mkdir(bedpostx)
     smart_mkdir(bedpostxResults)
