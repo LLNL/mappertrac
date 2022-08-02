@@ -43,7 +43,12 @@ Arguments:
     smart_mkdir(bedpostxResults)
     smart_copy(join(sdir, 'data_eddy.nii.gz'), join(bedpostx, 'data.nii.gz'))
     smart_copy(join(sdir, 'data_bet_mask.nii.gz'), join(bedpostx, 'nodif_brain_mask.nii.gz'))
-    smart_copy(join(sdir, 'bvals'), join(bedpostx, 'bvals'))
+
+    if exists(join(sdir, 'bval_reorg')):
+        smart_copy(join(sdir, 'bval_reorg'), join(bedpostx, 'bvals'))
+    else:
+        smart_copy(join(sdir, 'bvals'), join(bedpostx, 'bvals'))
+
     if exists(join(sdir, 'eddy_rotated_bvecs')):
         smart_copy(join(sdir, 'eddy_rotated_bvecs'), join(bedpostx, 'bvecs'))
     else:
