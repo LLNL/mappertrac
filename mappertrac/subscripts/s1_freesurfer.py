@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-import os,sys,glob,time,csv,math,pprint,shutil
+import os,sys,glob,time,csv,math,pprint,shutil,fnmatch
 from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
+from fnmatch import fnmatch
 
 @python_app(executors=['worker'])
 def run_freesurfer(params):
@@ -52,6 +53,28 @@ Arguments:
     # dti-preproc
     ##################################
 
+    # Identify b0 volumes in work_dwi
+    bval_txt = open("work_bval", "r")
+    bval_list = bval_txt.read().split()
+    b0_idx = [idx for idx, v in enumerate(bval_list) if v == '0']
+    
+    # Reorganize work_dwi by having the average b0 followed by diffusion volumes
+    run(f'fslsplit {work_dwi} 0', params)
+    split_list = [f for f in os.listdir(sdir) if fnmatch(f, '00*.nii.gz')]
+    
+    b0_list = []
+    for idx in b0_idx:
+      b0_file = split_list[int(idx)]
+      b0_list.append(b0_file)
+
+    diff_list = split_list
+    for idx in b0_list:
+      diff_list.remove(idx)
+
+    run(f'fslmerge -t b0s {}', b0_list)
+    run(f'fslmaths b0s -Tmean b0_avg', params)
+    run(f'fslmerge -t dwi_reorg b0_avg.nii.gz {}', diff_list)
+
     # Optional topup step
     data_topup = join(sdir, 'data_topup.nii.gz')
 
@@ -64,7 +87,7 @@ Arguments:
         topup_results = join(sdir, 'topup_results')
 
         # cut and merge b0_ap and b0_pa for topup
-        run(f'fslroi {work_dwi} {b0_ap} 0 1', params)
+        run(f'fslroi {dwi_reorg} {b0_ap} 0 1', params)
         run(f'fslroi {input_rev} {b0_pa} 0 1', params)
         run(f'fslmerge -t {topup_input} {b0_ap} {b0_pa}', params) 
 
@@ -72,10 +95,10 @@ Arguments:
 
         # run topup
         run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
-        run(f'applytopup --imain={work_dwi} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    
+        run(f'applytopup --imain={dwi_reorg} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    
     else:
         write(stdout, "No revPE input image available. Skipping topup. ")
-        smart_copy(work_dwi, data_topup)
+        smart_copy(dwi_reorg, data_topup)
 
     # Registration based motion correction and eddy
     eddy_prefix = join(sdir, 'data_eddy')
