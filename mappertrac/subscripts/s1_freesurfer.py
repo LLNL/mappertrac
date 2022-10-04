@@ -71,9 +71,11 @@ Arguments:
     for idx in b0_list:
       diff_list.remove(idx)
 
-    run(f'fslmerge -t b0s {}', b0_list)
+    run(f'fslmerge -t b0s {b0_list}', params)
     run(f'fslmaths b0s -Tmean b0_avg', params)
-    run(f'fslmerge -t dwi_reorg b0_avg.nii.gz {}', diff_list)
+    run(f'fslmerge -t dwi_reorg b0_avg.nii.gz {diff_list}', params)
+
+    dwi_reorg = join(sdir, 'dwi_reorg.nii.gz')
 
     # Optional topup step
     data_topup = join(sdir, 'data_topup.nii.gz')
