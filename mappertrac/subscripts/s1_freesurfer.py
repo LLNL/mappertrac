@@ -54,7 +54,7 @@ Arguments:
     ##################################
 
     # Identify b0 volumes in work_dwi
-    bval_txt = open("work_bval", "r")
+    bval_txt = open(work_bval, 'r"'
     bval_list = bval_txt.read().split()
     b0_idx = [idx for idx, v in enumerate(bval_list) if v == '0']
     
@@ -74,8 +74,30 @@ Arguments:
     run(f'fslmerge -t b0s {b0_list}', params)
     run(f'fslmaths b0s -Tmean b0_avg', params)
     run(f'fslmerge -t dwi_reorg b0_avg.nii.gz {diff_list}', params)
-
     dwi_reorg = join(sdir, 'dwi_reorg.nii.gz')
+
+    # Write reorganized bvals
+    work_bval_reorg = join(sdir, 'bvals_reorg')
+    bval_txt_reorg = open(work_bval_reorg, 'w')
+    bval_list_reorg = [b for idx, b in enumerate(bval_list) if b != '0']
+    bval_txt_reorg.write('0')
+    for i in range(len(bval_list_reorg)):
+      bval_txt_reorg.write(' ')
+      bval_txt_reorg.write(bval_list_reorg[i])  
+
+    # Write reorganized bvecs
+    bvec_txt = open(work_bvec, 'r')
+    bvec_list = bvec_txt.read().split()
+    bvec_list_reorg = [b for idx, b in enumerate(bvec_list) if b != '0']
+    
+    work_bvec_reorg = join(sdir, 'bvecs_reorg')
+    bvec_txt_reorg = open(work_bvec_reorg, 'w')
+    bvec_txt_reorg.write('0')
+    nvols_diffusion = int(len(bvec_list_reorg)/3)
+    bvec_line_breaks = [nvols_diffision, nvols_diffusion * 2]
+    for i in range(len(bvec_list_reorg)):
+      bvec_txt_reorg.write('\n' + '0 ') if i in bvec_line_breaks else bvec_txt_reorg.write(' ')
+      bvec_txt_reorg.write(bvec_list_reorg[i])
 
     # Optional topup step
     data_topup = join(sdir, 'data_topup.nii.gz')
@@ -93,7 +115,7 @@ Arguments:
         run(f'fslroi {input_rev} {b0_pa} 0 1', params)
         run(f'fslmerge -t {topup_input} {b0_ap} {b0_pa}', params) 
 
-        # Identify acquisition file
+        # FIXME Identify acquisition file
 
         # run topup
         run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
@@ -139,7 +161,7 @@ Arguments:
         write(stdout, "DTI parameter maps already exist. Skipping DTI fit. ")
     else:
         if exists(bet_mask):
-            run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec} -b {work_bval}', params)
+            run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec_reorg} -b {work_bval_reorg}', params)
             run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
             run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
             smart_copy(dti_L1, dti_AD)
