@@ -1,30 +1,33 @@
 Bootstrap: docker
-From: ubuntu:16.04
+From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
 
 %files
-    license.txt
+    license.txt /opt/freesurfer/license.txt
+    bedpostx_postproc_gpu.sh /opt/fsl-6.0.5.1/bin/bedpostx_postproc_gpu.sh
 
 %post
     # Links
     MAIN_DIR=$PWD
-    CUDA8=https://developer.nvidia.com/compute/cuda/9.2/Prod2/local_installers/cuda_9.2.148_396.37_linux
+    CUDA_VERSION=10.2-cudnn7-runtime-ubuntu18.04
     FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
-    BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/CUDA_9.2/bedpostx_gpu.zip
+    BEDPOSTX_GPU=https://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/FSL_6/CUDA_10.2/bedpostx_gpu.zip
+    PROBTRACKX2_GPU=https://users.fmrib.ox.ac.uk/~moisesf/Probtrackx_GPU/FSL_6/CUDA_10.2/probtrackx2_gpu.zip
     NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
     MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     MRTRIX=https://github.com/MRtrix3/mrtrix3/archive/994498557037c9e4f7ba67f255820ef84ea899d9.zip
 
     # Linux packages
+    # Update pubkey for nvidia
+    apt-key del 7fa2af80 && sed -i "/machine-learning/d" /etc/apt/sources.list && cat /etc/apt/sources.list
+    rm /etc/apt/sources.list.d/nvidia-ml.list /etc/apt/sources.list.d/cuda.list
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && apt-get -y update
     mkdir /mappertrac
-    apt-get -y update
-    apt-get install -y apt-transport-https ca-certificates
+    apt-get install -y libopenblas-dev apt-utils bzip2 ca-certificates curl locales unzip bc dc file libfontconfig1 libfreetype6 libgl1-mesa-dev libgl1-mesa-dri libglu1-mesa-dev libgomp1 libice6 libxcursor1 libxft2 libxinerama1 libxrandr2 libxrender1 libxt6 wget python2.7 python-pip python-numpy
     apt-get install -y software-properties-common
     add-apt-repository -y universe
-    # add-apt-repository -y ppa:deadsnakes/ppa
-    apt-add-repository "deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu xenial main"
-    sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+    # sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
     apt-get -y update
-    apt-get -y --allow-unauthenticated install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv libeigen3-dev zlib1g-dev
+    apt-get -y install dcm2niix tcsh build-essential libtool kmod initramfs-tools vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv libeigen3-dev zlib1g-dev
     locale-gen en_US.UTF-8
     rm /bin/sh
     ln -s /bin/bash /bin/sh
@@ -38,45 +41,38 @@ From: ubuntu:16.04
     python3.8 ./build
     cd $MAIN_DIR
 
-    # CUDA
-    CUDA8_RUN=$(basename $CUDA8)
-    wget --no-check-certificate $CUDA8
-    sh $CUDA8_RUN -silent -override -toolkit
-
     # FSL
-    NEURODEBIAN_KEY_RUN=$(basename $NEURODEBIAN_KEY)
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get install -y tzdata
-    ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
-    dpkg-reconfigure --frontend noninteractive tzdata
-    wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | tee /etc/apt/sources.list.d/neurodebian.sources.list
-    wget --no-check-certificate $NEURODEBIAN_KEY
-    apt-key add $NEURODEBIAN_KEY_RUN
-    apt-get -y update
-    apt-get -y install fsl-5.0-complete dcm2niix
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    echo "Downloading FSL ..." && mkdir -p /opt/fsl-6.0.5.1 && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5.1-centos7_64.tar.gz | tar -xz -C /opt/fsl-6.0.5.1 --strip-components 1
+    echo "Installing FSL conda environment ..." && bash /opt/fsl-6.0.5.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5.1
+    pip install etelemetry nipype
 
     # Bedpostx GPU
     BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
     wget --no-check-certificate $BEDPOSTX_GPU
-    unzip -o -d /usr/share/fsl/5.0 $BEDPOSTX_GPU_ZIP
-    cp /usr/share/fsl/5.0/bin/*.so /usr/share/fsl/5.0/lib/
+    unzip -o -d /opt/fsl-6.0.5.1 $BEDPOSTX_GPU_ZIP
+
+    # Probtrackx2 GPU
+    PROBTRACKX2_GPU_ZIP=$(basename $PROBTRACKX2_GPU)
+    wget --no-check-certificate $PROBTRACKX2_GPU
+    unzip -o -d /opt/fsl-6.0.5.1 $PROBTRACKX2_GPU_ZIP
 
     # Freesurfer
     FREESURFER_GZ=$(basename $FREESURFER)
     wget --no-check-certificate $FREESURFER
     tar -xzf $FREESURFER_GZ -C /opt
-    cp license.txt /opt/freesurfer/license.txt
     chmod a+r /opt/freesurfer/license.txt
 
     # Cleanup
-    rm -rf $CUDA8_RUN
     rm -rf $FREESURFER_GZ
     rm -rf $BEDPOSTX_GPU_ZIP
+    rm -rf $PROBTRACKX2_GPU_ZIP
     rm -rf /license.txt
     apt-get -y clean
 
 %environment
-    export FSLDIR=/usr/share/fsl/5.0
+    export FSLDIR=/opt/fsl-6.0.5.1
     FSL_DIR=$FSLDIR
     FSLOUTPUTTYPE=NIFTI_GZ
     FSLMULTIFILEQUIT=TRUE
@@ -84,6 +80,9 @@ From: ubuntu:16.04
     FSLWISH=${FSLDIR}/bin/fslwish
     FSLGECUDAQ="cuda.q"
     FSL_BIN=${FSLDIR}/bin
+    FSLLOCKDIR=""
+    FSLMACHINELIST=""
+    FSLREMOTECALL=""
     FS_OVERRIDE=0
     COMPILE_GPU=1
     export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
@@ -106,13 +105,8 @@ From: ubuntu:16.04
 
     export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
 
-    # export CUDA_8_LIB_DIR=/usr/local/cuda-8.0/lib64
-    export CUDA_8_LIB_DIR=/usr/local/cuda-9.2/lib64
+    export CUDA_8_LIB_DIR=/usr/local/cuda-10.2/lib64
 
-    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:${MRTRIX_DIR}/bin:$PATH"
+    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:${MRTRIX_DIR}/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
-
-
-
-
