@@ -1,0 +1,73 @@
+Bootstrap: docker
+From: ubuntu:16.04
+
+%labels
+    Version v0.1
+
+%post
+    # Links
+    MAIN_DIR=$PWD
+    CUDA10_2=https://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/cuda_10.2.89_440.33.01_linux.run
+    FSL6=https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
+    BEDPOSTX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Bedpostx_GPU/FSL_6/CUDA_10.2/bedpostx_gpu.zip
+    PROBTRACKX_GPU=http://users.fmrib.ox.ac.uk/~moisesf/Probtrackx_GPU/FSL_6/CUDA_10.2/probtrackx2_gpu.zip
+    MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+
+    # Linux packages
+    mkdir /ncl
+    apt-get -y update
+    apt-get install -y apt-transport-https ca-certificates
+    apt-get install -y software-properties-common
+    add-apt-repository -y universe
+    add-apt-repository -y ppa:deadsnakes/ppa
+    sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+    apt-get -y update
+    apt-get -y install wget tcsh build-essential curl libtool unzip kmod initramfs-tools locales vim-tiny dkms mricron debhelper dh-autoreconf python
+    locale-gen en_US.UTF-8
+    rm /bin/sh
+    ln -s /bin/bash /bin/sh
+
+    # CUDA
+    CUDA10_2_RUN=$(basename $CUDA10_2)
+    wget --no-check-certificate $CUDA10_2
+    sh $CUDA10_2_RUN --silent --override --toolkit
+
+    # FSL6.0.5
+    FSL6_RUN=$(basename $FSL6)
+    wget --no-check-certificate $FSL6
+    python2.7 $FSL6_RUN -d /usr/local/fsl 
+
+    # Bedpostx GPU
+    BEDPOSTX_GPU_ZIP=$(basename $BEDPOSTX_GPU)
+    wget --no-check-certificate $BEDPOSTX_GPU
+    unzip -o -d /usr/local/fsl $BEDPOSTX_GPU_ZIP
+
+    # Probtrackx GPU
+    PROBTRACKX_GPU_ZIP=$(basename $PROBTRACKX_GPU)
+    wget --no-check-certificate $PROBTRACKX_GPU
+    unzip -o -d /usr/local/fsl/bin $PROBTRACKX_GPU_ZIP
+
+    # Cleanup
+    rm -rf $CUDA10_2_RUN
+    rm -rf $BEDPOSTX_GPU_ZIP
+    rm -rf $PROBTRACKX_GPU_ZIP
+    apt-get -y clean
+
+%environment
+    export FSLDIR=/usr/local/fsl
+    FSL_DIR=$FSLDIR
+    FSLOUTPUTTYPE=NIFTI_GZ
+    FSLMULTIFILEQUIT=TRUE
+    FSLTCLSH=${FSLDIR}/bin/fsltclsh
+    FSLWISH=${FSLDIR}/bin/fslwish
+    FSLGECUDAQ="gpu.q"
+    FSL_BIN=${FSLDIR}/bin
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+
+    export CUDA_10_2_LIB_DIR=/usr/local/cuda-10.2/lib64
+
+    export PATH="${FSLDIR}/bin:$PATH"
+    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export OS=LINUX
