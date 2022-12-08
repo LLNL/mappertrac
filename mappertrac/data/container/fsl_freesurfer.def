@@ -1,0 +1,85 @@
+Bootstrap: docker
+From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
+
+%files
+    license.txt /opt/freesurfer/license.txt
+
+%post
+    # Links
+    MAIN_DIR=$PWD
+    CUDA_VERSION=10.2-cudnn7-runtime-ubuntu18.04
+    FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
+    NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
+    MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+
+    # Linux packages
+    # Update pubkey for nvidia
+    apt-key del 7fa2af80 && sed -i "/machine-learning/d" /etc/apt/sources.list && cat /etc/apt/sources.list
+    rm /etc/apt/sources.list.d/nvidia-ml.list /etc/apt/sources.list.d/cuda.list
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && apt-get -y update
+    mkdir /mappertrac
+    apt-get install -y libopenblas-dev apt-utils bzip2 ca-certificates curl locales unzip bc dc file libfontconfig1 libfreetype6 libgl1-mesa-dev libgl1-mesa-dri libglu1-mesa-dev libgomp1 libice6 libxcursor1 libxft2 libxinerama1 libxrandr2 libxrender1 libxt6 wget python2.7 python-pip python-numpy
+    apt-get install -y software-properties-common
+    add-apt-repository -y universe
+    # sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+    apt-get -y update
+    apt-get -y install dcm2niix tcsh build-essential libtool kmod initramfs-tools vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv libeigen3-dev zlib1g-dev
+    locale-gen en_US.UTF-8
+    rm /bin/sh
+    ln -s /bin/bash /bin/sh
+
+    # FSL
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    echo "Downloading FSL ..." && mkdir -p /opt/fsl-6.0.5.1 && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5.1-centos7_64.tar.gz | tar -xz -C /opt/fsl-6.0.5.1 --strip-components 1
+    echo "Installing FSL conda environment ..." && bash /opt/fsl-6.0.5.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5.1
+    pip install etelemetry nipype
+
+    # Freesurfer
+    FREESURFER_GZ=$(basename $FREESURFER)
+    wget --no-check-certificate $FREESURFER
+    tar -xzf $FREESURFER_GZ -C /opt
+    chmod a+r /opt/freesurfer/license.txt
+
+    # Cleanup
+    rm -rf $FREESURFER_GZ
+    rm -rf /license.txt
+    apt-get -y clean
+
+%environment
+    export FSLDIR=/opt/fsl-6.0.5.1
+    FSL_DIR=$FSLDIR
+    FSLOUTPUTTYPE=NIFTI_GZ
+    FSLMULTIFILEQUIT=TRUE
+    FSLTCLSH=${FSLDIR}/bin/fsltclsh
+    FSLWISH=${FSLDIR}/bin/fslwish
+    FSLGECUDAQ="cuda.q"
+    FSL_BIN=${FSLDIR}/bin
+    FSLLOCKDIR=""
+    FSLMACHINELIST=""
+    FSLREMOTECALL=""
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+
+    export FREESURFER_HOME=/opt/freesurfer
+    LOCAL_DIR=${FREESURFER_HOME}/local
+    PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    FSFAST_HOME=${FREESURFER_HOME}/fsfast
+    FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
+    FSF_OUTPUT_FORMAT="nii.gz"
+    MNI_DIR=${FREESURFER_HOME}/mni
+    MNI_DATAPATH=${FREESURFER_HOME}/mni/data
+    MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
+    MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
+    SUBJECTS_DIR=/mappertrac
+    FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
+
+    export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+
+    export CUDA_8_LIB_DIR=/usr/local/cuda-10.2/lib64
+
+    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:$PATH"
+    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export OS=LINUX
