@@ -14,7 +14,6 @@ From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
     PROBTRACKX2_GPU=https://users.fmrib.ox.ac.uk/~moisesf/Probtrackx_GPU/FSL_6/CUDA_10.2/probtrackx2_gpu.zip
     NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
     MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    MRTRIX=https://github.com/MRtrix3/mrtrix3/archive/994498557037c9e4f7ba67f255820ef84ea899d9.zip
 
     # Linux packages
     # Update pubkey for nvidia
@@ -32,16 +31,7 @@ From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
     rm /bin/sh
     ln -s /bin/bash /bin/sh
 
-    # MRTrix
-    MRTRIX_ZIP=$(basename $MRTRIX)
-    wget --no-check-certificate $MRTRIX
-    unzip -o -d /opt $MRTRIX_ZIP
-    cd /opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
-    python3.8 ./configure -nogui -openmp
-    python3.8 ./build
-    cd $MAIN_DIR
-
-    # FSL
+       # FSL
     apt-get clean
     rm -rf /var/lib/apt/lists/*
     echo "Downloading FSL ..." && mkdir -p /opt/fsl-6.0.5.1 && curl -fsSL --retry 5 https://fsl.fmrib.ox.ac.uk/fsldownloads/fsl-6.0.5.1-centos7_64.tar.gz | tar -xz -C /opt/fsl-6.0.5.1 --strip-components 1
@@ -57,12 +47,6 @@ From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
     PROBTRACKX2_GPU_ZIP=$(basename $PROBTRACKX2_GPU)
     wget --no-check-certificate $PROBTRACKX2_GPU
     unzip -o -d /opt/fsl-6.0.5.1 $PROBTRACKX2_GPU_ZIP
-
-    # Freesurfer
-    FREESURFER_GZ=$(basename $FREESURFER)
-    wget --no-check-certificate $FREESURFER
-    tar -xzf $FREESURFER_GZ -C /opt
-    chmod a+r /opt/freesurfer/license.txt
 
     # Cleanup
     rm -rf $FREESURFER_GZ
@@ -87,19 +71,7 @@ From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
     COMPILE_GPU=1
     export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
 
-    export FREESURFER_HOME=/opt/freesurfer
-    LOCAL_DIR=${FREESURFER_HOME}/local
-    PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
-    FSFAST_HOME=${FREESURFER_HOME}/fsfast
-    FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
-    FSF_OUTPUT_FORMAT="nii.gz"
-    MNI_DIR=${FREESURFER_HOME}/mni
-    MNI_DATAPATH=${FREESURFER_HOME}/mni/data
-    MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
-    MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
-    MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
     SUBJECTS_DIR=/mappertrac
-    FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
 
     export MRTRIX_DIR=/opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
 
@@ -107,6 +79,6 @@ From: nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
 
     export CUDA_8_LIB_DIR=/usr/local/cuda-10.2/lib64
 
-    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:${MRTRIX_DIR}/bin:$PATH"
+    export PATH="${MNI_DIR}/bin:${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
