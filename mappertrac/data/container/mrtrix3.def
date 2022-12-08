@@ -1,0 +1,40 @@
+Bootstrap: docker
+From: mrtrix3/mrtrix3:3.0.3
+
+%post
+    # Links
+    MAIN_DIR=$PWD
+    NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
+    MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    MRTRIX=https://github.com/MRtrix3/mrtrix3/archive/994498557037c9e4f7ba67f255820ef84ea899d9.zip
+
+    # Linux packages
+    mkdir /mappertrac
+    apt-get install -y libopenblas-dev apt-utils bzip2 ca-certificates curl locales unzip bc dc file libfontconfig1 libfreetype6 libgl1-mesa-dev libgl1-mesa-dri libglu1-mesa-dev libgomp1 libice6 libxcursor1 libxft2 libxinerama1 libxrandr2 libxrender1 libxt6 wget python2.7 python-pip python-numpy
+    apt-get install -y software-properties-common
+    add-apt-repository -y universe
+    # sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+    apt-get -y update
+    apt-get -y install dcm2niix tcsh build-essential libtool kmod initramfs-tools vim-tiny dkms mricron debhelper dh-autoreconf python3.8-dev python3.8-distutils python3.8-venv libeigen3-dev zlib1g-dev
+    locale-gen en_US.UTF-8
+    rm /bin/sh
+    ln -s /bin/bash /bin/sh
+
+    # MRTrix
+    MRTRIX_ZIP=$(basename $MRTRIX)
+    wget --no-check-certificate $MRTRIX
+    unzip -o -d /opt $MRTRIX_ZIP
+    cd /opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
+    python3.8 ./configure -nogui -openmp
+    python3.8 ./build
+    cd $MAIN_DIR
+
+    # Cleanup
+    apt-get -y clean
+
+%environment
+    SUBJECTS_DIR=/mappertrac
+    export MRTRIX_DIR=/opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
+    export PATH="${MRTRIX_DIR}/bin:$PATH"
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+    export OS=LINUX
