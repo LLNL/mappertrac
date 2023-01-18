@@ -21,21 +21,40 @@ Outputs: connectome matrix `.mat` and edge density `.nii.gz`
 
 * Python 3.7+
 * [Singularity](https://sylabs.io/guides/3.5/user-guide/index.html)
-* CUDA 8.0-compatible GPU ([Fermi thru Volta](https://en.wikipedia.org/wiki/CUDA))
+* CUDA 10.2-compatible GPU ([Fermi thru Volta](https://en.wikipedia.org/wiki/CUDA))
+* FreeSurfer license ([available for free here](https://surfer.nmr.mgh.harvard.edu/registration.html))
 
 #### Installation
 ```
 pip install mappertrac
-wget -O image.sif "https://osf.io/792up/download"
+
+# Singularity requires sudo to build from a def recipe file
+cd mappertrac/data/container
+# FreeSurfer license must be copied to the build context
+cp path/to/freesurfer/license.txt ./license.txt
+./build.sh
+
 ```
 
 #### Usage
+
+If all requirements are installed:
 ```
 mappertrac --s1_freesurfer <SUBJECT_INPUT_DIRECTORY> # this will take several hours
 
 mappertrac --s2_bedpostx <SUBJECT_INPUT_DIRECTORY>
 
 mappertrac --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
+```
+
+If running via Singularity containers:
+
+```
+mappertrac --container mappertrac/data/container/fsl_freesurfer.sif --s1_freesurfer <SUBJECT_INPUT_DIRECTORY> # this will take several hours
+
+mappertrac --container mappertrac/data/container/fsl_tractography.sif --s2_bedpostx <SUBJECT_INPUT_DIRECTORY>
+
+mappertrac --container mappertrac/data/container/fsl_tractography.sif --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
 ```
 
 Note: the input directory must adhere to [BIDS](https://bids.neuroimaging.io/). See this [example](https://github.com/LLNL/MaPPeRTrac/tree/master/mappertrac/data/example_inputs/sub-011591).
