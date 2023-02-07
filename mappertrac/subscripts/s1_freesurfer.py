@@ -54,7 +54,7 @@ Arguments:
     ##################################
 
     # Identify b0 volumes in work_dwi
-    bval_txt = open(work_bval, 'r"'
+    bval_txt = open(work_bval, 'r')
     bval_list = bval_txt.read().split()
     b0_idx = [idx for idx, v in enumerate(bval_list) if v == '0']
     
