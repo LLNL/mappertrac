@@ -110,7 +110,7 @@ Arguments:
     bvec_txt_reorg = open(work_bvec_reorg, 'w')
     bvec_txt_reorg.write('0')
     nvols_diffusion = int(len(bvec_list_reorg)/3)
-    bvec_line_breaks = [nvols_diffision, nvols_diffusion * 2]
+    bvec_line_breaks = [nvols_diffusion, nvols_diffusion * 2]
     for i in range(len(bvec_list_reorg)):
       bvec_txt_reorg.write('\n' + '0 ') if i in bvec_line_breaks else bvec_txt_reorg.write(' ')
       bvec_txt_reorg.write(bvec_list_reorg[i])
