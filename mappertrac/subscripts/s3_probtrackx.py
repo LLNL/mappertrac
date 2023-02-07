@@ -6,24 +6,46 @@ from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
 
-EDGE_LIST = 'data/lists/list_edges_reduced.txt'
-
 def run_probtrackx(params):
 
     sdir = params['work_dir']
+    stdout = params['stdout']
     assert exists(join(sdir, 'S1_COMPLETE')), 'Subject {sdir} must first run --freesurfer'
     assert exists(join(sdir, 'S2_COMPLETE')), 'Subject {sdir} must first run --bedpostx'
 
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
-    edges_per_chunk = 4
+    if "all" in params['edgelist']: 
+        edge_list = 'data/lists/list_edges_all.txt'
+    elif "tiny" in params['edgelist']:
+        edge_list = 'data/lists/list_edges_tiny.txt'
+    else:
+        edge_list = 'data/lists/list_edges_reduced.txt'
+
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], edge_list))
+    edges_per_chunk = 5
     n = edges_per_chunk
-    edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range((len(pbtx_edges) + n - 1) // n )]
+    edge_chunks = [pbtx_edges[i * n:(i + 1) * n] for i in range(len(pbtx_edges) // n )]
+
+    connectome_idx_list = join(sdir, "connectome_idxs.txt")
 
     start_future = start(params)
-    process_futures = []
-    for edge_chunk in edge_chunks:
-        process_futures.append(process(params, edge_chunk, inputs=[start_future]))
-    return combine(params, inputs=process_futures)
+
+    if exists(connectome_idx_list):
+        write(stdout, 'Probtrackx and combination steps were done. Running consensus directly.')
+        consensus_futures = []
+        for edge_chunk in edge_chunks:
+            consensus_futures.append(consensus(params, edge_chunk, inputs=[start_future]))
+    else:
+        process_futures = []
+        for edge_chunk in edge_chunks:
+            process_futures.append(process(params, edge_chunk, inputs=[start_future]))
+
+        combine_future = combine(params, inputs=process_futures)
+
+        consensus_futures = []
+        for edge_chunk in edge_chunks:
+            consensus_futures.append(consensus(params, edge_chunk, inputs=[combine_future]))
+
+    return conclude(params, inputs=consensus_futures)
 
 @python_app(executors=['worker'])
 def start(params, inputs=[]):
@@ -52,9 +74,6 @@ Arguments:
     connectome_dir = join(sdir,"EDI","CNTMresults")
     derivatives_dir_tmp = join(output_dir, 'derivatives', "tmp")
     sdir_tmp = join(sdir, "tmp")
-    smart_remove(pbtk_dir)
-    smart_remove(connectome_dir)
-    smart_remove(sdir_tmp)
     smart_mkdir(pbtk_dir)
     smart_mkdir(connectome_dir)
     smart_mkdir(sdir_tmp)
@@ -158,7 +177,15 @@ def combine(params, inputs=[]):
     sdir = params['work_dir']
     stdout = params['stdout']
     trac_sample_count = params['trac_sample_count']
-    pbtx_edges = get_edges_from_file(join(params['script_dir'], EDGE_LIST))
+    
+    if "all" in params['edgelist']: 
+        edge_list = 'data/lists/list_edges_all.txt'
+    elif "tiny" in params['edgelist']:
+        edge_list = 'data/lists/list_edges_tiny.txt'
+    else:
+        edge_list = 'data/lists/list_edges_reduced.txt'
+    
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], edge_list))
     connectome_idx_list = join(params['script_dir'], 'data/lists/connectome_idxs.txt')
     start_time = time.time()
     connectome_dir = join(sdir,"EDI","CNTMresults")
@@ -186,13 +213,6 @@ def combine(params, inputs=[]):
     oneway_edges = {}
     twoway_edges = {}
 
-    consensus_edges = []
-    for edge in pbtx_edges:
-        a, b = edge
-        if [a, b] in consensus_edges or [b, a] in consensus_edges:
-            continue
-        consensus_edges.append(edge)
-
     copyfile(connectome_idx_list, join(sdir, 'connectome_idxs.txt')) # give each subject a copy for reference
 
     ##################################
@@ -216,18 +236,21 @@ def combine(params, inputs=[]):
     for edge in pbtx_edges:
         a, b = edge
         edge_file = join(connectome_dir, "{}_to_{}.dot".format(a, b))
-        with open(edge_file) as f:
-            chunks = [x.strip() for x in f.read().strip().split(' ') if x]
-            a_to_b = (chunks[0], chunks[1])
-            b_to_a = (chunks[1], chunks[0])
-            waytotal_count = float(chunks[2])
-            fdt_count = float(chunks[3])
-            if b_to_a in twoway_edges:
-                twoway_edges[b_to_a][0] += waytotal_count
-                twoway_edges[b_to_a][1] += fdt_count
-            else:
-                twoway_edges[a_to_b] = [waytotal_count, fdt_count]
-            oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+        if exists(edge_file):
+            with open(edge_file) as f:
+                chunks = [x.strip() for x in f.read().strip().split(' ') if x]
+                a_to_b = (chunks[0], chunks[1])
+                b_to_a = (chunks[1], chunks[0])
+                waytotal_count = float(chunks[2])
+                fdt_count = float(chunks[3])
+                if b_to_a in twoway_edges:
+                    twoway_edges[b_to_a][0] += waytotal_count
+                    twoway_edges[b_to_a][1] += fdt_count
+                else:
+                    twoway_edges[a_to_b] = [waytotal_count, fdt_count]
+                oneway_edges[a_to_b] = [waytotal_count, fdt_count]
+        else:
+            write(stdout, 'The connectom edge file {}_to_{} does not exist.'.format(a, b))
 
     for a_to_b in oneway_edges:
         a = a_to_b[0]
@@ -259,69 +282,117 @@ def combine(params, inputs=[]):
     smart_copy(twoway_nof_normalized, join(dirname(sdir), basename(twoway_nof_normalized)))
     smart_copy(twoway_list, join(dirname(sdir), basename(twoway_list)))
     
+@python_app(executors=['worker'])
+def consensus(params, edges, inputs=[]):
+    sdir = params['work_dir']
+    stdout = params['stdout']
+    trac_sample_count = params['trac_sample_count']
+    start_time = time.time()
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    connectome_dir = join(sdir,"EDI","CNTMresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
+    edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
+
     ##################################
     # EDI consensus
     ##################################
-    for edge in pbtx_edges:
+    for edge in edges:
         a, b = edge
         a_to_b = "{}_to_{}".format(a, b)
         a_to_b_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(a,b))
         b_to_a_file = join(pbtk_dir,"{}_s2fato{}_s2fa.nii.gz".format(b,a))
         if not exists(a_to_b_file):
-            write(stdout, "Error: cannot find {}".format(a_to_b_file))
-            return
-        if not exists(b_to_a_file):
-            write(stdout, "Error: cannot find {}".format(b_to_a_file))
-            return
-        consensus = join(consensus_dir, a_to_b + '.nii.gz')
-        
-        amax_tmp = join(connectome_dir, f"{a_to_b}.amax.tmp")
-        bmax_tmp = join(connectome_dir, f"{a_to_b}.bmax.tmp")
-        smart_remove(amax_tmp)
-        smart_remove(bmax_tmp)
-        run(f'fslstats {a_to_b_file} -R | cut -f 2 -d \\" \\" > {amax_tmp}', params).strip()
-        run(f'fslstats {b_to_a_file} -R | cut -f 2 -d \\" \\" > {bmax_tmp}', params).strip()
-        time.sleep(5)
-        with open(amax_tmp, 'r') as f:
-            amax = f.read().strip()
-        with open(bmax_tmp, 'r') as f:
-            bmax = f.read().strip()
-
-        if not is_float(amax):
-            write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
-            return
-        amax = int(float(amax))
-
-        if not is_float(bmax):
-            write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
-            return
-        bmax = int(float(bmax))
-
-        write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
-        if amax > 0 and bmax > 0:
-            tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
-            tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
-            run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
-            run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
-            run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
-            smart_remove(tmp1)
-            smart_remove(tmp2)
+            write(stdout, "Warning: cannot find {}".format(a_to_b_file))
+            #return
+        elif not exists(b_to_a_file):
+            write(stdout, "Warning: cannot find {}".format(b_to_a_file))
+            #return
         else:
-            with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
-                log.write("For edge {}:\n".format(a_to_b))
-                log.write("{} is thresholded to {}\n".format(a, amax))
-                log.write("{} is thresholded to {}\n".format(b, bmax))
+            consensus = join(consensus_dir, a_to_b + '.nii.gz')
+        
+            amax_tmp = join(connectome_dir, f"{a_to_b}.amax.tmp")
+            bmax_tmp = join(connectome_dir, f"{a_to_b}.bmax.tmp")
+            smart_remove(amax_tmp)
+            smart_remove(bmax_tmp)
+            run(f'fslstats {a_to_b_file} -R | cut -f 2 -d \\" \\" > {amax_tmp}', params).strip()
+            run(f'fslstats {b_to_a_file} -R | cut -f 2 -d \\" \\" > {bmax_tmp}', params).strip()
+            time.sleep(5)
+            with open(amax_tmp, 'r') as f:
+                amax = f.read().strip()
+            with open(bmax_tmp, 'r') as f:
+                bmax = f.read().strip()
+
+            if not is_float(amax):
+                write(stdout, "Error: fslstats on {} returns invalid value {}".format(a_to_b_file, amax))
+                return
+            amax = int(float(amax))
+
+            if not is_float(bmax):
+                write(stdout, "Error: fslstats on {} returns invalid value {}".format(b_to_a_file, bmax))
+                return
+            bmax = int(float(bmax))
+
+            write(stdout, "amax = {}, bmax = {}".format(amax, bmax))
+            if amax > 0 and bmax > 0:
+                tmp1 = join(pbtk_dir, "{}_to_{}_tmp1.nii.gz".format(a, b))
+                tmp2 = join(pbtk_dir, "{}_to_{}_tmp2.nii.gz".format(b, a))
+                run("fslmaths {} -thrP 5 -bin {}".format(a_to_b_file, tmp1), params)
+                run("fslmaths {} -thrP 5 -bin {}".format(b_to_a_file, tmp2), params)
+                run("fslmaths {} -add {} -thr 1 -bin {}".format(tmp1, tmp2, consensus), params)
+                smart_remove(tmp1)
+                smart_remove(tmp2)
+            else:
+                with open(join(pbtk_dir, "zerosl.txt"), 'a') as log:
+                    log.write("For edge {}:\n".format(a_to_b))
+                    log.write("{} is thresholded to {}\n".format(a, amax))
+                    log.write("{} is thresholded to {}\n".format(b, bmax))
+
+@python_app(executors=['worker'])
+def conclude(params, inputs=[]):
+    sdir = params['work_dir']
+    stdout = params['stdout']
+    
+    if "all" in params['edgelist']: 
+        edge_list = 'data/lists/list_edges_all.txt'
+    elif "tiny" in params['edgelist']:
+        edge_list = 'data/lists/list_edges_tiny.txt'
+    else:
+        edge_list = 'data/lists/list_edges_reduced.txt'
+    
+    pbtx_edges = get_edges_from_file(join(params['script_dir'], edge_list))
+    start_time = time.time()
+    connectome_dir = join(sdir,"EDI","CNTMresults")
+    pbtk_dir = join(sdir,"EDI","PBTKresults")
+    consensus_dir = join(pbtk_dir,"twoway_consensus_edges")
+    edi_maps = join(sdir,"EDI","EDImaps")
+    edge_total = join(edi_maps,"FAtractsumsTwoway.nii.gz")
+    tract_total = join(edi_maps,"FAtractsumsRaw.nii.gz")
+    smart_remove(edi_maps)
+    smart_mkdir(edi_maps)    
 
     # Collect number of probtrackx tracts per voxel
     for edge in pbtx_edges:
         a, b = edge
         a_to_b_formatted = "{}_s2fato{}_s2fa.nii.gz".format(a,b)
         a_to_b_file = join(pbtk_dir,a_to_b_formatted)
-        if not exists(tract_total):
-            copyfile(a_to_b_file, tract_total)
+        
+        if not exists(a_to_b_file):
+            write(stdout, "Warning: cannot find {}".format(a_to_b_file))
         else:
-            run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
+            if not exists(tract_total):
+                copyfile(a_to_b_file, tract_total)
+            else:
+                run("fslmaths {0} -add {1} {1}".format(a_to_b_file, tract_total), params)
 
+    consensus_edges = []
+    for edge in pbtx_edges:
+        a, b = edge
+        if [a, b] in consensus_edges or [b, a] in consensus_edges:
+            continue
+        consensus_edges.append(edge)
+    
     # Collect number of parcel-to-parcel edges per voxel
     for edge in consensus_edges:
         a, b = edge
