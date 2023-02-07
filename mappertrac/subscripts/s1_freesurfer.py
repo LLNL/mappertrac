@@ -58,23 +58,38 @@ Arguments:
     bval_list = bval_txt.read().split()
     b0_idx = [idx for idx, v in enumerate(bval_list) if v == '0']
     
+    write(stdout, f'B0 index: {b0_idx}')
+
     # Reorganize work_dwi by having the average b0 followed by diffusion volumes
-    run(f'fslsplit {work_dwi} 0', params)
-    split_list = [f for f in os.listdir(sdir) if fnmatch(f, '00*.nii.gz')]
+    vol_prefix = join(sdir, 'vol')
+    run(f'fslsplit {work_dwi} {vol_prefix}', params)
+    split_list = [f for f in os.listdir(sdir) if fnmatch(f, 'vol*.nii.gz')]
+    split_list_sorted = sorted(split_list) # This is necessary because os.listdir does not return files in sorted name order - 12/13/22
     
     b0_list = []
+    b0_list_dirs = []
     for idx in b0_idx:
-      b0_file = split_list[int(idx)]
+      b0_file = split_list_sorted[int(idx)]
+      b0_file_dir = join(sdir, b0_file)
       b0_list.append(b0_file)
+      b0_list_dirs.append(b0_file_dir)
 
-    diff_list = split_list
+    diff_list = split_list_sorted
+    diff_list_dirs = []
     for idx in b0_list:
       diff_list.remove(idx)
+    for vol in diff_list:
+      vol_dir = join(sdir, vol)
+      diff_list_dirs.append(vol_dir)
 
-    run(f'fslmerge -t b0s {b0_list}', params)
-    run(f'fslmaths b0s -Tmean b0_avg', params)
-    run(f'fslmerge -t dwi_reorg b0_avg.nii.gz {diff_list}', params)
+    b0_list_names = ' '.join(b0_list_dirs)
+    diff_list_names = ' '.join(diff_list_dirs)
+    b0s = join(sdir, 'b0s.nii.gz')
+    b0_avg = join(sdir, 'b0_avg.nii.gz')
     dwi_reorg = join(sdir, 'dwi_reorg.nii.gz')
+    run(f'fslmerge -t {b0s} {b0_list_names}', params)
+    run(f'fslmaths {b0s} -Tmean {b0_avg}', params)
+    run(f'fslmerge -t {dwi_reorg} {b0_avg} {diff_list_names}', params)
 
     # Write reorganized bvals
     work_bval_reorg = join(sdir, 'bvals_reorg')
@@ -84,6 +99,7 @@ Arguments:
     for i in range(len(bval_list_reorg)):
       bval_txt_reorg.write(' ')
       bval_txt_reorg.write(bval_list_reorg[i])  
+    bval_txt_reorg.write('\n')
 
     # Write reorganized bvecs
     bvec_txt = open(work_bvec, 'r')
@@ -98,6 +114,9 @@ Arguments:
     for i in range(len(bvec_list_reorg)):
       bvec_txt_reorg.write('\n' + '0 ') if i in bvec_line_breaks else bvec_txt_reorg.write(' ')
       bvec_txt_reorg.write(bvec_list_reorg[i])
+    bvec_txt_reorg.write('\n')
+
+    write(stdout, f'Finished reorganizing the dwi image and the bvec, bval files.')
 
     # Optional topup step
     data_topup = join(sdir, 'data_topup.nii.gz')
