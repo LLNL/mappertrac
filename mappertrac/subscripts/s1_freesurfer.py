@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-import os,sys,glob,time,csv,math,pprint,shutil
+import os,sys,glob,time,csv,math,pprint,shutil,fnmatch
 from parsl.app.app import python_app
 from os.path import *
 from mappertrac.subscripts import *
+from fnmatch import fnmatch
 
 @python_app(executors=['worker'])
 def run_freesurfer(params):
@@ -11,6 +12,8 @@ def run_freesurfer(params):
     sdir = params['work_dir']
     ID = params['ID']
     stdout = params['stdout']
+    ncores = params['nnodes'] # For grid engine on UCSF Wynton
+    #ncores = int(os.cpu_count()) 
 
     start_time = time.time()
     start_str = f'''
@@ -25,6 +28,7 @@ Arguments:
     print(start_str)
 
     input_dwi = join(input_dir, 'dwi', f'{ID}_dwi.nii.gz')
+    input_rev = join(input_dir, 'dwi', f'{ID}_dwi_rev.nii.gz')
     input_bval = join(input_dir, 'dwi', f'{ID}_dwi.bval')
     input_bvec = join(input_dir, 'dwi', f'{ID}_dwi.bvec')
     input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
@@ -49,28 +53,118 @@ Arguments:
     # dti-preproc
     ##################################
 
+    # Identify b0 volumes in work_dwi
+    bval_txt = open(work_bval, 'r')
+    bval_list = bval_txt.read().split()
+    b0_idx = [idx for idx, v in enumerate(bval_list) if v == '0']
+    
+    write(stdout, f'B0 index: {b0_idx}')
+
+    # Reorganize work_dwi by having the average b0 followed by diffusion volumes
+    vol_prefix = join(sdir, 'vol')
+    run(f'fslsplit {work_dwi} {vol_prefix}', params)
+    split_list = [f for f in os.listdir(sdir) if fnmatch(f, 'vol*.nii.gz')]
+    split_list_sorted = sorted(split_list) # This is necessary because os.listdir does not return files in sorted name order - 12/13/22
+    
+    b0_list = []
+    b0_list_dirs = []
+    for idx in b0_idx:
+      b0_file = split_list_sorted[int(idx)]
+      b0_file_dir = join(sdir, b0_file)
+      b0_list.append(b0_file)
+      b0_list_dirs.append(b0_file_dir)
+
+    diff_list = split_list_sorted
+    diff_list_dirs = []
+    for idx in b0_list:
+      diff_list.remove(idx)
+    for vol in diff_list:
+      vol_dir = join(sdir, vol)
+      diff_list_dirs.append(vol_dir)
+
+    b0_list_names = ' '.join(b0_list_dirs)
+    diff_list_names = ' '.join(diff_list_dirs)
+    b0s = join(sdir, 'b0s.nii.gz')
+    b0_avg = join(sdir, 'b0_avg.nii.gz')
+    dwi_reorg = join(sdir, 'dwi_reorg.nii.gz')
+    run(f'fslmerge -t {b0s} {b0_list_names}', params)
+    run(f'fslmaths {b0s} -Tmean {b0_avg}', params)
+    run(f'fslmerge -t {dwi_reorg} {b0_avg} {diff_list_names}', params)
+
+    # Write reorganized bvals
+    work_bval_reorg = join(sdir, 'bvals_reorg')
+    bval_txt_reorg = open(work_bval_reorg, 'w')
+    bval_list_reorg = [b for idx, b in enumerate(bval_list) if b != '0']
+    bval_txt_reorg.write('0')
+    for i in range(len(bval_list_reorg)):
+      bval_txt_reorg.write(' ')
+      bval_txt_reorg.write(bval_list_reorg[i])  
+    bval_txt_reorg.write('\n')
+
+    # Write reorganized bvecs
+    bvec_txt = open(work_bvec, 'r')
+    bvec_list = bvec_txt.read().split()
+    bvec_list_reorg = [b for idx, b in enumerate(bvec_list) if b != '0']
+    
+    work_bvec_reorg = join(sdir, 'bvecs_reorg')
+    bvec_txt_reorg = open(work_bvec_reorg, 'w')
+    bvec_txt_reorg.write('0')
+    nvols_diffusion = int(len(bvec_list_reorg)/3)
+    bvec_line_breaks = [nvols_diffusion, nvols_diffusion * 2]
+    for i in range(len(bvec_list_reorg)):
+      bvec_txt_reorg.write('\n' + '0 ') if i in bvec_line_breaks else bvec_txt_reorg.write(' ')
+      bvec_txt_reorg.write(bvec_list_reorg[i])
+    bvec_txt_reorg.write('\n')
+
+    write(stdout, f'Finished reorganizing the dwi image and the bvec, bval files.')
+
+    # Optional topup step
+    data_topup = join(sdir, 'data_topup.nii.gz')
+
+    if exists(input_rev):
+        # Define file name variables
+        b0_ap = join(sdir, 'b0_ap.nii.gz')
+        b0_pa = join(sdir, 'b0_pa.nii.gz')
+        topup_input = join(sdir, 'b0_ap_pa.nii.gz')
+        acq_file = join(input_dir, 'acq.txt')
+        topup_results = join(sdir, 'topup_results')
+
+        # cut and merge b0_ap and b0_pa for topup
+        run(f'fslroi {dwi_reorg} {b0_ap} 0 1', params)
+        run(f'fslroi {input_rev} {b0_pa} 0 1', params)
+        run(f'fslmerge -t {topup_input} {b0_ap} {b0_pa}', params) 
+
+        # FIXME Identify acquisition file
+
+        # run topup
+        run(f'topup --imain={topup_input} --datain={acq_file}, --config=b02b0_1.cnf --out={topup_results} --verbose', params)
+        run(f'applytopup --imain={dwi_reorg} --datain={acq_file}, --inindex=1,2 --topup={topup_results} --out={data_topup}', params)    
+    else:
+        write(stdout, "No revPE input image available. Skipping topup. ")
+        smart_copy(dwi_reorg, data_topup)
+
+    # Registration based motion correction and eddy
     eddy_prefix = join(sdir, 'data_eddy')
     data_eddy = f'{eddy_prefix}.nii.gz'
     bet = join(sdir, 'data_bet.nii.gz')
-
-    for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
-        smart_remove(_)
-
-    run(f'fslroi {work_dwi} {eddy_prefix}_ref 0 1', params)
-    run(f'fslsplit {work_dwi} {eddy_prefix}_tmp', params)
-
-    timeslices = glob(f'{eddy_prefix}_tmp????.*')
-    timeslices.sort()
-    for _ in timeslices:
-        run(f'flirt -in {_} -ref {eddy_prefix}_ref -nosearch -interp trilinear -o {_} -paddingsize 1', params)
-    run(f'fslmerge -t {data_eddy} {" ".join(timeslices)}', params)
-    run(f'bet {data_eddy} {bet} -m -f 0.3', params)
-
-    ##################################
-    # recon-all
-    ##################################
-
     bet_mask = join(sdir, 'data_bet_mask.nii.gz')
+
+    if exists(data_eddy):
+        write(stdout, "Eddy output image was found. Skipping eddy step. ")
+    else:
+        for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
+            smart_remove(_)
+
+        run(f'fslroi {data_topup} {eddy_prefix}_ref 0 1', params)
+        run(f'fslsplit {data_topup} {eddy_prefix}_tmp', params)
+
+        timeslices = glob(f'{eddy_prefix}_tmp????.*')
+        timeslices.sort()
+        for _ in timeslices:
+            run(f'flirt -in {_} -ref {eddy_prefix}_ref -nosearch -interp trilinear -o {_} -paddingsize 1', params)
+        run(f'fslmerge -t {data_eddy} {" ".join(timeslices)}', params)
+        run(f'bet {data_eddy} {bet} -m -f 0.3', params)
+
     dti_params = join(sdir, 'DTIparams')
     dti_L1 = f'{dti_params}_L1.nii.gz'
     dti_L2 = f'{dti_params}_L2.nii.gz'
@@ -81,18 +175,27 @@ Arguments:
     dti_AD = f'{dti_params}_AD.nii.gz'
     dti_FA = f'{dti_params}_FA.nii.gz'
     FA = join(sdir, 'FA.nii.gz')
-    if exists(bet_mask):
-        run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec} -b {work_bval}', params)
-        run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
-        run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
-        smart_copy(dti_L1, dti_AD)
-        smart_copy(dti_FA, FA)
+    
+    if exists(dti_FA):
+        write(stdout, "DTI parameter maps already exist. Skipping DTI fit. ")
     else:
-        write(stdout, "Warning: failed to generate masked outputs")
-        raise Exception(f"Failed BET step. Please check {stdout} for more info.")
+        if exists(bet_mask):
+            run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec_reorg} -b {work_bval_reorg}', params)
+            run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
+            run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
+            smart_copy(dti_L1, dti_AD)
+        else:
+            write(stdout, "Warning: failed to generate masked outputs")
+            raise Exception(f"Failed BET step. Please check {stdout} for more info.")
 
-    for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
-        smart_remove(_)
+        for _ in glob(f'{eddy_prefix}_tmp????.*') + glob(f'{eddy_prefix}_ref*'):
+            smart_remove(_)
+
+    smart_copy(dti_FA, FA)
+
+    ################################
+    # recon-all
+    ################################
 
     # fsdir = join(sdir, 'freesurfer')
     # smart_mkdir(fsdir)
@@ -103,9 +206,13 @@ Arguments:
     smart_mkdir(join(sdir, 'mri', 'orig'))
     run(f'mri_convert {work_T1} {mri_out}', params)
 
-    ncores = int(os.cpu_count())
-    write(stdout, f'Running Freesurfer with {ncores} cores')
-    run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
+    EDI = join(sdir, 'EDI')
+
+    if exists(EDI):
+        write(stdout, f'Detected EDI folder. Skipping recon-all.')
+    else:
+        write(stdout, f'Running Freesurfer with {ncores} cores')
+        run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
 
     ##################################
     # mri_annotation2label
@@ -128,7 +235,7 @@ Arguments:
         '10:lh_thalamus', '11:lh_caudate', '12:lh_putamen', '13:lh_pallidum', '17:lh_hippocampus', '18:lh_amygdala', '26:lh_acumbens', 
         '49:rh_thalamus', '50:rh_caudate', '51:rh_putamen', '52:rh_pallidum', '53:rh_hippocampus', '54:rh_amygdala', '58:rh_acumbens',
     ]
-    EDI = join(sdir, 'EDI')
+
     EDI_allvols = join(EDI, 'allvols')
 
     smart_mkdir(cort_label_dir)

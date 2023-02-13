@@ -20,7 +20,7 @@ def parse_args(args):
     workflow_group = parser.add_mutually_exclusive_group(required=True)
 
     workflow_group.add_argument('--freesurfer', '--s1_freesurfer', '-s1', action='store_true',
-        help='Run step 1: freesurfer.')
+        help='Run step 1: dti preprocessing, freesurfer, and registration.')
 
     workflow_group.add_argument('--bedpostx', '--s2_bedpostx', '-s2', action='store_true',
         help='Run step 2: bedpostx.')
@@ -43,6 +43,12 @@ def parse_args(args):
     parser.add_argument('--conda_env', default='',
         help='Path to manually loaded conda environment for compute nodes.')
 
+    parser.add_argument('--retries', default=0,
+        help='Number of times to retry failed tasks.')
+
+    parser.add_argument('--edgelist', default='reduced',
+        help='Edge list for probtrackx: all (6642 edges) or reduced (930 edges).')
+
     scheduler_group = parser.add_mutually_exclusive_group()
 
     scheduler_group.add_argument('--slurm', action='store_true',
@@ -55,13 +61,13 @@ def parse_args(args):
         help='Use the Grid Engine scheduler.')
 
     parser.add_argument('--nnodes', '-n', default=1,
-        help='Scheduler: number of nodes.')
+        help='Scheduler: number of nodes (or cores for grid engine).')
 
     parser.add_argument('--bank', '-b', default='asccasc',
         help='Scheduler: bank to charge for jobs.')
 
     parser.add_argument('--partition', '-p', default='pbatch',
-        help='Scheduler: partition to assign jobs.')
+        help='Scheduler: partition or queue to assign jobs.')
 
     parser.add_argument('--walltime', '-t', default='11:59:00',
         help='Scheduler: walltime in format HH:MM:SS.')
@@ -109,6 +115,8 @@ def main():
         'container': abspath(args.container),
         'script_dir': abspath(script_dir),
         'output_dir': output_dir,
+        'edgelist': args.edgelist,
+        'nnodes': int(args.nnodes),
         'trac_sample_count': int(args.trac_sample_count),
     }
 
@@ -155,8 +163,17 @@ def main():
     else:
         cores_per_worker = int(os.cpu_count())
         mem_per_worker = None
-    worker_init = f"conda activate {args.conda_env}\n" if args.conda_env else ''
-    worker_init += f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}"
+    
+    if args.conda_env:
+        worker_init = (f"cd /wynton/home/mukherjee/shared/miniconda3\n" + 
+                       f". bin/activate\n" +
+                       f"export PATH=$PATH:/wynton/home/mukherjee/shared/miniconda3/bin\n" +
+                       f"export PYTHONPATH=$PYTHONPATH:{os.getcwd()}\n" +
+                       f"echo $( python3 -V )\n" +
+                       f"echo $( conda -V )\n" +
+                       f"conda activate {args.conda_env}")
+    else:
+        worker_init = ''
 
     if args.slurm:
         executor = parsl.executors.HighThroughputExecutor(
@@ -203,24 +220,27 @@ def main():
             label="worker",
             worker_debug=True,
             address=parsl.addresses.address_by_hostname(),
-            max_workers=cores_per_worker, # cap workers, or else defaults to infinity.
+            max_workers=int(args.nnodes), # cap workers, or else defaults to infinity.
             mem_per_worker=mem_per_worker,
             provider=parsl.providers.GridEngineProvider(
                 channel=parsl.channels.LocalChannel(),
                 launcher=parsl.launchers.SingleNodeLauncher(),
-                nodes_per_block=int(args.nnodes),
+                nodes_per_block=1,
                 init_blocks=1,
+                min_blocks=0,
                 max_blocks=1,
+                parallelism=1,
+                maxcores=int(args.nnodes), # this passes to the qsub command in parsl to request consistent num of cores
                 scheduler_options=f"#SBATCH --exclusive\n#SBATCH -A {args.bank}\n",
                 worker_init=worker_init,
                 walltime=args.walltime,
-                queue='gpu.q', # enables Wynton GPU queues
+                queue=args.partition,
             ),
         )
     else:
         executor = parsl.executors.ThreadPoolExecutor(label="worker")
 
-    config = parsl.config.Config(executors=[executor])
+    config = parsl.config.Config(executors=[executor], retries=int(args.retries))
     parsl.clear()
     parsl.set_stream_logger()
     parsl.load(config)

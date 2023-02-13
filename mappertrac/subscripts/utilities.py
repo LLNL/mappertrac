@@ -63,6 +63,8 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
         command = (f'singularity exec {"--nv" if use_gpu else ""} ' +
             f'--cleanenv ' +
             f'--home /fake_home_dir ' +
+            f'-B /opt/sge ' +
+            f'-B /wynton/home/mukherjee/shared/mappertrac/license.txt:/opt/freesurfer/license.txt ' +
             f'-B {work_dir}:/mappertrac {container} ' +
             f'sh -c "{command}"')
         print(command)
