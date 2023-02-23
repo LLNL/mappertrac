@@ -1,0 +1,119 @@
+Bootstrap: docker
+From: ubuntu:20.04
+
+%labels
+  Version v1.0
+
+%files
+  license_freesurfer.txt /opt/license_freesurfer.txt
+
+%post
+  mkdir /mappertrac
+
+  # Install dependencies
+  apt-get -y update
+  apt-get install -y apt-transport-https ca-certificates
+  apt-get install -y software-properties-common
+  add-apt-repository -y universe
+  add-apt-repository -y ppa:deadsnakes/ppa
+  sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+  apt-get update && apt-get upgrade -y && apt-get install -y \
+    curl \
+    bzip2 \
+    build-essential \
+    libgl1-mesa-glx \
+    libgl1-mesa-dev \
+    wget \
+    tcsh \
+    libtool \
+    unzip \
+    kmod \
+    initramfs-tools \
+    locales \
+    vim-tiny \
+    dkms \
+    mricron \
+    debhelper \
+    dh-autoreconf \
+    python \
+    pkg-config
+
+  apt install bash-completion
+  
+  rm /bin/sh
+  ln -s /bin/bash /bin/sh
+
+  # Install older C compiler (gcc8) because Ubuntu 20.04 has gcc9 default but CUDA10 only supports up to gcc8
+  #apt -y install gcc-8 g++-8
+  #update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8
+  #update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8
+  #update-alternatives --config gcc
+  #update-alternatives --config g++  
+
+  # Install Python 3.10
+  apt-get -y install python3.10
+  
+  # Install FSL 6.0.6: from this release, eddy_gpu, bedpostx_gpu, and probtrackx_gpu are integrated and need NO additional installation. 
+  FSL6=https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/fslinstaller.py
+  FSL6_RUN=$(basename $FSL6)
+  wget --no-check-certificate $FSL6
+  python $FSL6_RUN -d /usr/local/fsl  
+
+  # Install FSL Registration 4D extension for FLIRT and FNIRT
+  wget --no-check-certificate https://www.nitrc.org/frs/download.php/5308/registrationFiles.zip
+  unzip -o -d /usr/local/fsl registrationFiles.zip
+
+  # Install FreeSurfer
+  curl -O https://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/7.3.2/freesurfer-linux-ubuntu20_amd64-7.3.2.tar.gz
+  tar -C /opt -xzvf freesurfer-linux-ubuntu20_amd64-7.3.2.tar.gz
+  mv /opt/license_freesurfer.txt /opt/freesurfer/license.txt
+  chmod a+r /opt/freesurfer/license.txt 
+
+
+  # Install MRTrix
+  apt-get -y install libeigen3-dev zlib1g-dev libqt5opengl5-dev libqt5svg5-dev libgl1-mesa-dev libfftw3-dev libtiff5-dev libpng-dev
+  wget --no-check-certificate https://github.com/MRtrix3/mrtrix3/archive/994498557037c9e4f7ba67f255820ef84ea899d9.zip
+  unzip -o -d /opt 994498557037c9e4f7ba67f255820ef84ea899d9.zip
+  cd /opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
+  python3 ./configure -nogui -openmp
+  python3 ./build
+  cd $MAIN_DIR
+
+  # Cleanup
+  apt-get -y clean
+  rm /fslinstaller.py /*.zip /*.tar.gz 
+
+%environment
+  export FSLDIR=/usr/local/fsl
+  FSL_DIR=$FSLDIR
+  FSLOUTPUTTYPE=NIFTI_GZ
+  FSLMULTIFILEQUIT=TRUE
+  FSLTCLSH=${FSLDIR}/bin/fsltclsh
+  FSLWISH=${FSLDIR}/bin/fslwish
+  FSLGECUDAQ="gpu.q"
+  FSL_BIN=${FSLDIR}/bin
+  FS_OVERRIDE=0
+  COMPILE_GPU=1
+  export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+
+  export FREESURFER_HOME=/opt/freesurfer
+  LOCAL_DIR=${FREESURFER_HOME}/local
+  PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+  FSFAST_HOME=${FREESURFER_HOME}/fsfast
+  FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
+  FSF_OUTPUT_FORMAT="nii.gz"
+  MNI_DIR=${FREESURFER_HOME}/mni
+  MNI_DATAPATH=${FREESURFER_HOME}/mni/data
+  MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+  MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
+  MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
+  SUBJECTS_DIR=/mappertrac
+  FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
+
+  export MRTRIX_DIR=/opt/mrtrix3-994498557037c9e4f7ba67f255820ef84ea899d9
+
+  export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+
+  export PATH="${FSLDIR}/bin:/usr/local/cuda/bin:${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${MRTRIX_DIR}/bin:$PATH"
+  export LD_LIBRARY_PATH="${FSLDIR}/lib:/usr/local/cuda/lib64:${FREESURFER_HOME}/lib:${MNI_DIR}/lib:${MRTRIX_DIR}/lib:$LD_LIBRARY_PATH"
+  export OS=LINUX
