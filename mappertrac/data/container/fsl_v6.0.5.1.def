@@ -8,7 +8,6 @@ From: ubuntu:18.04
     # Links
     MAIN_DIR=$PWD
     CUDA_VERSION=10.2-cudnn7-runtime-ubuntu18.04
-    FREESURFER=ftp://surfer.nmr.mgh.harvard.edu/pub/dist/freesurfer/6.0.0/freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0.tar.gz
     NEURODEBIAN_KEY=http://neuro.debian.net/_static/neuro.debian.net.asc
     MINICONDA=https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
@@ -32,15 +31,7 @@ From: ubuntu:18.04
     echo "Installing FSL conda environment ..." && bash /opt/fsl-6.0.5.1/etc/fslconf/fslpython_install.sh -f /opt/fsl-6.0.5.1
     pip install etelemetry nipype
 
-    # Freesurfer
-    FREESURFER_GZ=$(basename $FREESURFER)
-    wget --no-check-certificate $FREESURFER
-    tar -xzf $FREESURFER_GZ -C /opt
-    chmod a+r /opt/freesurfer/license.txt
-
     # Cleanup
-    rm -rf $FREESURFER_GZ
-    rm -rf /license.txt
     apt-get -y clean
 
 %environment
@@ -59,24 +50,10 @@ From: ubuntu:18.04
     COMPILE_GPU=1
     export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
 
-    export FREESURFER_HOME=/opt/freesurfer
-    LOCAL_DIR=${FREESURFER_HOME}/local
-    PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
-    FSFAST_HOME=${FREESURFER_HOME}/fsfast
-    FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
-    FSF_OUTPUT_FORMAT="nii.gz"
-    MNI_DIR=${FREESURFER_HOME}/mni
-    MNI_DATAPATH=${FREESURFER_HOME}/mni/data
-    MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
-    MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
-    MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
     SUBJECTS_DIR=/mappertrac
-    FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
-
-    export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
 
     export CUDA_8_LIB_DIR=/usr/local/cuda-10.2/lib64
 
-    export PATH="${FREESURFER_HOME}/bin:${MNI_DIR}/bin:${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:$PATH"
+    export PATH="${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:$PATH"
     export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
     export OS=LINUX
