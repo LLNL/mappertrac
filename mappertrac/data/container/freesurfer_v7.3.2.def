@@ -1,0 +1,29 @@
+bootstrap: docker
+From: freesurfer/freesurfer:7.3.2
+
+%files
+    license.txt /usr/local/freesurfer/license.txt
+
+%environment
+    export FREESURFER_HOME=/usr/local/freesurfer
+    LOCAL_DIR=${FREESURFER_HOME}/local
+    PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    FSFAST_HOME=${FREESURFER_HOME}/fsfast
+    FMRI_ANALYSIS_DIR=${FREESURFER_HOME}/fsfast
+    FSF_OUTPUT_FORMAT="nii.gz"
+    MNI_DIR=${FREESURFER_HOME}/mni
+    MNI_DATAPATH=${FREESURFER_HOME}/mni/data
+    MNI_PERL5LIB=${FREESURFER_HOME}/mni/share/perl5
+    MINC_BIN_DIR=${FREESURFER_HOME}/mni/bin
+    MINC_LIB_DIR=${FREESURFER_HOME}/mni/lib
+    SUBJECTS_DIR=/mappertrac
+    FUNCTIONALS_DIR=${FREESURFER_HOME}/sessions
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+    SUBJECTS_DIR=/mappertrac
+    export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+    export CUDA_8_LIB_DIR=/usr/local/cuda-10.2/lib64
+    export PATH="${FREESURFER_HOME}/bin:${MINC_BIN_DIR}:${MNI_DIR}/bin:$PATH"
+    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export OS=LINUX
