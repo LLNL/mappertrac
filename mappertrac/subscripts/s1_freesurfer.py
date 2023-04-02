@@ -93,13 +93,13 @@ Arguments:
 
     # Write reorganized bvals
     work_bval_reorg = join(sdir, 'bvals_reorg')
-    bval_txt_reorg = open(work_bval_reorg, 'w')
-    bval_list_reorg = [b for idx, b in enumerate(bval_list) if b != '0']
-    bval_txt_reorg.write('0')
-    for i in range(len(bval_list_reorg)):
-      bval_txt_reorg.write(' ')
-      bval_txt_reorg.write(bval_list_reorg[i])  
-    bval_txt_reorg.write('\n')
+    with open(work_bval_reorg, 'w') as bval_txt_reorg:
+      bval_list_reorg = [b for idx, b in enumerate(bval_list) if b != '0']
+      bval_txt_reorg.write('0')
+      for i in range(len(bval_list_reorg)):
+        bval_txt_reorg.write(' ')
+        bval_txt_reorg.write(bval_list_reorg[i])  
+      bval_txt_reorg.write('\n')
 
     # Write reorganized bvecs
     bvec_txt = open(work_bvec, 'r')
@@ -107,14 +107,14 @@ Arguments:
     bvec_list_reorg = [b for idx, b in enumerate(bvec_list) if b != '0']
     
     work_bvec_reorg = join(sdir, 'bvecs_reorg')
-    bvec_txt_reorg = open(work_bvec_reorg, 'w')
-    bvec_txt_reorg.write('0')
-    nvols_diffusion = int(len(bvec_list_reorg)/3)
-    bvec_line_breaks = [nvols_diffusion, nvols_diffusion * 2]
-    for i in range(len(bvec_list_reorg)):
-      bvec_txt_reorg.write('\n' + '0 ') if i in bvec_line_breaks else bvec_txt_reorg.write(' ')
-      bvec_txt_reorg.write(bvec_list_reorg[i])
-    bvec_txt_reorg.write('\n')
+    with open(work_bvec_reorg, 'w') as bvec_txt_reorg:
+      bvec_txt_reorg.write('0')
+      nvols_diffusion = int(len(bvec_list_reorg)/3)
+      bvec_line_breaks = [nvols_diffusion, nvols_diffusion * 2]
+      for i in range(len(bvec_list_reorg)):
+        bvec_txt_reorg.write('\n' + '0 ') if i in bvec_line_breaks else bvec_txt_reorg.write(' ')
+        bvec_txt_reorg.write(bvec_list_reorg[i])
+      bvec_txt_reorg.write('\n')
 
     write(stdout, f'Finished reorganizing the dwi image and the bvec, bval files.')
 
@@ -180,6 +180,8 @@ Arguments:
         write(stdout, "DTI parameter maps already exist. Skipping DTI fit. ")
     else:
         if exists(bet_mask):
+            run(f'cat -e {work_bvec_reorg}', params)
+            run(f'cat -e {work_bval_reorg}', params) 
             run(f'dtifit --verbose -k {data_eddy} -o {dti_params} -m {bet_mask} -r {work_bvec_reorg} -b {work_bval_reorg}', params)
             run(f'fslmaths {dti_L1} -add {dti_L2} -add {dti_L3} -div 3 {dti_MD}', params)
             run(f'fslmaths {dti_L2} -add {dti_L3} -div 2 {dti_RD}', params)
