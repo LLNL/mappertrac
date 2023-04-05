@@ -27,11 +27,20 @@ Arguments:
     write(stdout, start_str)
     print(start_str)
 
-    input_dwi = join(input_dir, 'dwi', f'{ID}_dwi.nii.gz')
-    input_rev = join(input_dir, 'dwi', f'{ID}_dwi_rev.nii.gz')
-    input_bval = join(input_dir, 'dwi', f'{ID}_dwi.bval')
-    input_bvec = join(input_dir, 'dwi', f'{ID}_dwi.bvec')
-    input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
+    input_dwis = glob.glob(join(input_dir, 'dwi', f'{ID}_*dwi.nii.gz'))[0]
+    input_dwis_count = len(input_dwis)
+    if (input_dwis_count == 1) and (isfile(input_dwis[0])):
+        input_dwi = input_dwis[0]
+        input_dwi_filename = split(input_dwi)[1]
+        ID_full = input_dwi_filename[:-11]
+    elif (input_dwis_count == 0):
+        raise FileNotFoundError(f'No input dwi NIFTI files were found')
+    elif (input_dwis_count > 1):
+        raise ValueError(f'Mappertrac found {input_dwis_count} files for dwi input, but currently supports only one input')
+    input_rev = join(input_dir, 'dwi', f'{ID_full}_dwi_rev.nii.gz') # this may need reversal of the dir-{dir} tag in the ID_full string
+    input_bval = join(input_dir, 'dwi', f'{ID_full}_dwi.bval')
+    input_bvec = join(input_dir, 'dwi', f'{ID_full}_dwi.bvec')
+    input_T1 = join(input_dir, 'anat', f'{ID_full}_T1w.nii.gz')
     for _ in [input_dwi, input_bval, input_bvec, input_T1]:
         assert exists(_), f'Missing file {_}'
     
