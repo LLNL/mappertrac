@@ -27,15 +27,15 @@ Arguments:
     write(stdout, start_str)
     print(start_str)
 
-    input_dwis = glob.glob(join(input_dir, 'dwi', f'{ID}_*dwi.nii.gz'))[0]
-    input_dwis_count = len(input_dwis)
+    input_dwis = glob(join(input_dir, 'dwi', f'{ID}_*dwi.nii.gz'))
+    input_dwis_count = len((input_dwis))
     if (input_dwis_count == 1) and (isfile(input_dwis[0])):
         input_dwi = input_dwis[0]
         input_dwi_filename = split(input_dwi)[1]
         ID_full = input_dwi_filename[:-11]
     elif (input_dwis_count == 0):
         raise FileNotFoundError(f'No input dwi NIFTI files were found')
-    elif (input_dwis_count > 1):
+    elif (input_dwis_count >= 2):
         raise ValueError(f'Mappertrac found {input_dwis_count} files for dwi input, but currently supports only one input')
     input_rev = join(input_dir, 'dwi', f'{ID_full}_dwi_rev.nii.gz') # this may need reversal of the dir-{dir} tag in the ID_full string
     input_bval = join(input_dir, 'dwi', f'{ID_full}_dwi.bval')
