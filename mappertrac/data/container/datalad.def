@@ -1,0 +1,10 @@
+Bootstrap: docker
+From python:3.8
+
+%post
+
+    apt-get update
+    apt-get install -y git git-annex
+    apt-get clean -y
+    pip install datalad-installer
+    pip install datalad
