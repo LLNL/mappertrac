@@ -46,7 +46,7 @@ def smart_copy(src, dest, exclude=[]):
                 return
         copyfile(src, dest)
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=None): # , toolkit=None
     """Run a command in a subprocess.
     Safer than raw execution. Can also write to logs and utilize a container.
     """
@@ -58,26 +58,30 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
     container_cwd = params['container_cwd'] if (params and 'container_cwd' in params) else None
     containers = params['containers'] if (params and 'containers' in params) else None
 
-    if containers is not None:
-        containers_dir = abspath(containers)
-        fsl_container = join(containers_dir,'fsl-v6.0.5.1.sif')
-        fs_container = join(containers_dir,'freesurfer-v7.3.2.sif')
-        mrtrix3_container = join(containers_dir,'mrtrix3-v3.0.3.sif')
+    containers_dir = abspath(containers) if containers is not None else None
+    fsl_container = join(containers_dir,'fsl_v6.0.5.1.pytorch.sif') if containers is not None else None # for quick fix testing, changed from 'fsl-v6.0.5.1.sif'
+    fs_container = join(containers_dir,'freesurfer-v7.3.2.sif') if containers is not None else None
+    mrtrix3_container = join(containers_dir,'mrtrix3-v3.0.3.sif') if containers is not None else None
+    fsl_commands = ['fsl', 'convert_xfm', 'topup', 'eddy', 'bet', 'dtifit', 'bedpostx', 'make_dyadic_vectors', 'probtrackx2']
+    fs_commands = ['recon-all', 'mri_convert', 'mri_annotation2label', 'mri_label2vol']
+    mrtrix3_commands = ['5ttgen', 'mrconvert', 'dwibiascorrect', 'dwi2response', 'dwi2mask', 'mtnormalise', 'dwi2fod', 'tckgen', 'tckmap', 'labelconvert', 'tck2connectome']
     # When using a container, change all paths to be relative to its mounted directory (hideous, but works without changing other code)
     if (container is not None) or (containers is not None):
         command = command.replace(work_dir, "/mappertrac")
-        if ('fsl' or 'convert_xfm' or 'topup' or 'eddy' or 'bet' or 'dtifit' or 'bedpostx' or 'make_dyadic_vectors' or 'probtrackx2' in command) and isfile(fsl_container):
-            container = fsl_container
-        elif ('recon-all' or 'mri_convert' or 'mri_annotation2label' or 'mri_label2vol' in command) and isfile(fs_container):
-            container = fs_container
-        elif ('5ttgen' or 'mrconvert' or 'dwibiascorrect' or 'dwi2response' or 'dwi2mask' or 'mtnormalise' or 'dwi2fod' or 'tckgen' or 'tckmap' or 'labelconvert' or 'tck2connectome' in command) and isfile(mrtrix3_container):
-            container = mrtrix3_container
+        com = command.split(" ")[0]
+        print(com)
+        if [com == i for i in fsl_commands] and '.mgz' not in command and 'recon' not in command: # and isfile(fsl_container):
+            container_run = fsl_container
+        elif [com == ii for ii in fs_commands]: # and isfile(fs_container):
+            container_run = fs_container
+        elif [com == iii for iii in mrtrix3_commands]: # and isfile(mrtrix3_container):
+            container_run = mrtrix3_container
         command = (f'singularity exec {"--nv" if use_gpu else ""} ' +
             f'--cleanenv ' +
             f'--home /fake_home_dir ' +
             # f'-B /opt/sge ' +
             # f'-B /wynton/home/mukherjee/shared/mappertrac/license.txt:/opt/freesurfer/license.txt ' + # we should be able to replace this hard-coded host path for license to a param
-            f'-B {work_dir}:/mappertrac {container} ' +
+            f'-B {work_dir}:/mappertrac {container_run} ' +
             f'sh -c "{command}"')
         print(command)
         if container_cwd:
