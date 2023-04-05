@@ -70,7 +70,7 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
         command = command.replace(work_dir, "/mappertrac")
         com = command.split(" ")[0]
         print(com)
-        if [com == i for i in fsl_commands] and '.mgz' not in command and 'recon' not in command: # and isfile(fsl_container):
+        if [com == i for i in fsl_commands] and '.mgz' not in command and 'recon' not in command and 'label' not in command: # and isfile(fsl_container):
             container_run = fsl_container
         elif [com == ii for ii in fs_commands]: # and isfile(fs_container):
             container_run = fs_container
