@@ -46,7 +46,7 @@ def smart_copy(src, dest, exclude=[]):
                 return
         copyfile(src, dest)
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=False): # , toolkit=None
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=None): # , toolkit=None
     """Run a command in a subprocess.
     Safer than raw execution. Can also write to logs and utilize a container.
     """
@@ -59,8 +59,8 @@ def run(command, params=None, ignore_errors=False, print_output=True, print_time
     containers = True if (params and 'containers' in params) else False
     # toolkit = params['toolkit'] if (params and 'toolkit' in params) else None
 
-    if containers:
-        containers_dir = '/opt/singularity_containers'
+    if containers is not None:
+        containers_dir = abspath(containers)
         fsl_container = join(containers_dir,'fsl-v6.0.6.sif')
         fs_container = join(containers_dir,'freesurfer-v7.3.2.sif')
         mrtrix3_container = join(containers_dir,'mrtrix3-v3.0.3.sif')
