@@ -36,7 +36,7 @@ def parse_args(args):
 
     parser.add_argument('--container', default=join(cwd, 'image.sif'),
         help='Path to Singularity container image.')
-    
+
     parser.add_argument('--multi_container', default=join(cwd),
         help='Path to toolkit-specific containers.')
 
@@ -85,12 +85,14 @@ def main():
         raise Exception(f"Missing Singularity executable in PATH.\n\n" +
             f"Please ensure Singularity is installed: https://sylabs.io/guides/3.0/user-guide/installation.html")
 
-    if not exists(args.containers):
+    if not exists(args.multi_container):
         raise Exception(f"Missing container images at {abspath(args.containers)}\n\n" +
             f"Either specify another image with --container\n\n" +
             f"Or build the containers with the recipes at: {join(script_dir, 'data/container/')}")
+    else:
+        args.container=""
 
-    if not exists(args.container) and not exists(args.containers):
+    if not exists(args.container) and not exists(args.multi_container):
         raise Exception(f"Missing container image at {abspath(args.container)}\n\n" +
             f"Either specify another image with --container\n\n" +
             f"Or build the container with the recipe at: {join(script_dir, 'data/container/recipe.def')}\n\n" +
