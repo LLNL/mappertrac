@@ -32,7 +32,8 @@ pip install mappertrac
 cd mappertrac/data/container
 # FreeSurfer license must be copied to the build context
 cp path/to/freesurfer/license.txt ./license.txt
-./build.sh
+# Singularity build script, without installation of Datalad for downloading sample data
+./build.sh no
 
 ```
 
@@ -50,11 +51,11 @@ mappertrac --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
 If running via Singularity containers:
 
 ```
-mappertrac --container mappertrac/data/container/fsl_freesurfer.sif --s1_freesurfer <SUBJECT_INPUT_DIRECTORY> # this will take several hours
+mappertrac --multi_container mappertrac/data/container/ --s1_freesurfer <SUBJECT_INPUT_DIRECTORY> # this will take several hours
 
-mappertrac --container mappertrac/data/container/fsl_tractography.sif --s2_bedpostx <SUBJECT_INPUT_DIRECTORY>
+mappertrac --multi_container mappertrac/data/container/ --s2_bedpostx <SUBJECT_INPUT_DIRECTORY>
 
-mappertrac --container mappertrac/data/container/fsl_tractography.sif --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
+mappertrac --multi_container mappertrac/data/container/ --s3_probtrackx <SUBJECT_INPUT_DIRECTORY>
 ```
 
 Note: the input directory must adhere to [BIDS](https://bids.neuroimaging.io/). See this [example](https://github.com/LLNL/MaPPeRTrac/tree/master/mappertrac/data/example_inputs/sub-011591).
@@ -116,6 +117,8 @@ optional arguments:
                         Path to output directories.
   --container CONTAINER
                         Path to Singularity container image.
+  --multi_container PATH/TO/CONTAINER_DIRECTORY
+                        Path to Singularity containers directory.
   --trac_sample_count   TRAC_SAMPLE_COUNT
                         Number of probtrackx samples per voxel.
   --slurm               Use the Slurm scheduler.
