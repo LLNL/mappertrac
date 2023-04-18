@@ -113,7 +113,10 @@ Arguments:
     # Write reorganized bvecs
     bvec_txt = open(work_bvec, 'r')
     bvec_list = bvec_txt.read().split()
-    bvec_list_reorg = [b for idx, b in enumerate(bvec_list) if b != '0']
+    b0_idx_for_bvec = [b0_idx[0]]
+    b0_idx_for_bvec.append(b0_idx_for_bvec[0] + len(bval_list))
+    b0_idx_for_bvec.append(b0_idx_for_bvec[1] + len(bval_list))
+    bvec_list_reorg = [b for idx, b in enumerate(bvec_list) if idx not in b0_idx_for_bvec]
     
     work_bvec_reorg = join(sdir, 'bvecs_reorg')
     with open(work_bvec_reorg, 'w') as bvec_txt_reorg:
