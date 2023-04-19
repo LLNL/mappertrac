@@ -1,0 +1,92 @@
+Bootstrap: docker
+From: nvidia/cuda:10.2-runtime-ubuntu18.04
+
+%labels
+    maintainer="Paul B Camacho pcamach2@illinois.edu"
+    description="Singularity recipe for FSL version 6.0.6.4 based on Ubuntu 18.04LTS"
+
+%environment
+    export FSLDIR=/opt/fsl-6.0.6.4
+    PATH=$PATH:$FSLDIR/bin
+    FSL_DIR=$FSLDIR
+    FSLOUTPUTTYPE=NIFTI_GZ
+    FSLMULTIFILEQUIT=TRUE
+    FSLTCLSH=${FSLDIR}/bin/fsltclsh
+    FSLWISH=${FSLDIR}/bin/fslwish
+    FSLGECUDAQ="cuda.q"
+    FSL_BIN=${FSLDIR}/bin
+    FSLLOCKDIR=""
+    FSLMACHINELIST=""
+    FSLREMOTECALL=""
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+    ENV LANG=en_US.UTF-8
+    LANGUAGE=en_US
+    LC_ALL=en_US.UTF-8
+    export CUDA_10_2_LIB_DIR=/usr/local/cuda/lib64
+    LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+
+
+%post
+    # Set noninteractive frontend for build and locales
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update && apt-get install -y --no-install-recommends locales
+    # Set the locale
+    sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen
+    # Update pubkey for nvidia
+    apt-key del 7fa2af80 && sed -i "/machine-learning/d" /etc/apt/sources.list && cat /etc/apt/sources.list
+    rm -f /etc/apt/sources.list.d/nvidia-ml.list /etc/apt/sources.list.d/cuda.list
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && apt-get -y update
+    # Install dependencies
+    apt-get install -y --no-install-recommends \
+        wget \
+        tcsh \
+        build-essential \
+        libglu1-mesa \
+        libxext-dev \
+        libxrender-dev \
+        libfreetype6-dev \
+        libfontconfig1-dev \
+        libxinerama-dev \
+        libxi-dev \
+        libjpeg8-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libxml2-dev \
+        libboost-dev \
+        libhdf5-dev \
+        liblapack-dev \
+        libmetis-dev \
+        libopenblas-dev \
+        libopenmpi-dev \
+        libqt5opengl5-dev \
+        libssh-dev \
+        libtbb-dev \
+        libvtk7-dev \
+        libtool \
+        initramfs-tools \
+        dkms \
+        kmod \
+        debhelper \
+        dh-autoreconf \
+        mesa-utils \
+        python3-pip \
+        python3-tk \
+        python3-venv \
+        git
+    apt-get clean -y
+   
+    # Download FSL installer
+    mkdir -p /opt/fsl && cd /opt/fsl && wget -q https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && chmod 775 /opt/fsl/fslinstaller.py
+
+    # Install FSL
+    python3 /opt/fsl/fslinstaller.py -d /opt/fsl-6.0.6.4 -V 6.0.6.4 -s
+
+    # Remove installer
+    rm /opt/fsl/fslinstaller.py
+
+%runscript
+    exec "$@"
+
