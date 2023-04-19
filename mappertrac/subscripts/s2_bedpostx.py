@@ -44,20 +44,22 @@ Arguments:
     smart_copy(join(sdir, 'data_eddy.nii.gz'), join(bedpostx, 'data.nii.gz'))
     smart_copy(join(sdir, 'data_bet_mask.nii.gz'), join(bedpostx, 'nodif_brain_mask.nii.gz'))
 
-    if exists(join(sdir, 'bval_reorg')):
-        smart_copy(join(sdir, 'bval_reorg'), join(bedpostx, 'bvals'))
+    if exists(join(sdir, 'bvals_reorg')):
+        smart_copy(join(sdir, 'bvals_reorg'), join(bedpostx, 'bvals'))
     else:
         smart_copy(join(sdir, 'bvals'), join(bedpostx, 'bvals'))
 
     if exists(join(sdir, 'eddy_rotated_bvecs')):
         smart_copy(join(sdir, 'eddy_rotated_bvecs'), join(bedpostx, 'bvecs'))
+    elif exists(join(sdir, 'bvecs_reorg')):
+        smart_copy(join(sdir, 'bvecs_reorg'), join(bedpostx, 'bvecs'))
     else:
         smart_copy(join(sdir, 'bvecs'), join(bedpostx, 'bvecs'))
 
     bedpostx_sh = join(sdir, 'bedpostx.sh')
     smart_remove(bedpostx_sh)
-    write(bedpostx_sh, 'export CUDA_LIB_DIR=$CUDA_8_LIB_DIR\n' +
-                       'export LD_LIBRARY_PATH=$CUDA_LIB_DIR:$LD_LIBRARY_PATH\n' +
+    write(bedpostx_sh, 'export CUDA_LIB_DIR=$CUDA_10_2_LIB_DIR\n' +
+                       'export LD_LIBRARY_PATH=$CUDA_10_2_DIR:$LD_LIBRARY_PATH\n' +
                        'bedpostx_gpu /mappertrac/bedpostx_b1000 -NJOBS 4')
     gpu_params = params.copy()
     gpu_params['use_gpu'] = True

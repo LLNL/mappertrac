@@ -1,0 +1,9 @@
+Bootstrap: docker
+From: mrtrix3/mrtrix3:3.0.3
+
+%post
+    # Links
+    MAIN_DIR=$PWD
+
+%environment
+    SUBJECTS_DIR=/mappertrac

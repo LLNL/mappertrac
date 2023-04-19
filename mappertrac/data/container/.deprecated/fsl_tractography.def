@@ -1,0 +1,28 @@
+bootstrap: docker
+From: mrfilbi/scfsl_gpu:0.3.2
+
+
+%files
+    license.txt /opt/freesurfer/license.txt
+
+%environment
+    export FSLDIR=/opt/fsl-6.0.5.1
+    FSL_DIR=$FSLDIR
+    FSLOUTPUTTYPE=NIFTI_GZ
+    FSLMULTIFILEQUIT=TRUE
+    FSLTCLSH="${FSLDIR}/bin/fsltclsh"
+    FSLWISH="${FSLDIR}/bin/fslwish"
+    FSLGECUDAQ="cuda.q"
+    FSL_BIN=${FSLDIR}/bin
+    FSLLOCKDIR=""
+    FSLMACHINELIST=""
+    FSLREMOTECALL=""
+    FS_OVERRIDE=0
+    COMPILE_GPU=1
+    export FSL_DIR FSLOUTPUTTYPE FSLMULTIFILEQUIT FSLTCLSH FSLWISH FSLGECUDAQ FSL_BIN FS_OVERRIDE COMPILE_GPU
+    SUBJECTS_DIR=/mappertrac
+    export LOCAL_DIR PERL5LIB FSFAST_HOME FMRI_ANALYSIS_DIR FSF_OUTPUT_FORMAT MNI_DIR MNI_DATAPATH MNI_PERL5LIB MINC_BIN_DIR MINC_LIB_DIR SUBJECTS_DIR FUNCTIONALS_DIR
+    export CUDA_8_LIB_DIR=/usr/local/cuda-10.2/lib64
+    export PATH="${MNI_DIR}/bin:${FSLDIR}/bin:${FSLDIR}/fslpython/condabin:${FSLDIR}/fslpython/bin:$PATH"
+    export LD_LIBRARY_PATH="${FSLDIR}/lib:$LD_LIBRARY_PATH"
+    export OS=LINUX

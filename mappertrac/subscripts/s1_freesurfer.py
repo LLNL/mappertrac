@@ -13,7 +13,7 @@ def run_freesurfer(params):
     ID = params['ID']
     stdout = params['stdout']
     ncores = params['nnodes'] # For grid engine on UCSF Wynton
-    #ncores = int(os.cpu_count()) 
+    #ncores = int(os.cpu_count())
 
     start_time = time.time()
     start_str = f'''
@@ -27,14 +27,23 @@ Arguments:
     write(stdout, start_str)
     print(start_str)
 
-    input_dwi = join(input_dir, 'dwi', f'{ID}_dwi.nii.gz')
-    input_rev = join(input_dir, 'dwi', f'{ID}_dwi_rev.nii.gz')
-    input_bval = join(input_dir, 'dwi', f'{ID}_dwi.bval')
-    input_bvec = join(input_dir, 'dwi', f'{ID}_dwi.bvec')
-    input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
+    input_dwis = glob(join(input_dir, 'dwi', f'{ID}_*dwi.nii.gz'))
+    input_dwis_count = len((input_dwis))
+    if (input_dwis_count == 1) and (isfile(input_dwis[0])):
+        input_dwi = input_dwis[0]
+        input_dwi_filename = split(input_dwi)[1]
+        ID_full = input_dwi_filename[:-11]
+    elif (input_dwis_count == 0):
+        raise FileNotFoundError(f'No input dwi NIFTI files were found')
+    elif (input_dwis_count >= 2):
+        raise ValueError(f'Mappertrac found {input_dwis_count} files for dwi input, but currently supports only one input')
+    input_rev = join(input_dir, 'dwi', f'{ID_full}_dwi_rev.nii.gz') # this may need reversal of the dir-{dir} tag in the ID_full string
+    input_bval = join(input_dir, 'dwi', f'{ID_full}_dwi.bval')
+    input_bvec = join(input_dir, 'dwi', f'{ID_full}_dwi.bvec')
+    input_T1 = join(input_dir, 'anat', f'{ID_full}_T1w.nii.gz')
     for _ in [input_dwi, input_bval, input_bvec, input_T1]:
         assert exists(_), f'Missing file {_}'
-    
+
     smart_mkdir(sdir)
     work_dwi = join(sdir, 'hardi.nii.gz')
     work_bval = join(sdir, 'bvals')
@@ -57,7 +66,6 @@ Arguments:
     bval_txt = open(work_bval, 'r')
     bval_list = bval_txt.read().split()
     b0_idx = [idx for idx, v in enumerate(bval_list) if v == '0']
-    
     write(stdout, f'B0 index: {b0_idx}')
 
     # Reorganize work_dwi by having the average b0 followed by diffusion volumes
@@ -65,7 +73,7 @@ Arguments:
     run(f'fslsplit {work_dwi} {vol_prefix}', params)
     split_list = [f for f in os.listdir(sdir) if fnmatch(f, 'vol*.nii.gz')]
     split_list_sorted = sorted(split_list) # This is necessary because os.listdir does not return files in sorted name order - 12/13/22
-    
+
     b0_list = []
     b0_list_dirs = []
     for idx in b0_idx:
@@ -98,7 +106,7 @@ Arguments:
       bval_txt_reorg.write('0')
       for i in range(len(bval_list_reorg)):
         bval_txt_reorg.write(' ')
-        bval_txt_reorg.write(bval_list_reorg[i])  
+        bval_txt_reorg.write(bval_list_reorg[i])
       bval_txt_reorg.write('\n')
 
     # Write reorganized bvecs
@@ -106,7 +114,7 @@ Arguments:
     bvec_list = bvec_txt.read().split()
     b0_idx_for_bvec = b0_idx + [i + len(bval_list) for i in b0_idx] + [i + 2 * len(bval_list) for i in b0_idx]
     bvec_list_reorg = [b for idx, b in enumerate(bvec_list) if idx not in b0_idx_for_bvec]
-    
+
     work_bvec_reorg = join(sdir, 'bvecs_reorg')
     with open(work_bvec_reorg, 'w') as bvec_txt_reorg:
       bvec_txt_reorg.write('0')

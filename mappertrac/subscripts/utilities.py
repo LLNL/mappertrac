@@ -1,7 +1,7 @@
 import time,datetime,os,subprocess,sys,shutil,hashlib,grp,mmap,fnmatch,gzip,re,random
 import distutils.dir_util
 from glob import glob
-from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile,getsize
+from os.path import exists,join,split,splitext,abspath,basename,dirname,isdir,samefile,getsize,isfile
 from shutil import copyfile,copytree,rmtree,ignore_patterns
 from os import system,environ,makedirs,remove
 from subprocess import Popen,PIPE
@@ -46,26 +46,45 @@ def smart_copy(src, dest, exclude=[]):
                 return
         copyfile(src, dest)
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=None): # , toolkit=None
     """Run a command in a subprocess.
     Safer than raw execution. Can also write to logs and utilize a container.
     """
     start = int(time.time())
     work_dir = params['work_dir']
     stdout = params['stdout'] if (params and 'stdout' in params) else None
-    container = params['container'] if (params and 'container' in params) else None
+    container = params['container'] if (params and 'container' in params) else None # if each run() uses a toolkit-specific container, we should change this to toggle between based on which toolkit is used for the step
     use_gpu = params['use_gpu'] if (params and 'use_gpu' in params) else None
     container_cwd = params['container_cwd'] if (params and 'container_cwd' in params) else None
+    containers = params['containers'] if (params and 'containers' in params) else None
 
+    containers_dir = abspath(containers) if containers is not None else None
+    fsl_container = join(containers_dir,'fsl-v6.0.6.4.sif') if containers is not None else None 
+    fs_container = join(containers_dir,'freesurfer-v7.3.2.sif') if containers is not None else None
+    mrtrix3_container = join(containers_dir,'mrtrix3-v3.0.3.sif') if containers is not None else None
+    fsl_commands = ['fsl', 'flirt', 'convert_xfm', 'topup', 'eddy', 'bet', 'dtifit', 'bedpostx', 'make_dyadic_vectors', 'probtrackx2', 'find_the_biggest', 'find', 'sh', 'cat']
+    fs_commands = ['recon-all', 'mri_convert', 'mri_annotation2label', 'mri_label2vol']
+    mrtrix3_commands = ['5ttgen', 'mrconvert', 'dwibiascorrect', 'dwi2response', 'dwi2mask', 'mtnormalise', 'dwi2fod', 'tckgen', 'tckmap', 'labelconvert', 'tck2connectome']
     # When using a container, change all paths to be relative to its mounted directory (hideous, but works without changing other code)
-    if container is not None:
+    if (container is not None) or (containers is not None):
+        container_run = None
         command = command.replace(work_dir, "/mappertrac")
+        com = command.split(" ")[0]
+        print(com)
+        if any(i in com for i in fsl_commands):
+            container_run = fsl_container
+        elif any(i in com for i in fs_commands):
+            container_run = fs_container
+        elif any(i in com for i in mrtrix3_commands):
+            container_run = mrtrix3_container
+        elif container is not None:
+            container_run = container
         command = (f'singularity exec {"--nv" if use_gpu else ""} ' +
             f'--cleanenv ' +
             f'--home /fake_home_dir ' +
-            f'-B /opt/sge ' +
-            f'-B /wynton/home/mukherjee/shared/mappertrac/license.txt:/opt/freesurfer/license.txt ' +
-            f'-B {work_dir}:/mappertrac {container} ' +
+            # f'-B /opt/sge ' +
+            # f'-B /wynton/home/mukherjee/shared/mappertrac/license.txt:/opt/freesurfer/license.txt ' + # we should be able to replace this hard-coded host path for license to a param
+            f'-B {work_dir}:/mappertrac {container_run} ' +
             f'sh -c "{command}"')
         print(command)
         if container_cwd:
