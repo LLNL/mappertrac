@@ -46,14 +46,14 @@ def smart_copy(src, dest, exclude=[]):
                 return
         copyfile(src, dest)
 
-def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=None):
+def run(command, params=None, ignore_errors=False, print_output=True, print_time=False, working_dir=None, containers=None): # , toolkit=None
     """Run a command in a subprocess.
     Safer than raw execution. Can also write to logs and utilize a container.
     """
     start = int(time.time())
     work_dir = params['work_dir']
     stdout = params['stdout'] if (params and 'stdout' in params) else None
-    container = params['container'] if (params and 'container' in params) else None 
+    container = params['container'] if (params and 'container' in params) else None # if each run() uses a toolkit-specific container, we should change this to toggle between based on which toolkit is used for the step
     use_gpu = params['use_gpu'] if (params and 'use_gpu' in params) else None
     container_cwd = params['container_cwd'] if (params and 'container_cwd' in params) else None
     containers = params['containers'] if (params and 'containers' in params) else None
