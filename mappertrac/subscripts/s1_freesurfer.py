@@ -40,7 +40,10 @@ Arguments:
     input_rev = join(input_dir, 'dwi', f'{ID_full}_dwi_rev.nii.gz') # this may need reversal of the dir-{dir} tag in the ID_full string
     input_bval = join(input_dir, 'dwi', f'{ID_full}_dwi.bval')
     input_bvec = join(input_dir, 'dwi', f'{ID_full}_dwi.bvec')
-    input_T1 = join(input_dir, 'anat', f'{ID_full}_T1w.nii.gz')
+    if isfile(join(input_dir, 'anat', f'{ID}_run-01_T1w.nii.gz')):
+        input_T1 = join(input_dir, 'anat', f'{ID}_run-01_T1w.nii.gz')
+    else:
+        input_T1 = join(input_dir, 'anat', f'{ID}_T1w.nii.gz')
     for _ in [input_dwi, input_bval, input_bvec, input_T1]:
         assert exists(_), f'Missing file {_}'
 
