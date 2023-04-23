@@ -229,7 +229,7 @@ Arguments:
         try:
             run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
         except:
-            run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores} -cw256', params)
+            run(f'recon-all -s . -all -notal-check -no-isrunning -cw256 -parallel -openmp {ncores}', params)
 
     ##################################
     # mri_annotation2label
