@@ -226,7 +226,10 @@ Arguments:
         write(stdout, f'Detected EDI folder. Skipping recon-all.')
     else:
         write(stdout, f'Running Freesurfer with {ncores} cores')
-        run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
+        try:
+            run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores}', params)
+        except:
+            run(f'recon-all -s . -all -notal-check -no-isrunning -parallel -openmp {ncores} -cw265', params)
 
     ##################################
     # mri_annotation2label
