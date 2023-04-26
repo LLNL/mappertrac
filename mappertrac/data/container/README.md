@@ -18,8 +18,8 @@ Without Datalad image build:
 
 Testing with Datalad set from Traveling Human Phantom Project:
 ```
-../data/datalad/datalad_get_samples.sh ../data/datalad
-mappertrac -s1 --multi_container ../container/ ../data/datalad/ds000206/sub-THP0001/ && \
-mappertrac -s2 --multi_container ../container/ ../data/datalad/ds000206/sub-THP0001/ && \
-mappertrac -s3 --multi_container ../container/ ../data/datalad/ds000206/sub-THP0001/
+../datalad/datalad_get_samples.sh ../datalad
+mappertrac -s1 --multi_container ../container/ ../datalad/ds000206/sub-THP0001/ && \
+mappertrac -s2 --multi_container ../container/ ../datalad/ds000206/sub-THP0001/ && \
+mappertrac -s3 --multi_container ../container/ ../datalad/ds000206/sub-THP0001/
 ```
