@@ -11,7 +11,7 @@
 
 # go to data path provided in command
 data_dir="${1}"
-cd ${dataout}
+cd ${data_dir}
 
 # clone git of Traveling Human Phantom (THP) dataset (https://doi.org/10.18112/openneuro.ds000206.v1.0.0)
 datalad clone https://github.com/OpenNeuroDatasets/ds000206.git
