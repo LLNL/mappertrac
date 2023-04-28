@@ -1,6 +1,6 @@
 mappertrac
 ===========
-![example workflow](https://github.com/LLNL/MaPPeRTrac/actions/workflows/build.yml/badge.svg
+[![Build](https://github.com/LLNL/mappertrac/actions/workflows/build.yml/badge.svg)](https://github.com/LLNL/mappertrac/actions/workflows/build.yml)
 ) [![PyPI version](https://badge.fury.io/py/mappertrac.svg)](https://badge.fury.io/py/mappertrac
 ) [![DOI](https://zenodo.org/badge/376166124.svg)](https://zenodo.org/badge/latestdoi/376166124
 ) [![codecov](https://codecov.io/gh/LLNL/mappertrac/branch/master/graph/badge.svg?token=E1EYRQ9EPZ)](https://codecov.io/gh/LLNL/mappertrac)
