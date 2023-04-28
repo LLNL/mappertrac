@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 jobs:
   code-coverage:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@master
       - name: Set up Python 3.9
