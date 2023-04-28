@@ -12,7 +12,7 @@ data_files = [p.replace(src_path + '/', '') for p in
 setup(
     name='mappertrac',
     description='Probabilistic tractography for high-performance computing',
-    long_description='MaPPeRTrac: A Massively Parallel, Portable, and Reproducible Tractography Pipeline'
+    long_description='MaPPeRTrac: A Massively Parallel, Portable, and Reproducible Tractography Pipeline',
     version='1.3.0',
     python_requires='>=3.7',
     author='Joseph Moon',
