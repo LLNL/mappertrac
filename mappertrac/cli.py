@@ -86,7 +86,7 @@ def main():
             f"Please ensure Singularity is installed: https://sylabs.io/guides/3.0/user-guide/installation.html")
 
     if not exists(args.multi_container):
-        raise Exception(f"Missing container images at {abspath(args.containers)}\n\n" +
+        raise Exception(f"Missing container images at {abspath(args.multi_container)}\n\n" +
             f"Either specify another image with --container\n\n" +
             f"Or build the containers with the recipes at: {join(script_dir, 'data/container/')}")
     else:
