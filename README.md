@@ -1,18 +1,20 @@
-mappertrac
+MaPPeRTrac
 ===========
 [![Build](https://github.com/LLNL/mappertrac/actions/workflows/build.yml/badge.svg)](https://github.com/LLNL/mappertrac/actions/workflows/build.yml
 ) [![PyPI version](https://badge.fury.io/py/mappertrac.svg)](https://badge.fury.io/py/mappertrac
 ) [![DOI](https://zenodo.org/badge/376166124.svg)](https://zenodo.org/badge/latestdoi/376166124
 ) [![codecov](https://codecov.io/gh/LLNL/mappertrac/branch/master/graph/badge.svg?token=E1EYRQ9EPZ)](https://codecov.io/gh/LLNL/mappertrac)
 
-mappertrac is a probabilistic tractography workflow using structural DW-MRI and designed for high performance computing.
-
-Inputs: structural DW-MRI `.nii.gz`, T1-weighted anatomical MRI `.nii.gz`, `.bval`, `.bvec`
-
-Outputs: connectome matrix `.mat` and edge density `.nii.gz`
+MaPPeRTrac is an edge-centric tractography pipeline that automates either probabilistic or deterministic tractography in a wide range of high-performance computing environments.
+ 
+Input: T1-weighted anatomical MRI image (*.nii.gz), diffusion MRI image (*.nii.gz), the b-value file and the b-vector file for the diffusion MRI image (*.bval and *.bvec)
+ 
+Output: Edge density image (*.nii.gz) and connectome matrix (*.mat)
 
 ![](workflow_diagram.png?raw=true)
 
+![](Fig1A.png?raw=true)
+![](Fig1B.png?raw=true)
 ---
 
 ## Quick Setup
@@ -65,7 +67,7 @@ Note: the input directory must adhere to [BIDS](https://bids.neuroimaging.io/). 
 ## Instructions
 
 #### Conda Installation
-If you're having trouble installing mappertrac, please use a clean environment using virtualenv or conda.
+If you're having trouble installing MaPPeRTrac, please use a clean environment using virtualenv or conda.
 ```
 conda create -n myenv
 conda activate myenv
@@ -134,9 +136,14 @@ optional arguments:
 ```
 
 ---
+If you would like to cite MaPPeRTrac in your study, please use the following references:
+ 
+Moon, J. Y., Mukherjee, P., Madduri, R. K., Markowitz, A. J., Cai, L. T., Palacios, E. M., ... & Bremer, P. T. (2022). The Case for Optimized Edge-Centric Tractography at Scale. Frontiers in Neuroinformatics, 16, 752471.
+ 
+Cai, L. T., Moon, J., Camacho, P. B., Anderson, A. T., Chwa, W. J., Sutton, B. P., ... & Madduri, R. K. (2024). MaPPeRTrac: A Massively Parallel, Portable, and Reproducible Tractography Pipeline. Neuroinformatics, 1-15.
 
 License
 -------
-mappertrac is distributed under the terms of the BSD-3 License.
+MaPPeRTrac is distributed under the terms of the BSD-3 License.
 
 LLNL-CODE-811655
